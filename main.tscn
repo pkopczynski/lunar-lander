@@ -1,0 +1,34 @@
+[gd_scene format=3 uid="uid://cxf1lefog2nen"]
+
+[ext_resource type="Script" path="res://lander.gd" id="1_lander"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ground"]
+size = Vector2(4000, 40)
+
+[node name="Main" type="Node2D"]
+
+[node name="Ground" type="StaticBody2D" parent="."]
+position = Vector2(576, 628)
+
+[node name="Polygon2D" type="Polygon2D" parent="Ground"]
+color = Color(0.55, 0.55, 0.55, 1)
+polygon = PackedVector2Array(-2000, -20, 2000, -20, 2000, 20, -2000, 20)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Ground"]
+shape = SubResource("RectangleShape2D_ground")
+
+[node name="Lander" type="CharacterBody2D" parent="."]
+position = Vector2(576, 150)
+script = ExtResource("1_lander")
+
+[node name="Body" type="Polygon2D" parent="Lander"]
+color = Color(0.9, 0.9, 0.95, 1)
+polygon = PackedVector2Array(0, -20, 14, 14, -14, 14)
+
+[node name="Flame" type="Polygon2D" parent="Lander"]
+visible = false
+color = Color(1, 0.6, 0.1, 1)
+polygon = PackedVector2Array(-7, 14, 7, 14, 0, 30)
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="Lander"]
+polygon = PackedVector2Array(0, -20, 14, 14, -14, 14)
