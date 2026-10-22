@@ -17,6 +17,10 @@ polygon = PackedVector2Array(-2000, -20, 2000, -20, 2000, 20, -2000, 20)
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Ground"]
 shape = SubResource("RectangleShape2D_ground")
 
+[node name="Pad" type="Polygon2D" parent="Ground"]
+position = Vector2(144, -20)
+color = Color(0.3, 0.8, 1, 1)
+
 [node name="Lander" type="CharacterBody2D" parent="."]
 position = Vector2(576, 150)
 script = ExtResource("1_lander")
@@ -32,3 +36,16 @@ polygon = PackedVector2Array(-7, 14, 7, 14, 0, 30)
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="Lander"]
 polygon = PackedVector2Array(0, -20, 14, 14, -14, 14)
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="Message" type="Label" parent="UI"]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 48
+horizontal_alignment = 1
+vertical_alignment = 1
