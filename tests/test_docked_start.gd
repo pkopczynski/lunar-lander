@@ -49,9 +49,7 @@ func test_restart_starts_docked_with_a_newly_picked_spot() -> void:
 
 func test_restart_after_a_crash_starts_docked() -> void:
 	await choose_ship()
-	place(Vector2(Lander.PAD_CENTER_X + 400.0, 560), Vector2(0, 200))
-	await seconds(1.0)
-	check(message().begins_with("Crashed"), "should have crashed, got %s" % message())
+	await crash_in_deep_space()
 	await restart()
 	await choose_ship()
 	check(lander().docked, "should start Docked after restarting from a crash")

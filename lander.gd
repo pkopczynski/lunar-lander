@@ -87,7 +87,11 @@ func _ready() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("restart"):
-		get_tree().reload_current_scene()
+		# A testing shortcut: in debug builds R on the Surface only puts the ship back on the pad.
+		if OS.is_debug_build() and not in_deep_space:
+			reset_to_pad()
+		else:
+			get_tree().reload_current_scene()
 	elif awaiting_swap_answer:
 		# Nothing but R happens behind the swap popup.
 		return
@@ -120,6 +124,34 @@ func start_docked() -> void:
 	message.text = "Docked!"
 	message.visible = true
 	camera.reset_smoothing()
+
+
+# Puts the ship Landed on the pad, upright and at rest, keeping its ship type, dry mass and fuel.
+func reset_to_pad() -> void:
+	if level_tween:
+		level_tween.kill()
+	var hull_bottom := 0.0
+	for point in hull.polygon:
+		hull_bottom = maxf(hull_bottom, point.y)
+	position = Vector2(PAD_CENTER_X, ground_top() - hull_bottom)
+	rotation = 0.0
+	velocity = Vector2.ZERO
+	landed = true
+	docked = false
+	bouncing = false
+	steering_after_crossing = false
+	rest_time = 0.0
+	since_liftoff = INF
+	set_physics_process(true)
+	modulate = LANDED_COLOR
+	message.text = "Landed!"
+	message.visible = true
+	camera.reset_smoothing()
+
+
+func ground_top() -> float:
+	var shape: RectangleShape2D = ground.get_node("CollisionShape2D").shape
+	return ground.position.y - shape.size.y / 2.0
 
 
 func _physics_process(delta: float) -> void:

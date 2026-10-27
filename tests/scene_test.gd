@@ -88,6 +88,14 @@ func place(position: Vector2, velocity := Vector2.ZERO) -> void:
 	main().get_node("UI/Message").visible = false
 
 
+# Flies the ship up into the station's underside, away from the entry, which crashes it in deep space.
+func crash_in_deep_space() -> void:
+	place(Vector2(World.WORLD_WIDTH / 4.0, World.SPACE_TOP_Y + 60.0), Vector2(0, -300))
+	await seconds(1.0)
+	check(message().begins_with("Crashed"), "should have crashed into the station, got %s" % message())
+	check(lander().in_deep_space, "the crash should be in deep space")
+
+
 # Flies the ship into the parking spot from free flight, which docks it (and
 # opens the swap popup).
 func dock_in_spot() -> void:
@@ -199,8 +207,11 @@ func send(action: StringName, pressed: bool) -> void:
 
 
 # Presses R and waits until the reloaded main scene is ready and, unless
-# wait_for_power is false, until the Terminal has powered on.
+# wait_for_power is false, until the Terminal has powered on. R on the Surface
+# only teleports to the pad, so a ship below the border is moved to deep space first.
 func restart(wait_for_power := true) -> void:
+	if not lander().in_deep_space:
+		place(Vector2(World.WORLD_WIDTH / 4.0, World.BORDER_Y - 600.0))
 	var old_scene := main()
 	await press(&"restart")
 	for i in RESTART_TIMEOUT_FRAMES:

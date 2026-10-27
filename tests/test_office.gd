@@ -86,11 +86,9 @@ func test_r_returns_to_the_office() -> void:
 
 func test_r_after_a_crash_returns_to_the_office() -> void:
 	await choose_ship()
-	place(Vector2(Lander.PAD_CENTER_X + 400.0, 560), Vector2(0, 200))
-	await seconds(1.0)
-	check(message().begins_with("Crashed"), "should have crashed, got %s" % message())
+	await crash_in_deep_space()
 	await restart()
-	check(office().showing, "R after a crash should return to the Office")
+	check(office().showing, "R after a crash in deep space should return to the Office")
 
 
 func test_offer_shows_the_ship_types_numbers_and_ratings() -> void:
