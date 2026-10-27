@@ -41,6 +41,26 @@ func test_ship_is_frozen_while_the_swap_popup_is_open() -> void:
 	check(office().popup == Office.PopupKind.SWAP, "the swap popup should still be open")
 
 
+func test_weight_keys_do_nothing_while_the_swap_popup_is_open() -> void:
+	await choose_ship()
+	await dock_in_spot()
+	var before := dry_mass()
+	await press(&"weight_up")
+	await press(&"weight_down")
+	await press(&"weight_down")
+	check_near(dry_mass(), before, 0.01, "dry mass while the swap popup is open")
+	check(office().popup == Office.PopupKind.SWAP, "the swap popup should still be open")
+
+
+func test_r_in_the_swap_popup_returns_to_the_office() -> void:
+	await choose_ship()
+	await dock_in_spot()
+	await restart()
+	check(office().showing, "R should return to the Office")
+	check(office().popup == Office.PopupKind.NONE, "the Office should open on the Offer screen after R")
+	check(not office().in_service_shown(), "a new run should not tag an Offer IN SERVICE")
+
+
 func test_no_closes_the_swap_popup_and_refuels_after_the_delay() -> void:
 	await declining_refuels_after_the_delay(&"ui_accept")
 
