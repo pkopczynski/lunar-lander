@@ -54,9 +54,9 @@ static func mule() -> ShipType:
 	type.hull = PackedVector2Array([Vector2(-21, -34), Vector2(21, -34), Vector2(21, 34), Vector2(-21, 34)])
 	type.flame = PackedVector2Array([Vector2(-10, 34), Vector2(10, 34), Vector2(0, 54)])
 	type.default_dry_mass = 20000.0
-	type.maximum_weight = 35000.0
+	type.maximum_weight = 29000.0
 	type.tank = 12000.0
-	type.thrust = 400.0
+	type.thrust = 316.0
 	type.burn_rate = 207.0
 	type.turn_rate = 1.5
 	type.thrust_rating = 2
