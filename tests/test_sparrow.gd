@@ -2,6 +2,7 @@ extends "res://tests/scene_test.gd"
 
 
 func test_lands_on_the_pad() -> void:
+	await choose_ship()
 	var ship := lander()
 	place(Vector2(Lander.PAD_CENTER_X, 580), Vector2(0, 20))
 	await seconds(4.0)
@@ -10,6 +11,7 @@ func test_lands_on_the_pad() -> void:
 
 
 func test_starts_as_a_sparrow_with_a_full_tank() -> void:
+	await choose_ship()
 	var ship := lander()
 	check(ship.ship_type.name == "Sparrow", "ship type should be the Sparrow, got %s" % ship.ship_type.name)
 	check_near(ship.fuel, 5000.0, 0.01, "fuel")
@@ -18,6 +20,7 @@ func test_starts_as_a_sparrow_with_a_full_tank() -> void:
 
 
 func test_weight_keys_stay_within_the_sparrow_range() -> void:
+	await choose_ship()
 	var ship := lander()
 	for i in 20:
 		await press(&"weight_up")
@@ -28,6 +31,7 @@ func test_weight_keys_stay_within_the_sparrow_range() -> void:
 
 
 func test_docks_in_the_parking_spot_and_refuels() -> void:
+	await choose_ship()
 	var ship := lander()
 	place(station().parking_spot.get_center())
 	check(not ship.docked, "should start the test in free flight")
@@ -41,6 +45,7 @@ func test_docks_in_the_parking_spot_and_refuels() -> void:
 
 
 func test_hovers_at_maximum_weight() -> void:
+	await choose_ship()
 	var ship := lander()
 	await raise_to_maximum_weight()
 	place(Vector2(World.WORLD_WIDTH / 2.0, 0))
@@ -52,6 +57,7 @@ func test_hovers_at_maximum_weight() -> void:
 
 
 func test_crosses_the_border_at_maximum_weight() -> void:
+	await choose_ship()
 	var ship := lander()
 	await raise_to_maximum_weight()
 	place(Vector2(World.WORLD_WIDTH / 2.0, World.BORDER_Y + 600.0))

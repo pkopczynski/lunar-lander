@@ -4,6 +4,7 @@ extends RefCounted
 
 const MAIN_SCENE := "res://main.tscn"
 const PHYSICS_FPS := 60.0
+const RESTART_TIMEOUT_FRAMES := 600
 
 var tree: SceneTree
 var failures: Array[String] = []
@@ -23,6 +24,7 @@ func finish() -> void:
 		if Input.is_action_pressed(action):
 			Input.action_release(action)
 	tree.unload_current_scene()
+	tree.paused = false
 	await tree.process_frame
 
 
@@ -36,6 +38,10 @@ func lander() -> Lander:
 	return main().get_node("Lander")
 
 
+func office() -> Office:
+	return main().get_node("Office")
+
+
 func station() -> Station:
 	return main().get_node("Station")
 
@@ -46,6 +52,19 @@ func message() -> String:
 
 
 # Set-up
+
+# Picks a ship type in the Office the way a player does: browse to its Offer,
+# press Return, then Return again on Yes. Leaves the ship Docked in the parking spot.
+func choose_ship(type_name := "Sparrow") -> void:
+	for i in ShipType.ALL.size():
+		if office().selected_offer().name == type_name:
+			break
+		await press(&"ui_right")
+	check(office().selected_offer().name == type_name, "the Office should offer the %s" % type_name)
+	await press(&"ui_accept")
+	await press(&"ui_accept")
+	check(not office().showing, "choosing the %s should close the Office" % type_name)
+
 
 # Puts the lander in free flight at a set position, out of its docked start.
 func place(position: Vector2, velocity := Vector2.ZERO) -> void:
@@ -89,8 +108,11 @@ func send(action: StringName, pressed: bool) -> void:
 func restart() -> void:
 	var old_scene := main()
 	await press(&"restart")
-	while main() == old_scene or main() == null or not main().is_node_ready():
+	for i in RESTART_TIMEOUT_FRAMES:
+		if main() != old_scene and main() != null and main().is_node_ready():
+			return
 		await tree.process_frame
+	check(false, "R should have reloaded the scene")
 
 
 # Time
