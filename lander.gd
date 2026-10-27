@@ -4,7 +4,6 @@ extends CharacterBody2D
 const GRAVITY := 60.0
 const THRUST := 150.0
 const ROTATION_SPEED := 3.0
-const START_DRIFT := 60.0
 
 const DEFAULT_DRY_MASS := 10000.0
 const MIN_DRY_MASS := 5000.0
@@ -28,28 +27,53 @@ const REFUEL_RATE := FUEL_CAPACITY * 0.5 / 6.0
 const MAX_LANDING_VERTICAL_SPEED := 50.0
 const MAX_LANDING_HORIZONTAL_SPEED := 25.0
 const MAX_LANDING_ANGLE_DEG := 15.0
+const MAX_DOCKING_SPEED := 40.0
 
-const PAD_CENTER_X := 720.0
+const PAD_CENTER_X := World.WORLD_WIDTH / 2.0
 const PAD_WIDTH := 120.0
 const PAD_HEIGHT := 6.0
+
+# Gravity fades out over this strip just below the border.
+const BORDER_BAND := 200.0
+const CROSSING_SPEED := 150.0
+const BOUNCE_STIFFNESS := 9.0
+
+const STEER_DISTANCE := 150.0
+const STEER_SPEED := 100.0
+const STEER_BRAKING := 600.0
+# Below this vertical speed, steering turns the nose up.
+const STEER_STILL_SPEED := 20.0
+
+const SOFT_WALL_WIDTH := 150.0
+const SOFT_WALL_DAMPING := 8.0
+const SOFT_WALL_PUSH := 300.0
 
 const LANDED_COLOR := Color(0.3, 1.0, 0.4)
 const CRASHED_COLOR := Color(1.0, 0.3, 0.3)
 
 var dry_mass := DEFAULT_DRY_MASS
 var fuel := FUEL_CAPACITY
-var landed := false
-var landed_time := 0.0
+# Every run starts resting on the pad.
+var landed := true
+var docked := false
+var rest_time := 0.0
 var since_liftoff := INF
 var level_tween: Tween
+var in_deep_space := false
+var bouncing := false
+var steering_after_crossing := false
+var can_dock := true
 
 @onready var flame: Polygon2D = $Flame
+@onready var hull: CollisionPolygon2D = $CollisionPolygon2D
+@onready var camera: FollowCamera = $Camera
+@onready var ground: StaticBody2D = $"../Ground"
 @onready var pad: Polygon2D = $"../Ground/Pad"
+@onready var station: Station = $"../Station"
 @onready var message: Label = $"../UI/Message"
 
 
 func _ready() -> void:
-	velocity.x = START_DRIFT
 	var half := PAD_WIDTH / 2.0
 	pad.position.x = PAD_CENTER_X - pad.get_parent().position.x
 	pad.polygon = PackedVector2Array([
@@ -70,16 +94,19 @@ func _unhandled_input(event: InputEvent) -> void:
 func _physics_process(delta: float) -> void:
 	var thrusting := Input.is_action_pressed("ui_up") and fuel > 0.0
 	flame.visible = thrusting
-	if landed:
+	if landed or docked:
 		if not thrusting:
 			rest(delta)
 			return
 		lift_off()
 
-	rotation += Input.get_axis("ui_left", "ui_right") * ROTATION_SPEED * delta
+	if is_steered():
+		rotation = rotate_toward(rotation, steer_rotation(), ROTATION_SPEED * delta)
+	else:
+		rotation += Input.get_axis("ui_left", "ui_right") * ROTATION_SPEED * delta
 
 	var mass_factor := total_mass() / REFERENCE_MASS
-	velocity.y += GRAVITY * (1.0 + GRAVITY_MASS_SCALE * (mass_factor - 1.0)) * delta
+	velocity.y += GRAVITY * (1.0 + GRAVITY_MASS_SCALE * (mass_factor - 1.0)) * gravity_share() * delta
 
 	if thrusting:
 		var thrust_dir := Vector2.UP.rotated(rotation)
@@ -87,24 +114,35 @@ func _physics_process(delta: float) -> void:
 		velocity += thrust_dir * THRUST / mass_factor * delta
 	since_liftoff += delta
 
+	if bouncing:
+		# A spring back toward the border, so a ship too slow to cross bounces off it.
+		velocity.y -= BOUNCE_STIFFNESS * (position.y - World.BORDER_Y) * delta
+	if steering_after_crossing and velocity.length() > STEER_SPEED:
+		velocity = velocity.limit_length(move_toward(velocity.length(), STEER_SPEED, STEER_BRAKING * delta))
+	push_off_soft_walls(delta)
+
 	# move_and_slide() cancels velocity into the ground, so keep the impact velocity.
 	var impact_velocity := velocity
 	move_and_slide()
 
 	if get_slide_collision_count() > 0:
-		if is_safe_landing(impact_velocity):
+		if touched_only_ground() and is_safe_landing(impact_velocity):
 			land()
 		else:
 			crash()
 		return
 
-	var screen := get_viewport_rect()
-	if position.x < screen.position.x or position.x > screen.end.x or position.y > screen.end.y:
-		crash()
+	keep_inside_world()
+	cross_border()
+	try_docking(thrusting)
 
 
 func total_mass() -> float:
 	return dry_mass + fuel
+
+
+func gravity_share() -> float:
+	return smoothstep(World.BORDER_Y, World.BORDER_Y + BORDER_BAND, position.y)
 
 
 func burn_multiplier(thrust_dir: Vector2) -> float:
@@ -114,6 +152,80 @@ func burn_multiplier(thrust_dir: Vector2) -> float:
 	var opposing := maxf(0.0, -thrust_dir.dot(velocity.normalized()))
 	var speed_share := clampf(velocity.length() / BRAKING_FULL_SPEED, 0.0, 1.0)
 	return multiplier * (1.0 + BRAKING_BURN_FACTOR * opposing * speed_share)
+
+
+func is_steered() -> bool:
+	return steering_after_crossing or soft_wall_depth() > 0.0
+
+
+func steer_rotation() -> float:
+	return PI if velocity.y > STEER_STILL_SPEED else 0.0
+
+
+func soft_wall_depth() -> float:
+	# Below the mountain tops the mountains wall the sides instead.
+	if position.y >= World.MOUNTAIN_TOP_Y:
+		return 0.0
+	var edge_distance := minf(position.x, World.WORLD_WIDTH - position.x)
+	return maxf(SOFT_WALL_WIDTH - edge_distance, 0.0)
+
+
+func push_off_soft_walls(delta: float) -> void:
+	var depth := soft_wall_depth()
+	if depth <= 0.0:
+		return
+	var inward := 1.0 if position.x < World.WORLD_WIDTH / 2.0 else -1.0
+	if velocity.x * inward < 0.0:
+		velocity.x *= exp(-SOFT_WALL_DAMPING * delta)
+	velocity.x += inward * SOFT_WALL_PUSH * depth / SOFT_WALL_WIDTH * delta
+
+
+func keep_inside_world() -> void:
+	if position.y >= World.MOUNTAIN_TOP_Y:
+		return
+	var clamped_x := clampf(position.x, 0.0, World.WORLD_WIDTH)
+	if clamped_x != position.x:
+		position.x = clamped_x
+		velocity.x = 0.0
+
+
+func cross_border() -> void:
+	if absf(position.y - World.BORDER_Y) > STEER_DISTANCE:
+		steering_after_crossing = false
+	var past_border := (position.y < World.BORDER_Y) != in_deep_space
+	if not past_border:
+		bouncing = false
+		return
+	if bouncing:
+		return
+	if absf(velocity.y) >= CROSSING_SPEED:
+		in_deep_space = not in_deep_space
+		steering_after_crossing = true
+		camera.shake()
+		camera.punch()
+	else:
+		bouncing = true
+
+
+func try_docking(thrusting: bool) -> void:
+	if not is_inside_spot():
+		can_dock = true
+	elif can_dock and not thrusting and velocity.length() <= MAX_DOCKING_SPEED:
+		dock()
+
+
+func is_inside_spot() -> bool:
+	for point in hull.polygon:
+		if not station.parking_spot.has_point(to_global(point)):
+			return false
+	return true
+
+
+func touched_only_ground() -> bool:
+	for i in get_slide_collision_count():
+		if get_slide_collision(i).get_collider() != ground:
+			return false
+	return true
 
 
 func is_safe_landing(impact_velocity: Vector2) -> bool:
@@ -128,31 +240,49 @@ func is_safe_landing(impact_velocity: Vector2) -> bool:
 
 func land() -> void:
 	landed = true
-	landed_time = 0.0
+	settle("Landed!")
+	# Leveling lifts the corner that touched down, so drop back onto the ground.
+	level_tween.tween_callback(move_and_collide.bind(Vector2.DOWN * PAD_HEIGHT * 4.0))
+
+
+func dock() -> void:
+	docked = true
+	settle("Docked!")
+
+
+func settle(title: String) -> void:
+	rest_time = 0.0
 	velocity = Vector2.ZERO
 	# Wrap first so leveling never unwinds the player's full spins.
 	rotation = wrapf(rotation, -PI, PI)
 	level_tween = create_tween()
 	level_tween.tween_property(self, "rotation", 0.0, LEVEL_TIME) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	# Leveling lifts the corner that touched down, so drop back onto the ground.
-	level_tween.tween_callback(move_and_collide.bind(Vector2.DOWN * PAD_HEIGHT * 4.0))
 	modulate = LANDED_COLOR
-	message.text = "Landed!"
+	message.text = title
 	message.visible = true
 
 
 func rest(delta: float) -> void:
-	landed_time += delta
-	var refueling := landed_time >= REFUEL_DELAY and fuel < FUEL_CAPACITY
+	# A docked ship may turn in place to face the way out.
+	if docked and not level_tween.is_running():
+		rotation += Input.get_axis("ui_left", "ui_right") * ROTATION_SPEED * delta
+	rest_time += delta
+	var refueling := rest_time >= REFUEL_DELAY and fuel < FUEL_CAPACITY
 	if refueling:
 		fuel = minf(fuel + REFUEL_RATE * delta, FUEL_CAPACITY)
-	message.text = "Landed!\nRefueling…" if refueling else "Landed!"
+	var title := "Docked!" if docked else "Landed!"
+	message.text = title + "\nRefueling…" if refueling else title
 
 
 func lift_off() -> void:
+	# Only leaving the pad costs extra fuel; undocking burns at the default rate.
+	if landed:
+		since_liftoff = 0.0
+	if docked:
+		can_dock = false
 	landed = false
-	since_liftoff = 0.0
+	docked = false
 	if level_tween:
 		level_tween.kill()
 	modulate = Color.WHITE
