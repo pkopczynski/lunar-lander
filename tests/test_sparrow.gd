@@ -3,9 +3,7 @@ extends "res://tests/scene_test.gd"
 
 func test_lands_on_the_pad() -> void:
 	var ship := lander()
-	ship.landed = false
-	ship.position = Vector2(Lander.PAD_CENTER_X, 580)
-	ship.velocity = Vector2(0, 20)
+	place(Vector2(Lander.PAD_CENTER_X, 580), Vector2(0, 20))
 	await seconds(4.0)
 	check(ship.landed, "Sparrow should be landed")
 	check(message().begins_with("Landed!"), "message should say Landed!, got %s" % message())
@@ -31,10 +29,8 @@ func test_weight_keys_stay_within_the_sparrow_range() -> void:
 
 func test_docks_in_the_parking_spot_and_refuels() -> void:
 	var ship := lander()
-	ship.landed = false
-	ship.in_deep_space = true
-	ship.position = station().parking_spot.get_center()
-	ship.velocity = Vector2.ZERO
+	place(station().parking_spot.get_center())
+	check(not ship.docked, "should start the test in free flight")
 	await seconds(0.5)
 	check(ship.docked, "Sparrow should be docked")
 	check(message() == "Docked!", "message should say Docked!, got %s" % message())
@@ -47,9 +43,7 @@ func test_docks_in_the_parking_spot_and_refuels() -> void:
 func test_hovers_at_maximum_weight() -> void:
 	var ship := lander()
 	await raise_to_maximum_weight()
-	ship.landed = false
-	ship.position = Vector2(World.WORLD_WIDTH / 2.0, 0)
-	ship.velocity = Vector2.ZERO
+	place(Vector2(World.WORLD_WIDTH / 2.0, 0))
 	hold(&"ui_up")
 	await seconds(1.0)
 	release(&"ui_up")
@@ -60,9 +54,7 @@ func test_hovers_at_maximum_weight() -> void:
 func test_crosses_the_border_at_maximum_weight() -> void:
 	var ship := lander()
 	await raise_to_maximum_weight()
-	ship.landed = false
-	ship.position = Vector2(World.WORLD_WIDTH / 2.0, World.BORDER_Y + 600.0)
-	ship.velocity = Vector2.ZERO
+	place(Vector2(World.WORLD_WIDTH / 2.0, World.BORDER_Y + 600.0))
 	var top_climb_speed := 0.0
 	hold(&"ui_up")
 	for i in roundi(10.0 * PHYSICS_FPS):

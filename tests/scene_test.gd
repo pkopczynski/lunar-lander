@@ -45,6 +45,22 @@ func message() -> String:
 	return label.text if label.visible else ""
 
 
+# Set-up
+
+# Puts the lander in free flight at a set position, out of its docked start.
+func place(position: Vector2, velocity := Vector2.ZERO) -> void:
+	var ship := lander()
+	ship.landed = false
+	ship.docked = false
+	ship.can_dock = true
+	ship.in_deep_space = position.y < World.BORDER_Y
+	ship.position = position
+	ship.velocity = velocity
+	ship.rotation = 0.0
+	ship.modulate = Color.WHITE
+	main().get_node("UI/Message").visible = false
+
+
 # Input
 
 func hold(action: StringName) -> void:
@@ -67,6 +83,14 @@ func send(action: StringName, pressed: bool) -> void:
 	event.action = action
 	event.pressed = pressed
 	Input.parse_input_event(event)
+
+
+# Presses R and waits until the reloaded main scene is ready.
+func restart() -> void:
+	var old_scene := main()
+	await press(&"restart")
+	while main() == old_scene or main() == null or not main().is_node_ready():
+		await tree.process_frame
 
 
 # Time

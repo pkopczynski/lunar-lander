@@ -50,8 +50,7 @@ const CRASHED_COLOR := Color(1.0, 0.3, 0.3)
 var ship_type: ShipType
 var dry_mass: float
 var fuel: float
-# Every run starts resting on the pad.
-var landed := true
+var landed := false
 var docked := false
 var rest_time := 0.0
 var since_liftoff := INF
@@ -73,6 +72,7 @@ var can_dock := true
 
 func _ready() -> void:
 	become(ShipType.SPARROW)
+	start_docked()
 	var half := PAD_WIDTH / 2.0
 	pad.position.x = PAD_CENTER_X - pad.get_parent().position.x
 	pad.polygon = PackedVector2Array([
@@ -97,6 +97,21 @@ func become(type: ShipType) -> void:
 	flame.polygon = type.flame
 	dry_mass = type.default_dry_mass
 	fuel = type.tank
+
+
+# Every run starts Docked in the station's parking spot, facing up, at rest.
+func start_docked() -> void:
+	position = station.parking_spot.get_center()
+	rotation = 0.0
+	velocity = Vector2.ZERO
+	in_deep_space = true
+	landed = false
+	docked = true
+	rest_time = 0.0
+	modulate = LANDED_COLOR
+	message.text = "Docked!"
+	message.visible = true
+	camera.reset_smoothing()
 
 
 func _physics_process(delta: float) -> void:
@@ -277,7 +292,7 @@ func settle(title: String) -> void:
 
 func rest(delta: float) -> void:
 	# A docked ship may turn in place to face the way out.
-	if docked and not level_tween.is_running():
+	if docked and not (level_tween and level_tween.is_running()):
 		rotation += Input.get_axis("ui_left", "ui_right") * ship_type.turn_rate * delta
 	rest_time += delta
 	var refueling := rest_time >= REFUEL_DELAY and fuel < ship_type.tank
