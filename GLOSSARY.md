@@ -20,6 +20,10 @@ _Avoid_: Boundary, edge, atmosphere line
 Solid side walls of the lower surface. Touching them crashes the ship.
 _Avoid_: Side borders, cliffs
 
+**Backdrop**:
+The two Tatra-like mountain ridges drawn behind the surface. Scenery only: they have no collision.
+_Avoid_: Mountains (the solid side walls), background mountains, skyline
+
 **Border band**:
 The strip around the border where gravity fades out. A ship too slow to cross is bounced back to the side it came from.
 _Avoid_: Transition zone, atmosphere
