@@ -30,6 +30,10 @@ func run() -> void:
 	files.sort()
 	for file: String in files:
 		var script: GDScript = load(TESTS_DIR + file)
+		if script == null or not script.can_instantiate():
+			failed.append(file)
+			print("FAIL  ", file, " (script did not load)")
+			continue
 		for method in script.get_script_method_list():
 			var test_name: String = method.name
 			if not test_name.begins_with("test_"):
