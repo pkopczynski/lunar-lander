@@ -96,27 +96,31 @@ func test_offer_shows_the_ship_types_numbers_and_ratings() -> void:
 	var lines := office().offer_lines()
 	for expected: String in ["SPARROW", "SMALL, LIGHT AND QUICK. BUILT FOR SHORT HOPS.",
 			"TANK 5 000 KG", "DRY MASS 10 000 KG", "MAX WEIGHT 17 000 KG",
-			"THRUST ■■■■■", "HANDLING ■■■■■", "< 1/1 >"]:
+			"THRUST ■■■■■", "HANDLING ■■■■■", "< 1/%d >" % ShipType.ALL.size()]:
 		check(expected in lines, "the Offer should show %s, shows %s" % [expected, lines])
 	check(office().offer_picture() == ShipType.SPARROW.hull, "the Offer picture should be the Sparrow's hull")
 
 
 func test_browsing_wraps_around_any_number_of_offers() -> void:
-	await press(&"ui_right")
-	check(office().selected_offer().name == "Sparrow", "with one Offer, Right should stay on the Sparrow")
-	check("< 1/1 >" in office().offer_lines(), "the indicator should read < 1/1 >")
 	var extra := ShipType.sparrow()
 	extra.name = "Test ship"
 	ShipType.ALL.append(extra)
-	await press(&"ui_right")
-	var after_right := office().selected_offer().name
-	var lines_after_right := office().offer_lines()
-	await press(&"ui_right")
-	var after_wrap := office().selected_offer().name
+	var count := ShipType.ALL.size()
 	await press(&"ui_left")
 	var after_left_wrap := office().selected_offer().name
+	var lines_after_left_wrap := office().offer_lines()
+	await press(&"ui_right")
+	var after_right_wrap := office().selected_offer().name
+	var names: Array[String] = []
+	for i in count:
+		names.append(office().selected_offer().name)
+		await press(&"ui_right")
+	var after_full_round := office().selected_offer().name
 	ShipType.ALL.erase(extra)
-	check(after_right == "Test ship", "Right should browse to the next Offer, got %s" % after_right)
-	check("< 2/2 >" in lines_after_right, "the indicator should read < 2/2 >, shows %s" % [lines_after_right])
-	check(after_wrap == "Sparrow", "Right on the last Offer should wrap to the first, got %s" % after_wrap)
 	check(after_left_wrap == "Test ship", "Left on the first Offer should wrap to the last, got %s" % after_left_wrap)
+	check("< %d/%d >" % [count, count] in lines_after_left_wrap,
+			"the indicator should read < %d/%d >, shows %s" % [count, count, lines_after_left_wrap])
+	check(after_right_wrap == "Sparrow", "Right on the last Offer should wrap to the first, got %s" % after_right_wrap)
+	check(names.size() == count and names.count("Sparrow") == 1 and names.count("Test ship") == 1,
+			"Right should visit every Offer once per round, visited %s" % [names])
+	check(after_full_round == "Sparrow", "a full round of Right should come back to the Sparrow, got %s" % after_full_round)
