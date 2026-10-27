@@ -38,6 +38,12 @@ const BLOCK_SIZE := Vector2(22, 22)
 const BLOCK_GAP := 6.0
 const RATING_LABEL_WIDTH := 200.0
 const HINT_ARROW_SIZE := 12.0
+# The Offer's text block (name, flavour, stats, ratings) is centred on the picture by
+# starting this far above the Offer area's middle.
+const OFFER_TEXT_LIFT := 4.0 * STAT_SIZE + 2.0 * LINE_GAP
+# Padding around the IN SERVICE tag's text, and how far the tag sits above the name's middle.
+const TAG_PADDING := Vector2(8, 4)
+const TAG_RAISE := 4.0
 # Share of the Offer area's width and height the wireframe picture may fill.
 const PICTURE_SHARE := 0.4
 
@@ -50,6 +56,10 @@ const MIN_PICTURE_SCALE := 0.01
 const GLOW := Color(0.8, 1.0, 0.85)
 const GLOW_WIDTH := 3.0
 const DOT_RADIUS := 4.0
+# How bright the glow over the squashed picture starts, fading as the picture opens.
+const GLOW_ALPHA := 0.8
+# ease() curve for the line's stretch and the picture's opening: slow start, fast finish.
+const POWER_EASE := 2.0
 
 const POPUP_SIZE := Vector2(440, 200)
 const POPUP_BUTTON_SIZE := Vector2(120, 44)
@@ -94,7 +104,7 @@ func handle_offer_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("ui_right"):
 		browse(1)
 	elif event.is_action_pressed("ui_accept"):
-		if swapping and selected_offer() == in_service:
+		if in_service_shown():
 			# Picking the ship already in service declines the swap.
 			decline_swap()
 		else:
@@ -114,9 +124,9 @@ func handle_popup_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("ui_right"):
 		selected_button = Choice.NO
 	elif event.is_action_pressed("ui_accept"):
-		answer(selected_button == Choice.YES)
+		answer(selected_button)
 	elif event.is_action_pressed("ui_cancel"):
-		answer(false)
+		answer(Choice.NO)
 	else:
 		return
 	get_viewport().set_input_as_handled()
@@ -163,6 +173,7 @@ func set_power(value: float) -> void:
 func close() -> void:
 	showing = false
 	swapping = false
+	in_service = null
 	visible = false
 	popup = PopupKind.NONE
 	get_tree().paused = false
@@ -180,19 +191,19 @@ func show_popup(kind: PopupKind, default_button: Choice) -> void:
 	selected_button = default_button
 
 
-func answer(yes: bool) -> void:
-	if popup == PopupKind.SWAP:
-		if yes:
+func answer(choice: Choice) -> void:
+	match [popup, choice]:
+		[PopupKind.SWAP, Choice.YES]:
 			open_for_swap()
-		else:
+		[PopupKind.SWAP, Choice.NO]:
 			decline_swap()
-	elif yes:
-		var type := selected_offer()
-		power_off(func() -> void:
-			lander.become(type)
-			lander.start_docked())
-	else:
-		popup = PopupKind.NONE
+		[PopupKind.ARE_YOU_SURE, Choice.YES]:
+			var type := selected_offer()
+			power_off(func() -> void:
+				lander.become(type)
+				lander.start_docked())
+		[PopupKind.ARE_YOU_SURE, Choice.NO]:
+			popup = PopupKind.NONE
 
 
 # The Terminal powers on with the ship type being flown selected and tagged IN SERVICE.
@@ -230,16 +241,28 @@ func offer_indicator() -> String:
 # The text the selected Offer shows, with ratings written as blocks.
 func offer_lines() -> PackedStringArray:
 	var type := selected_offer()
-	var lines := PackedStringArray([
-		type.name.to_upper(), type.flavour.to_upper(),
-		"TANK " + kg(type.tank), "DRY MASS " + kg(type.default_dry_mass),
-		"MAX WEIGHT " + kg(type.maximum_weight),
-		"THRUST " + blocks(type.thrust_rating), "HANDLING " + blocks(type.handling_rating),
-		offer_indicator(),
-	])
+	var lines := PackedStringArray([type.name.to_upper(), type.flavour.to_upper()])
+	for stat: Array in offer_stats():
+		lines.append("%s %s" % stat)
+	for rating: Array in offer_ratings():
+		lines.append("%s %s" % [rating[0], blocks(rating[1])])
+	lines.append(offer_indicator())
 	if in_service_shown():
 		lines.append(IN_SERVICE_TEXT)
 	return lines
+
+
+# The selected Offer's masses as [label, text in kg] pairs.
+func offer_stats() -> Array[Array]:
+	var type := selected_offer()
+	return [["TANK", kg(type.tank)], ["DRY MASS", kg(type.default_dry_mass)],
+		["MAX WEIGHT", kg(type.maximum_weight)]]
+
+
+# The selected Offer's ratings as [label, blocks out of RATING_BLOCKS] pairs.
+func offer_ratings() -> Array[Array]:
+	var type := selected_offer()
+	return [["THRUST", type.thrust_rating], ["HANDLING", type.handling_rating]]
 
 
 # The wireframe picture's outline: the ship type's hull.
@@ -269,13 +292,13 @@ func draw_terminal() -> void:
 		draw_power_line(screen, power / LINE_SHARE)
 		return
 	# The picture grows from (or shrinks to) the bright line across the middle.
-	var picture_scale := maxf(ease((power - LINE_SHARE) / (1.0 - LINE_SHARE), 2.0), MIN_PICTURE_SCALE)
+	var picture_scale := maxf(ease((power - LINE_SHARE) / (1.0 - LINE_SHARE), POWER_EASE), MIN_PICTURE_SCALE)
 	var centre := screen.get_center()
 	var scale := Vector2(1.0, picture_scale)
 	terminal.draw_set_transform(centre - centre * scale, 0.0, scale)
 	draw_screen(screen)
 	if picture_scale < 1.0:
-		terminal.draw_rect(screen, Color(GLOW, 0.8 * (1.0 - picture_scale)))
+		terminal.draw_rect(screen, Color(GLOW, GLOW_ALPHA * (1.0 - picture_scale)))
 	terminal.draw_set_transform(Vector2.ZERO)
 	draw_scanlines(screen)
 
@@ -284,7 +307,7 @@ func draw_terminal() -> void:
 # the screen as `stretch` goes from 0 to 1.
 func draw_power_line(screen: Rect2, stretch: float) -> void:
 	var centre := screen.get_center()
-	var half_width := screen.size.x / 2.0 * ease(stretch, 2.0)
+	var half_width := screen.size.x / 2.0 * ease(stretch, POWER_EASE)
 	if half_width < DOT_RADIUS:
 		terminal.draw_circle(centre, DOT_RADIUS, GLOW)
 	else:
@@ -322,37 +345,43 @@ func draw_offer(area: Rect2) -> void:
 
 	var x := area.position.x + half
 	var width := half
-	var y := area.get_center().y - 4.0 * STAT_SIZE - 2.0 * LINE_GAP
-	y += NAME_SIZE
-	draw_text(type.name.to_upper(), Vector2(x, y), NAME_SIZE, width)
+	var y := area.get_center().y - OFFER_TEXT_LIFT + NAME_SIZE
+	var title := type.name.to_upper()
+	draw_text(title, Vector2(x, y), NAME_SIZE, width)
 	if in_service_shown():
-		var name_width := FONT.get_string_size(type.name.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, NAME_SIZE).x
-		draw_in_service_tag(Vector2(x + name_width + LINE_GAP, y - NAME_SIZE / 2.0 - TEXT_SIZE / 2.0 - 4.0))
+		draw_in_service_tag(Vector2(x + text_width(title, NAME_SIZE) + LINE_GAP,
+			y - NAME_SIZE / 2.0 - TEXT_SIZE / 2.0 - TAG_RAISE))
 	y += LINE_GAP + TEXT_SIZE
 	draw_text(type.flavour.to_upper(), Vector2(x, y), TEXT_SIZE, width)
 	y += 2.0 * LINE_GAP
-	for stat: Array in [["TANK", type.tank], ["DRY MASS", type.default_dry_mass], ["MAX WEIGHT", type.maximum_weight]]:
+	for stat: Array in offer_stats():
 		y += STAT_SIZE + LINE_GAP
 		draw_text(stat[0], Vector2(x, y), STAT_SIZE, RATING_LABEL_WIDTH)
-		draw_text(kg(stat[1]), Vector2(x + RATING_LABEL_WIDTH, y), STAT_SIZE, width - RATING_LABEL_WIDTH)
+		draw_text(stat[1], Vector2(x + RATING_LABEL_WIDTH, y), STAT_SIZE, width - RATING_LABEL_WIDTH)
 	y += LINE_GAP
-	for rating: Array in [["THRUST", type.thrust_rating], ["HANDLING", type.handling_rating]]:
+	for rating: Array in offer_ratings():
 		y += STAT_SIZE + LINE_GAP
 		draw_text(rating[0], Vector2(x, y), STAT_SIZE, RATING_LABEL_WIDTH)
 		draw_rating(rating[1], Vector2(x + RATING_LABEL_WIDTH, y - BLOCK_SIZE.y))
 
 
 func draw_wireframe(outline: PackedVector2Array, box: Rect2) -> void:
-	var bounds := Rect2(outline[0], Vector2.ZERO)
-	for point in outline:
-		bounds = bounds.expand(point)
+	var bounds := outline_bounds(outline)
 	var fit := box.size * PICTURE_SHARE * 2.0 / bounds.size
 	var scale := minf(fit.x, fit.y)
 	var points := PackedVector2Array()
-	for point in outline:
+	for point: Vector2 in outline:
 		points.append(box.get_center() + (point - bounds.get_center()) * scale)
 	points.append(points[0])
 	terminal.draw_polyline(points, GREEN, BORDER_WIDTH)
+
+
+# The smallest box around an outline (a hull or flame).
+static func outline_bounds(outline: PackedVector2Array) -> Rect2:
+	var bounds := Rect2(outline[0], Vector2.ZERO)
+	for point: Vector2 in outline:
+		bounds = bounds.expand(point)
+	return bounds
 
 
 func draw_rating(rating: int, top_left: Vector2) -> void:
@@ -366,17 +395,18 @@ func draw_rating(rating: int, top_left: Vector2) -> void:
 
 func draw_in_service_tag(top_left: Vector2) -> void:
 	var text_size := FONT.get_string_size(IN_SERVICE_TEXT, HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT_SIZE)
-	var tag := Rect2(top_left, text_size + Vector2(16, 8))
+	var tag := Rect2(top_left, text_size + 2.0 * TAG_PADDING)
 	terminal.draw_rect(tag, GREEN)
-	draw_text(IN_SERVICE_TEXT, top_left + Vector2(8, 4 + TEXT_SIZE), TEXT_SIZE, -1, HORIZONTAL_ALIGNMENT_LEFT, BLACK)
+	draw_text(IN_SERVICE_TEXT, top_left + TAG_PADDING + Vector2(0, TEXT_SIZE), TEXT_SIZE, -1,
+		HORIZONTAL_ALIGNMENT_LEFT, BLACK)
 
 
 # Silkscreen has no arrow glyphs, so the hint's arrows are drawn as triangles.
 func draw_key_hint(baseline_left: Vector2) -> void:
 	var words := KEY_HINT.replace("←", "").replace("→", "").strip_edges()
 	var arrows_width := HINT_ARROW_SIZE * 3.0 + LINE_GAP
-	var words_width := FONT.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1, HINT_SIZE).x
-	var x := baseline_left.x + (terminal.size.x - 2.0 * (MARGIN + PADDING) - arrows_width - words_width) / 2.0
+	var x := baseline_left.x + (terminal.size.x - 2.0 * (MARGIN + PADDING) - arrows_width
+		- text_width(words, HINT_SIZE)) / 2.0
 	var mid_y := baseline_left.y - HINT_SIZE / 2.0
 	var h := HINT_ARROW_SIZE / 2.0
 	terminal.draw_colored_polygon(PackedVector2Array([
@@ -394,8 +424,7 @@ func popup_text() -> String:
 
 func draw_popup(screen: Rect2) -> void:
 	var text := popup_text()
-	var text_width := FONT.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, STAT_SIZE).x
-	var size := Vector2(maxf(POPUP_SIZE.x, text_width + 2.0 * PADDING), POPUP_SIZE.y)
+	var size := Vector2(maxf(POPUP_SIZE.x, text_width(text, STAT_SIZE) + 2.0 * PADDING), POPUP_SIZE.y)
 	var box := Rect2(screen.get_center() - size / 2.0, size)
 	terminal.draw_rect(box, BLACK)
 	terminal.draw_rect(box, GREEN, false, BORDER_WIDTH)
@@ -427,3 +456,7 @@ func draw_scanlines(screen: Rect2) -> void:
 func draw_text(text: String, baseline: Vector2, font_size: int, width := -1.0,
 		alignment := HORIZONTAL_ALIGNMENT_LEFT, color := GREEN) -> void:
 	terminal.draw_string(FONT, baseline, text, alignment, width, font_size, color)
+
+
+func text_width(text: String, font_size: int) -> float:
+	return FONT.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
