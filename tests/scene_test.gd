@@ -80,6 +80,99 @@ func place(position: Vector2, velocity := Vector2.ZERO) -> void:
 	main().get_node("UI/Message").visible = false
 
 
+# Ship type measurements: the same for every ship type, so their numbers compare.
+
+const DEEP_SPACE_SPOT := Vector2(World.WORLD_WIDTH / 2.0, (World.BORDER_Y + World.SPACE_TOP_Y) / 2.0)
+const MEASURE_TIMEOUT := 120.0
+# The Sparrow's numbers from the helpers below, measured once. Other ship types'
+# tuning targets are relative to these.
+const SPARROW_CLIMB_OFF_PAD := 45.3
+const SPARROW_FULL_TANK_THRUST_TIME := 24.35
+
+
+func raise_to_maximum_weight() -> void:
+	var ship := lander()
+	var steps := ceili((ship.ship_type.maximum_weight - ship.dry_mass) / Lander.DRY_MASS_STEP) + 1
+	for i in steps:
+		await press(&"weight_up")
+	check_near(ship.total_mass() - ship.fuel, ship.ship_type.maximum_weight, 0.01, "dry mass at Maximum weight")
+
+
+# Drops the ship gently onto the pad and waits until it has Landed.
+func land_on_pad() -> void:
+	var ship := lander()
+	var hull_bottom := 0.0
+	for point in ship.ship_type.hull:
+		hull_bottom = maxf(hull_bottom, point.y)
+	place(Vector2(Lander.PAD_CENTER_X, 600.0 - hull_bottom), Vector2(0, 20))
+	await seconds(3.0)
+	check(ship.landed, "the %s should have Landed on the pad, at %s, says %s" % [ship.ship_type.name, ship.position, message()])
+
+
+# Height in px gained in the first second of full thrust off the pad.
+func climb_off_pad() -> float:
+	await land_on_pad()
+	var ship := lander()
+	var start_y := ship.position.y
+	hold(&"ui_up")
+	await seconds(1.0)
+	release(&"ui_up")
+	return start_y - ship.position.y
+
+
+# Seconds of continuous full thrust a full Tank lasts, held still in deep space.
+func full_tank_thrust_time() -> float:
+	var ship := lander()
+	check_near(ship.tank_level(), 1.0, 0.0001, "tank level before the thrust run")
+	place(DEEP_SPACE_SPOT)
+	hold(&"ui_up")
+	var count := 0
+	while ship.fuel > 0.0 and count < MEASURE_TIMEOUT * PHYSICS_FPS:
+		await frames(1)
+		count += 1
+		ship.position = DEEP_SPACE_SPOT
+		ship.velocity = Vector2.ZERO
+	release(&"ui_up")
+	return count / PHYSICS_FPS
+
+
+# Rad/s turned while holding Right in deep space.
+func measured_turn_rate() -> float:
+	var ship := lander()
+	place(DEEP_SPACE_SPOT)
+	hold(&"ui_right")
+	await seconds(1.0)
+	release(&"ui_right")
+	return ship.rotation / 1.0
+
+
+func check_hovers_at_maximum_weight() -> void:
+	var ship := lander()
+	await raise_to_maximum_weight()
+	place(Vector2(World.WORLD_WIDTH / 2.0, 0))
+	hold(&"ui_up")
+	await seconds(1.0)
+	release(&"ui_up")
+	check(ship.velocity.y < 0.0, "should be climbing under full thrust, velocity.y is %s" % ship.velocity.y)
+	check(ship.position.y < 0.0, "should have climbed, y is %s" % ship.position.y)
+
+
+func check_crosses_the_border_at_maximum_weight() -> void:
+	var ship := lander()
+	await raise_to_maximum_weight()
+	place(Vector2(World.WORLD_WIDTH / 2.0, World.BORDER_Y + 600.0))
+	var top_climb_speed := 0.0
+	hold(&"ui_up")
+	for i in roundi(15.0 * PHYSICS_FPS):
+		await frames(1)
+		top_climb_speed = maxf(top_climb_speed, -ship.velocity.y)
+		if ship.in_deep_space:
+			break
+	release(&"ui_up")
+	check(ship.in_deep_space, "should have crossed into deep space")
+	check(top_climb_speed >= Lander.CROSSING_SPEED, "should reach the crossing speed, top speed %s" % top_climb_speed)
+
+
 # Input
 
 func hold(action: StringName) -> void:

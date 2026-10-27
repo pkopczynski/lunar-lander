@@ -46,35 +46,20 @@ func test_docks_in_the_parking_spot_and_refuels() -> void:
 
 func test_hovers_at_maximum_weight() -> void:
 	await choose_ship()
-	var ship := lander()
-	await raise_to_maximum_weight()
-	place(Vector2(World.WORLD_WIDTH / 2.0, 0))
-	hold(&"ui_up")
-	await seconds(1.0)
-	release(&"ui_up")
-	check(ship.velocity.y < 0.0, "should be climbing under full thrust, velocity.y is %s" % ship.velocity.y)
-	check(ship.position.y < 0.0, "should have climbed, y is %s" % ship.position.y)
+	await check_hovers_at_maximum_weight()
 
 
 func test_crosses_the_border_at_maximum_weight() -> void:
 	await choose_ship()
-	var ship := lander()
-	await raise_to_maximum_weight()
-	place(Vector2(World.WORLD_WIDTH / 2.0, World.BORDER_Y + 600.0))
-	var top_climb_speed := 0.0
-	hold(&"ui_up")
-	for i in roundi(10.0 * PHYSICS_FPS):
-		await frames(1)
-		top_climb_speed = maxf(top_climb_speed, -ship.velocity.y)
-		if ship.in_deep_space:
-			break
-	release(&"ui_up")
-	check(ship.in_deep_space, "should have crossed into deep space")
-	check(top_climb_speed >= Lander.CROSSING_SPEED, "should reach the crossing speed, top speed %s" % top_climb_speed)
+	await check_crosses_the_border_at_maximum_weight()
 
 
-func raise_to_maximum_weight() -> void:
-	for i in 10:
-		await press(&"weight_up")
-	var ship := lander()
-	check_near(ship.total_mass() - ship.fuel, 17000.0, 0.01, "dry mass at Maximum weight")
+func test_measurements_match_the_sparrows_table() -> void:
+	await choose_ship()
+	check_near(await measured_turn_rate(), 3.0, 0.1, "turn rate")
+	check_near(await full_tank_thrust_time(), SPARROW_FULL_TANK_THRUST_TIME, 0.2, "full-tank thrust time")
+
+
+func test_climb_off_the_pad() -> void:
+	await choose_ship()
+	check_near(await climb_off_pad(), SPARROW_CLIMB_OFF_PAD, 1.0, "climb off the pad in 1 s")
