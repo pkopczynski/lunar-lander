@@ -13,9 +13,11 @@ A scrolling two-area world: a surface with gravity, mountains and a landing pad,
 | `main.tscn` | The only scene, and the main scene (F5 runs it). |
 | `world.gd` | World layout constants (`class_name World`), mountains, and the background: surface gradient and stars. Attached to `Main`. |
 | `station.gd` | Builds the station maze and picks the parking spot (`class_name Station`). Attached to `Station`. |
-| `lander.gd` | Flight physics, fuel and mass, border crossing, steering, landing and docking judgement, refuelling, result display, restart. Attached to `Lander` (`class_name Lander`). |
+| `ship_type.gd` | The ship type table (`class_name ShipType`): each ship type's name, hull and flame shapes, default dry mass, Maximum weight, Tank, thrust, fuel burn and turn rate. Only the Sparrow so far (`ShipType.SPARROW`, listed in `ShipType.ALL`). |
+| `lander.gd` | Flight physics, fuel and mass, border crossing, steering, landing and docking judgement, refuelling, result display, restart. Attached to `Lander` (`class_name Lander`). `become(type)` turns it into a ship type: hull, collision shape and flame, default dry mass, full Tank. |
 | `camera.gd` | Follows the lander, zooms with speed, shakes on border crossings (`class_name FollowCamera`). Attached to `Lander/Camera`. |
 | `hud.gd` | Draws the fuel bar and weight readout from the lander's state. Attached to `UI/Hud`. |
+| `tests/` | Committed headless tests: `run_tests.gd` (runner), `scene_test.gd` (base class), `test_*.gd` (tests). See "Running and validating". |
 | `project.godot` | Renderer settings, black clear colour (deep space), main scene, and the `restart`, `weight_up`, `weight_down` input actions. |
 
 Scene tree (`main.tscn`):
@@ -29,9 +31,9 @@ Main (Node2D)                  world.gd; draws the background behind everything
 ├── Mountains (StaticBody2D)   empty; world.gd adds both mountains' polygons at runtime
 ├── Station (StaticBody2D)     station.gd; adds its wall polygons at runtime
 ├── Lander (CharacterBody2D)   lander.gd
-│   ├── Body (Polygon2D)       triangle
-│   ├── Flame (Polygon2D)      shown while thrusting
-│   ├── CollisionPolygon2D     same triangle as Body
+│   ├── Body (Polygon2D)       ship type's hull, set at runtime by become()
+│   ├── Flame (Polygon2D)      ship type's flame, shown while thrusting
+│   ├── CollisionPolygon2D     same hull as Body
 │   └── Camera (Camera2D)      camera.gd
 └── UI (CanvasLayer)
     ├── Message (Label)        hidden until a landing or crash
@@ -40,14 +42,15 @@ Main (Node2D)                  world.gd; draws the background behind everything
 
 ## Gameplay rules
 
-Tuning values are constants at the top of each script: world layout in `world.gd`, station shape in `station.gd`, flight rules in `lander.gd`, camera in `camera.gd`. Those files are the source of truth for the numbers.
+Tuning values are constants at the top of each script: world layout in `world.gd`, station shape in `station.gd`, per-ship values in `ship_type.gd`, rules shared by every ship type in `lander.gd`, camera in `camera.gd`. Those files are the source of truth for the numbers.
 
 - **World:** a 2000 px wide column. From the bottom: the ground, the surface (with gravity), the border ~2270 px above the pad, deep space (no gravity, ~2600 px tall), and the station, which spans the full width and forms the ceiling.
 - **Camera:** follows the lander with smoothing and stays inside the world. Zoom is 1.0 at ≤ 50 px/s, easing out to 0.65 at ≥ 400 px/s.
 
 - **Controls:** Left/Right rotate, Up thrusts along the lander's nose, R restarts (any time), `+`/`-` (also numpad) change the ship's dry mass (a test control, any time). Arrows use Godot's built-in `ui_*` actions; `restart`, `weight_up`, `weight_down` are custom actions bound by physical key.
-- **Start:** the lander starts landed on the pad, in the middle of the world, with a full tank.
-- **Mass:** total mass = dry mass (default 10 000 kg, 5 000–17 000 kg) + fuel (tank holds 5 000 kg). The factor `w = total / 15 000 kg` divides thrust acceleration, scales gravity by half as much (`1 + 0.5·(w−1)`), and multiplies fuel burn. It changes live as fuel burns or refills. The mass range is chosen so the heaviest ship can still hover.
+- **Start:** the lander starts as a Sparrow, landed on the pad, in the middle of the world, with a full tank.
+- **Ship types:** each ship type has its own hull, flame, default dry mass, Maximum weight, Tank, thrust, fuel burn and turn rate. Thrust and burn are given at the reference mass. The Sparrow: 10 000 kg default dry mass, 17 000 kg Maximum weight, 5 000 kg Tank, 150 px/s² thrust, 250 kg/s burn, 3.0 rad/s turn rate.
+- **Mass:** total mass = dry mass (the ship type's default, 5 000 kg up to its Maximum weight) + fuel (up to the Tank). The factor `w = total / 15 000 kg` divides thrust acceleration, scales gravity by half as much (`1 + 0.5·(w−1)`), and multiplies fuel burn. It changes live as fuel burns or refills. Maximum weight is chosen so every ship type can still hover and cross the border.
 - **Fuel:** thrust burns fuel; a default full ship empties the tank in ~20 s of thrust. Burn is ×2 for the first 1 s after lifting off the pad (not after undocking), and up to ×2 more when thrusting against the motion (scaled by how directly, and by speed up to 150 px/s). At 0 fuel the engine doesn't fire.
 - **Border:** gravity fades smoothly to zero over the 200 px below the border and is zero above it. Deep space flight is pure Newtonian: thrust is still divided by `w`, and there's no drag. Crossing the border either way needs ≥ 150 px/s vertical speed. A slower ship is sprung back to the side it came from. A real crossing shakes the screen for 2 s and starts steering until the ship is 150 px past the line.
 - **Steering:** the game takes over rotation, turning the nose up (climbing or nearly still) or down (descending at > 20 px/s). Rotate input is ignored; thrust still works. After a border crossing, speed is also damped to 100 px/s.
@@ -61,9 +64,9 @@ Tuning values are constants at the top of each script: world layout in `world.gd
   - tilt from upright within its limit (angle is wrapped, so any number of full spins doesn't count)
   - lander center within the pad
 - **Crashed** is any other touchdown, or touching the mountains or the station.
-- **Landed:** the lander turns green, zeroes its velocity, eases upright over 0.3 s and rests (no gravity, no rotation). After 2 s it refuels at half a tank per 6 s until full, showing "Refueling…". Up lifts off at any time, cancelling refuelling. A ship too heavy to climb just settles back, which counts as another landing.
+- **Landed:** the lander turns green, zeroes its velocity, eases upright over 0.3 s and rests (no gravity, no rotation). After 2 s it refuels at half a Tank per 6 s until full, showing "Refueling…". Up lifts off at any time, cancelling refuelling. A ship too heavy to climb just settles back, which counts as another landing.
 - **Crashed:** physics stops, the lander turns red, and the label shows "Crashed!" plus "Press R to retry". A crash is final.
-- **HUD:** right edge, a vertical fuel bar with a brown, wavy, eased fill (frame flashes red when empty), "FUEL" above, total mass in kg below.
+- **HUD:** right edge, a vertical fuel bar showing how full the current ship type's Tank is, with a brown, wavy, eased fill (frame flashes red when empty), "FUEL" above, total mass in kg below.
 - **Restart** reloads the whole scene, so every run starts from the scene's initial state (and the parking spot is re-picked).
 - There is no win state: you can fly back down and land on the pad again, as often as you like.
 
@@ -100,7 +103,11 @@ Godot isn't on `PATH`; the editor binary is `~/Downloads/Godot.app/Contents/MacO
 - **Play:** open the project in the editor and press F5.
 - **Import / parse check:** `Godot --headless --path . --import`
 - **Smoke run** (prints any script errors): `Godot --headless --path . --quit-after 600`
-- **Rule tests:** there's no test suite in the repo yet. For rule changes, write a temporary `extends SceneTree` script, run it with `Godot --headless --path . -s <script>`, and have it instantiate `main.tscn`, set `landed = false` (runs start landed) and the lander's position, velocity and rotation (and `in_deep_space` when placing it above the border), step physics frames, and read `UI/Message`. Headless runs don't render anything, so visuals and game feel need a human playtest.
+- **Tests:** `Godot --headless --path . --fixed-fps 60 -s tests/run_tests.gd` runs every test and exits non-zero if any fails. In a fresh checkout, run `--import` first. `--fixed-fps 60` makes each frame one physics step without waiting for real time; the tests count physics frames, so they give the same results without it, just slower.
+  - The runner loads every `tests/test_*.gd` and calls each `test_*` method on a fresh main scene. A test fails if a `check` fails, if no checks ran, or if any script error is logged while it runs.
+  - Tests extend `res://tests/scene_test.gd`. They drive the game with real input actions (`press`, `hold`, `release`), wait with `frames(n)` or `seconds(t)`, and check only what a player could observe: the lander's state, position, velocity, fuel, total mass and ship type, and the message text (`message()`, empty while hidden).
+  - To set up a start position, set the lander's public state: `landed = false` (runs start landed), `position`, `velocity`, `rotation`, and `in_deep_space` when placing it above the border.
+  - Headless runs don't render anything, so visuals and game feel need a human playtest.
 
 ## Roadmap
 
