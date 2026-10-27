@@ -96,19 +96,18 @@ func test_offer_shows_the_ship_types_numbers_and_ratings() -> void:
 	var lines := office().offer_lines()
 	for expected: String in ["SPARROW", "SMALL, LIGHT AND QUICK. BUILT FOR SHORT HOPS.",
 			"TANK 5 000 KG", "DRY MASS 10 000 KG", "MAX WEIGHT 17 000 KG",
-			"THRUST ■■■■■", "HANDLING ■■■■■", "< 1/1 >"]:
+			"THRUST ■■■■■", "HANDLING ■■■■■", "< 1/%d >" % ShipType.ALL.size()]:
 		check(expected in lines, "the Offer should show %s, shows %s" % [expected, lines])
 	check(office().offer_picture() == ShipType.SPARROW.hull, "the Offer picture should be the Sparrow's hull")
 
 
 func test_browsing_wraps_around_any_number_of_offers() -> void:
-	await press(&"ui_right")
-	check(office().selected_offer().name == "Sparrow", "with one Offer, Right should stay on the Sparrow")
-	check("< 1/1 >" in office().offer_lines(), "the indicator should read < 1/1 >")
 	var extra := ShipType.sparrow()
 	extra.name = "Test ship"
 	ShipType.ALL.append(extra)
-	await press(&"ui_right")
+	var count := ShipType.ALL.size()
+	for i in count - 1:
+		await press(&"ui_right")
 	var after_right := office().selected_offer().name
 	var lines_after_right := office().offer_lines()
 	await press(&"ui_right")
@@ -116,7 +115,8 @@ func test_browsing_wraps_around_any_number_of_offers() -> void:
 	await press(&"ui_left")
 	var after_left_wrap := office().selected_offer().name
 	ShipType.ALL.erase(extra)
-	check(after_right == "Test ship", "Right should browse to the next Offer, got %s" % after_right)
-	check("< 2/2 >" in lines_after_right, "the indicator should read < 2/2 >, shows %s" % [lines_after_right])
+	var indicator := "< %d/%d >" % [count, count]
+	check(after_right == "Test ship", "Right should browse to the last Offer, got %s" % after_right)
+	check(indicator in lines_after_right, "the indicator should read %s, shows %s" % [indicator, lines_after_right])
 	check(after_wrap == "Sparrow", "Right on the last Offer should wrap to the first, got %s" % after_wrap)
 	check(after_left_wrap == "Test ship", "Left on the first Offer should wrap to the last, got %s" % after_left_wrap)

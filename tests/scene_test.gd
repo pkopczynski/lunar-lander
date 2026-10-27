@@ -80,6 +80,84 @@ func place(position: Vector2, velocity := Vector2.ZERO) -> void:
 	main().get_node("UI/Message").visible = false
 
 
+# Per-ship-type measurements, for whichever ship type is chosen. Each one puts
+# the ship in free flight, so choose a ship first.
+
+func dry_mass() -> float:
+	return lander().total_mass() - lander().fuel
+
+
+# Presses + until dry mass reaches the ship type's Maximum weight.
+func raise_to_maximum_weight() -> void:
+	var steps := ceili((lander().ship_type.maximum_weight - dry_mass()) / Lander.DRY_MASS_STEP)
+	for i in steps + 1:
+		await press(&"weight_up")
+
+
+# Whether a second of full thrust above the pad leaves the ship climbing.
+func climbs_under_full_thrust() -> bool:
+	var ship := lander()
+	place(Vector2(World.WORLD_WIDTH / 2.0, 0))
+	hold(&"ui_up")
+	await seconds(1.0)
+	release(&"ui_up")
+	return ship.velocity.y < 0.0 and ship.position.y < 0.0
+
+
+# Holds full thrust from below the border band until the ship crosses into deep
+# space or 10 s pass; returns the top climb speed reached.
+func top_climb_speed_to_the_border() -> float:
+	var ship := lander()
+	place(Vector2(World.WORLD_WIDTH / 2.0, World.BORDER_Y + 600.0))
+	var top_speed := 0.0
+	hold(&"ui_up")
+	for i in roundi(10.0 * PHYSICS_FPS):
+		await frames(1)
+		top_speed = maxf(top_speed, -ship.velocity.y)
+		if ship.in_deep_space:
+			break
+	release(&"ui_up")
+	return top_speed
+
+
+# Height in px climbed in 1 s of full thrust from rest at pad altitude (full gravity).
+func climb_off_the_pad() -> float:
+	var ship := lander()
+	var start := Vector2(Lander.PAD_CENTER_X, 400.0)
+	place(start)
+	hold(&"ui_up")
+	await seconds(1.0)
+	release(&"ui_up")
+	return start.y - ship.position.y
+
+
+# Rad/s turned while holding Left for 1 s in open deep space.
+func turn_rate() -> float:
+	var ship := lander()
+	place(Vector2(World.WORLD_WIDTH / 4.0, World.BORDER_Y - 600.0))
+	hold(&"ui_left")
+	await seconds(1.0)
+	release(&"ui_left")
+	return -ship.rotation
+
+
+# Seconds of continuous thrust a full tank lasts, with the ship held still in
+# deep space (no gravity, no braking burn).
+func full_tank_thrust_time() -> float:
+	var ship := lander()
+	var spot := Vector2(World.WORLD_WIDTH / 4.0, World.BORDER_Y - 600.0)
+	place(spot)
+	var thrust_frames := 0
+	hold(&"ui_up")
+	while ship.fuel > 0.0 and thrust_frames < roundi(120.0 * PHYSICS_FPS):
+		await frames(1)
+		thrust_frames += 1
+		ship.position = spot
+		ship.velocity = Vector2.ZERO
+	release(&"ui_up")
+	return thrust_frames / PHYSICS_FPS
+
+
 # Input
 
 func hold(action: StringName) -> void:
