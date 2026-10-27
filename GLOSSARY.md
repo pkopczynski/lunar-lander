@@ -48,6 +48,54 @@ _Avoid_: Space station maze, base
 The box inside the station where the ship docks.
 _Avoid_: Dock, slot, destination
 
+## Office
+
+**Office**:
+The player's transport company office on the station, where every run begins and where the player picks a ship type.
+_Avoid_: Menu, shop, hangar
+
+**Terminal**:
+The retro green-on-black screen in the office that shows the offers.
+_Avoid_: Monitor, display, console
+
+**Offer**:
+One ship type shown on the terminal, with its picture and characteristics. Taking an offer costs nothing.
+_Avoid_: Listing, card, product
+
+**Ship swap**:
+Going back to the office from the parking spot to trade the current ship for another ship type. The new ship takes the old one's place in the parking spot with a full tank.
+_Avoid_: Respawn, change ship
+
+## Ship
+
+**Ship type**:
+A kind of ship with its own shape, dry mass, tank, thrust and turn rate. The game has three: the Sparrow, the Mule and the Halo.
+_Avoid_: Model, class, variant
+
+**Sparrow**:
+The small, light, quick triangle ship. It's the ship type the game started with.
+_Avoid_: Triangle, default ship
+
+**Mule**:
+The long, heavy, slow rectangular cargo ship, with the engine on a short side.
+_Avoid_: Cargo ship, rectangle
+
+**Halo**:
+The ring-shaped ship. It's open at the front and has its engine at the back, and sits between the other two on every characteristic.
+_Avoid_: Doughnut, ring
+
+**Dry mass**:
+The ship's mass without fuel.
+_Avoid_: Empty weight, base mass
+
+**Maximum weight**:
+The heaviest dry mass a ship type can carry. It stands in for cargo capacity until cargo exists.
+_Avoid_: Max load, payload
+
+**Tank**:
+How much fuel a ship type holds when full.
+_Avoid_: Capacity (on its own), fuel max
+
 ## Ship states
 
 **Landed**:
