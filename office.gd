@@ -203,7 +203,7 @@ func open_for_swap() -> void:
 	open()
 
 
-# Back to the dock as before: the ship stays as it is and refuels after the usual delay.
+# Back to the parking spot, Docked as before: the ship stays as it is and refuels after the usual delay.
 # From the Offer screen the Terminal powers off first; the swap popup just closes.
 func decline_swap() -> void:
 	if showing:

@@ -22,6 +22,7 @@ var turn_rate: float
 var thrust_rating: int
 var handling_rating: int
 
+# Named like constants: GDScript can't build objects in a const, so never reassign these.
 static var SPARROW := sparrow()
 static var MULE := mule()
 static var HALO := halo()
@@ -38,7 +39,9 @@ static func sparrow() -> ShipType:
 	type.maximum_weight = 17000.0
 	type.tank = 5000.0
 	type.thrust = 150.0
-	# A default ship empties its tank in ~20 s of thrust.
+	# Nominally 20 s of thrust on a full tank (Tank / burn); it measures ~24 s in play,
+	# as burn falls with the ship's weight. Other ship types' thrust times are tuned as
+	# ratios to the measured value.
 	type.burn_rate = type.tank / 20.0
 	type.turn_rate = 3.0
 	type.thrust_rating = 5
