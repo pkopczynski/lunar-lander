@@ -39,6 +39,8 @@ func test_docks_in_the_parking_spot_and_refuels() -> void:
 	check(ship.docked, "Sparrow should be docked")
 	check(message() == "Docked!", "message should say Docked!, got %s" % message())
 	ship.fuel = 1000.0
+	# Decline the Ship swap.
+	await press(&"ui_accept")
 	await seconds(3.0)
 	check(ship.fuel > 1000.0, "should refuel after the delay, fuel is %s" % ship.fuel)
 	check(message().contains("Refueling"), "message should mention refuelling, got %s" % message())

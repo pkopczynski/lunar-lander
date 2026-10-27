@@ -44,6 +44,8 @@ const SOFT_WALL_WIDTH := 150.0
 const SOFT_WALL_DAMPING := 8.0
 const SOFT_WALL_PUSH := 300.0
 
+signal docked_at_station
+
 const LANDED_COLOR := Color(0.3, 1.0, 0.4)
 const CRASHED_COLOR := Color(1.0, 0.3, 0.3)
 
@@ -59,6 +61,8 @@ var in_deep_space := false
 var bouncing := false
 var steering_after_crossing := false
 var can_dock := true
+# Docking asks about a Ship swap; until it's answered the ship stays frozen in the spot.
+var awaiting_swap_answer := false
 
 @onready var body: Polygon2D = $Body
 @onready var flame: Polygon2D = $Flame
@@ -107,6 +111,7 @@ func start_docked() -> void:
 	in_deep_space = true
 	landed = false
 	docked = true
+	awaiting_swap_answer = false
 	rest_time = 0.0
 	modulate = LANDED_COLOR
 	message.text = "Docked!"
@@ -116,6 +121,9 @@ func start_docked() -> void:
 
 func _physics_process(delta: float) -> void:
 	var thrusting := Input.is_action_pressed("ui_up") and fuel > 0.0
+	if awaiting_swap_answer:
+		flame.visible = false
+		return
 	flame.visible = thrusting
 	if landed or docked:
 		if not thrusting:
@@ -275,6 +283,14 @@ func land() -> void:
 func dock() -> void:
 	docked = true
 	settle("Docked!")
+	awaiting_swap_answer = true
+	docked_at_station.emit()
+
+
+# The swap was declined: the ship rests Docked again and refuels after the usual delay.
+func resume_docked() -> void:
+	awaiting_swap_answer = false
+	rest_time = 0.0
 
 
 func settle(title: String) -> void:
