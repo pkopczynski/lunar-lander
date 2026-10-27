@@ -37,7 +37,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	time += delta
-	var level := lander.fuel / Lander.FUEL_CAPACITY
+	var level := lander.tank_level()
 	shown_level = lerpf(shown_level, level, 1.0 - exp(-LEVEL_EASE_SPEED * delta))
 	queue_redraw()
 

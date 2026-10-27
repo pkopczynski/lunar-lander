@@ -37,15 +37,12 @@ script = ExtResource("1_lander")
 
 [node name="Body" type="Polygon2D" parent="Lander"]
 color = Color(0.9, 0.9, 0.95, 1)
-polygon = PackedVector2Array(0, -20, 14, 14, -14, 14)
 
 [node name="Flame" type="Polygon2D" parent="Lander"]
 visible = false
 color = Color(1, 0.6, 0.1, 1)
-polygon = PackedVector2Array(-7, 14, 7, 14, 0, 30)
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="Lander"]
-polygon = PackedVector2Array(0, -20, 14, 14, -14, 14)
 
 [node name="Camera" type="Camera2D" parent="Lander"]
 position_smoothing_enabled = true
