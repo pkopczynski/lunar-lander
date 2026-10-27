@@ -4,7 +4,7 @@ extends "res://tests/scene_test.gd"
 func test_run_starts_on_the_office_with_the_sparrow_offer_and_the_world_paused() -> void:
 	await frames(2)
 	check(office().showing, "a fresh run should show the Office")
-	check(office().selected_offer().name == "Sparrow", "the Sparrow Offer should be selected, got %s" % office().selected_offer().name)
+	check(office().selected_offer() == ShipType.SPARROW, "the Sparrow Offer should be selected, got %s" % office().selected_offer().name)
 	check(office().popup == Office.PopupKind.NONE, "no popup should be open at run start")
 	check(not office().in_service_shown(), "no Offer is IN SERVICE at run start")
 	check(tree.paused, "the world should be paused while the Office is showing")
@@ -25,7 +25,7 @@ func test_yes_puts_the_chosen_ship_docked_in_the_parking_spot_with_a_full_tank()
 	check(not office().showing, "Yes should hide the Office")
 	check(office().popup == Office.PopupKind.NONE, "no popup should stay open, and no swap popup at run start")
 	check(not tree.paused, "the world should run once a ship is chosen")
-	check(ship.ship_type.name == "Sparrow", "the ship should be a Sparrow, got %s" % ship.ship_type.name)
+	check(ship.ship_type == ShipType.SPARROW, "the ship should be a Sparrow, got %s" % ship.ship_type.name)
 	check(ship.docked, "the ship should be Docked")
 	check(ship.is_inside_spot(), "the whole hull should be inside the parking spot")
 	check_near(ship.tank_level(), 1.0, 0.0001, "tank level")
@@ -48,7 +48,7 @@ func test_no_returns_to_the_same_offer() -> void:
 	await press(&"ui_accept")
 	check(office().showing, "No should keep the Office showing")
 	check(office().popup == Office.PopupKind.NONE, "No should close the popup")
-	check(office().selected_offer().name == "Sparrow", "No should return to the Sparrow Offer")
+	check(office().selected_offer() == ShipType.SPARROW, "No should return to the Sparrow Offer")
 	check(tree.paused, "the world should stay paused")
 
 
@@ -57,14 +57,14 @@ func test_escape_in_the_popup_counts_as_no() -> void:
 	await press(&"ui_cancel")
 	check(office().showing, "Escape should keep the Office showing")
 	check(office().popup == Office.PopupKind.NONE, "Escape should close the popup")
-	check(office().selected_offer().name == "Sparrow", "Escape should return to the Sparrow Offer")
+	check(office().selected_offer() == ShipType.SPARROW, "Escape should return to the Sparrow Offer")
 
 
 func test_escape_on_the_offer_screen_at_run_start_does_nothing() -> void:
 	await press(&"ui_cancel")
 	check(office().showing, "Escape at run start should not leave the Office")
 	check(office().popup == Office.PopupKind.NONE, "Escape at run start should not open a popup")
-	check(office().selected_offer().name == "Sparrow", "the Sparrow Offer should stay selected")
+	check(office().selected_offer() == ShipType.SPARROW, "the Sparrow Offer should stay selected")
 
 
 func test_the_ship_does_not_move_while_the_office_is_showing() -> void:
@@ -80,7 +80,7 @@ func test_r_returns_to_the_office() -> void:
 	await choose_ship()
 	await restart()
 	check(office().showing, "R should return to the Office")
-	check(office().selected_offer().name == "Sparrow", "the Sparrow Offer should be selected after R")
+	check(office().selected_offer() == ShipType.SPARROW, "the Sparrow Offer should be selected after R")
 	check(tree.paused, "the world should be paused again")
 
 

@@ -13,7 +13,7 @@ func test_lands_on_the_pad() -> void:
 func test_starts_as_a_sparrow_with_a_full_tank() -> void:
 	await choose_ship()
 	var ship := lander()
-	check(ship.ship_type.name == "Sparrow", "ship type should be the Sparrow, got %s" % ship.ship_type.name)
+	check(ship.ship_type == ShipType.SPARROW, "ship type should be the Sparrow, got %s" % ship.ship_type.name)
 	check_near(ship.fuel, 5000.0, 0.01, "fuel")
 	check_near(ship.total_mass(), 15000.0, 0.01, "total mass")
 	check_near(ship.tank_level(), 1.0, 0.0001, "tank level")
