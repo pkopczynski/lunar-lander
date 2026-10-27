@@ -30,13 +30,13 @@ Main (Node2D)                  world.gd; draws the background behind everything
 │   └── Pad (Polygon2D)        visual only; shape/position set from constants in lander.gd
 ├── Mountains (StaticBody2D)   empty; world.gd adds both mountains' polygons at runtime
 ├── Station (StaticBody2D)     station.gd; adds its wall polygons at runtime
-├── Lander (CharacterBody2D)   lander.gd
+├── Lander (CharacterBody2D)   lander.gd; moved into the parking spot by start_docked() in _ready()
 │   ├── Body (Polygon2D)       ship type's hull, set at runtime by become()
 │   ├── Flame (Polygon2D)      ship type's flame, shown while thrusting
 │   ├── CollisionPolygon2D     same hull as Body
 │   └── Camera (Camera2D)      camera.gd
 └── UI (CanvasLayer)
-    ├── Message (Label)        hidden until a landing or crash
+    ├── Message (Label)        shows Docked!/Landed!/Crashed!, hidden in flight
     └── Hud (Control)          hud.gd; full-rect, draws itself on the right edge
 ```
 
@@ -48,7 +48,7 @@ Tuning values are constants at the top of each script: world layout in `world.gd
 - **Camera:** follows the lander with smoothing and stays inside the world. Zoom is 1.0 at ≤ 50 px/s, easing out to 0.65 at ≥ 400 px/s.
 
 - **Controls:** Left/Right rotate, Up thrusts along the lander's nose, R restarts (any time), `+`/`-` (also numpad) change the ship's dry mass (a test control, any time). Arrows use Godot's built-in `ui_*` actions; `restart`, `weight_up`, `weight_down` are custom actions bound by physical key.
-- **Start:** the lander starts as a Sparrow, landed on the pad, in the middle of the world, with a full tank.
+- **Start:** the lander starts as a Sparrow, Docked in the centre of the station's parking spot (re-picked at random each run), facing up, at rest, with a full tank. The pad is a destination only: fly out of the maze and down to the surface to land there.
 - **Ship types:** each ship type has its own hull, flame, default dry mass, Maximum weight, Tank, thrust, fuel burn and turn rate. Thrust and burn are given at the reference mass. The Sparrow: 10 000 kg default dry mass, 17 000 kg Maximum weight, 5 000 kg Tank, 150 px/s² thrust, 250 kg/s burn, 3.0 rad/s turn rate.
 - **Mass:** total mass = dry mass (the ship type's default, 5 000 kg up to its Maximum weight) + fuel (up to the Tank). The factor `w = total / 15 000 kg` divides thrust acceleration, scales gravity by half as much (`1 + 0.5·(w−1)`), and multiplies fuel burn. It changes live as fuel burns or refills. Maximum weight is chosen so every ship type can still hover and cross the border.
 - **Fuel:** thrust burns fuel; a default full ship empties the tank in ~20 s of thrust. Burn is ×2 for the first 1 s after lifting off the pad (not after undocking), and up to ×2 more when thrusting against the motion (scaled by how directly, and by speed up to 150 px/s). At 0 fuel the engine doesn't fire.
@@ -68,7 +68,7 @@ Tuning values are constants at the top of each script: world layout in `world.gd
 - **Crashed:** physics stops, the lander turns red, and the label shows "Crashed!" plus "Press R to retry". A crash is final.
 - **HUD:** right edge, a vertical fuel bar showing how full the current ship type's Tank is, with a brown, wavy, eased fill (frame flashes red when empty), "FUEL" above, total mass in kg below.
 - **Restart** reloads the whole scene, so every run starts from the scene's initial state (and the parking spot is re-picked).
-- There is no win state: you can fly back down and land on the pad again, as often as you like.
+- There is no win state: you can fly between the station and the pad, docking and landing as often as you like.
 
 Deliberately not built yet: score, HUD readouts (speed, altitude), terrain generation, sound, explosions, multiple levels.
 
@@ -93,6 +93,7 @@ Deliberately not built yet: score, HUD readouts (speed, altitude), terrain gener
 - The parking spot has no collider either; docking checks that every hull vertex is inside the spot's `Rect2`.
 - The station's walls are the station block minus the union of passage rectangles (`Geometry2D`). The entry cut reaches below the block so that the result is one polygon with no holes. Keep passages overlapping when changing the layout.
 - The pad has no collider; landing is judged against the ground collider, and the "on the pad" check compares x positions. The pad only appears at runtime, because `_ready()` builds its shape.
+- `Station` must stay above `Lander` in `main.tscn`: siblings become ready in order, and the Lander's `_ready()` reads `station.parking_spot` to place the docked start.
 - After a crash, `set_physics_process(false)` freezes the lander. Restart and weight keys are handled in `_unhandled_input`, which keeps running. A landing doesn't freeze physics; the `landed` flag skips gravity and judging instead.
 - Leveling after a landing lifts the corner that touched down, so the level tween ends with a `move_and_collide()` back onto the ground.
 
@@ -106,7 +107,7 @@ Godot isn't on `PATH`; the editor binary is `~/Downloads/Godot.app/Contents/MacO
 - **Tests:** `Godot --headless --path . --fixed-fps 60 -s tests/run_tests.gd` runs every test and exits non-zero if any fails. In a fresh checkout, run `--import` first. `--fixed-fps 60` makes each frame one physics step without waiting for real time; the tests count physics frames, so they give the same results without it, just slower.
   - The runner loads every `tests/test_*.gd` and calls each `test_*` method on a fresh main scene. A test fails if a `check` fails, if no checks ran, or if any script error is logged while it runs.
   - Tests extend `res://tests/scene_test.gd`. They drive the game with real input actions (`press`, `hold`, `release`), wait with `frames(n)` or `seconds(t)`, and check only what a player could observe: the lander's state, position, velocity, fuel, total mass and ship type, and the message text (`message()`, empty while hidden).
-  - To set up a start position, set the lander's public state: `landed = false` (runs start landed), `position`, `velocity`, `rotation`, and `in_deep_space` when placing it above the border.
+  - To set up a start position, call `place(position, velocity)`: it takes the lander out of its Docked start into free flight (clears `docked`/`landed`, sets `in_deep_space` from the position, faces it up and hides the message). For anything else, set the lander's public state directly. `restart()` presses R and waits for the reloaded scene.
   - Headless runs don't render anything, so visuals and game feel need a human playtest.
 
 ## Roadmap

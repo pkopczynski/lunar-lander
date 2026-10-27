@@ -85,6 +85,14 @@ func send(action: StringName, pressed: bool) -> void:
 	Input.parse_input_event(event)
 
 
+# Presses R and waits until the reloaded main scene is ready.
+func restart() -> void:
+	var old_scene := main()
+	await press(&"restart")
+	while main() == old_scene or main() == null or not main().is_node_ready():
+		await tree.process_frame
+
+
 # Time
 
 func frames(count: int) -> void:
