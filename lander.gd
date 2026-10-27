@@ -1,20 +1,15 @@
 class_name Lander
 extends CharacterBody2D
 
+# Per-ship values (thrust, turn rate, masses, tank, burn rate) live in ShipType.
 const GRAVITY := 60.0
-const THRUST := 150.0
-const ROTATION_SPEED := 3.0
 
-const DEFAULT_DRY_MASS := 10000.0
 const MIN_DRY_MASS := 5000.0
-const MAX_DRY_MASS := 17000.0
 const DRY_MASS_STEP := 1000.0
-const FUEL_CAPACITY := 5000.0
-# Mass at which thrust, gravity and burn rate are unscaled: default ship with a full tank.
+# Mass at which thrust, gravity and burn rate are unscaled: a default Sparrow with a full tank.
 const REFERENCE_MASS := 15000.0
 const GRAVITY_MASS_SCALE := 0.5
 
-const BURN_RATE := FUEL_CAPACITY / 20.0
 const LIFTOFF_BURN_MULTIPLIER := 2.0
 const LIFTOFF_BURN_TIME := 1.0
 const BRAKING_BURN_FACTOR := 1.0
@@ -22,7 +17,8 @@ const BRAKING_FULL_SPEED := 150.0
 
 const LEVEL_TIME := 0.3
 const REFUEL_DELAY := 2.0
-const REFUEL_RATE := FUEL_CAPACITY * 0.5 / 6.0
+# Share of the tank refilled per second: half a tank per 6 s.
+const REFUEL_TANK_SHARE := 0.5 / 6.0
 
 const MAX_LANDING_VERTICAL_SPEED := 50.0
 const MAX_LANDING_HORIZONTAL_SPEED := 25.0
@@ -51,8 +47,9 @@ const SOFT_WALL_PUSH := 300.0
 const LANDED_COLOR := Color(0.3, 1.0, 0.4)
 const CRASHED_COLOR := Color(1.0, 0.3, 0.3)
 
-var dry_mass := DEFAULT_DRY_MASS
-var fuel := FUEL_CAPACITY
+var ship_type: ShipType
+var dry_mass: float
+var fuel: float
 # Every run starts resting on the pad.
 var landed := true
 var docked := false
@@ -64,6 +61,7 @@ var bouncing := false
 var steering_after_crossing := false
 var can_dock := true
 
+@onready var body: Polygon2D = $Body
 @onready var flame: Polygon2D = $Flame
 @onready var hull: CollisionPolygon2D = $CollisionPolygon2D
 @onready var camera: FollowCamera = $Camera
@@ -74,6 +72,7 @@ var can_dock := true
 
 
 func _ready() -> void:
+	become(ShipType.SPARROW)
 	var half := PAD_WIDTH / 2.0
 	pad.position.x = PAD_CENTER_X - pad.get_parent().position.x
 	pad.polygon = PackedVector2Array([
@@ -86,9 +85,18 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("restart"):
 		get_tree().reload_current_scene()
 	elif event.is_action_pressed("weight_up"):
-		dry_mass = minf(dry_mass + DRY_MASS_STEP, MAX_DRY_MASS)
+		dry_mass = minf(dry_mass + DRY_MASS_STEP, ship_type.maximum_weight)
 	elif event.is_action_pressed("weight_down"):
 		dry_mass = maxf(dry_mass - DRY_MASS_STEP, MIN_DRY_MASS)
+
+
+func become(type: ShipType) -> void:
+	ship_type = type
+	body.polygon = type.hull
+	hull.polygon = type.hull
+	flame.polygon = type.flame
+	dry_mass = type.default_dry_mass
+	fuel = type.tank
 
 
 func _physics_process(delta: float) -> void:
@@ -101,17 +109,17 @@ func _physics_process(delta: float) -> void:
 		lift_off()
 
 	if is_steered():
-		rotation = rotate_toward(rotation, steer_rotation(), ROTATION_SPEED * delta)
+		rotation = rotate_toward(rotation, steer_rotation(), ship_type.turn_rate * delta)
 	else:
-		rotation += Input.get_axis("ui_left", "ui_right") * ROTATION_SPEED * delta
+		rotation += Input.get_axis("ui_left", "ui_right") * ship_type.turn_rate * delta
 
 	var mass_factor := total_mass() / REFERENCE_MASS
 	velocity.y += GRAVITY * (1.0 + GRAVITY_MASS_SCALE * (mass_factor - 1.0)) * gravity_share() * delta
 
 	if thrusting:
 		var thrust_dir := Vector2.UP.rotated(rotation)
-		fuel = maxf(fuel - BURN_RATE * mass_factor * burn_multiplier(thrust_dir) * delta, 0.0)
-		velocity += thrust_dir * THRUST / mass_factor * delta
+		fuel = maxf(fuel - ship_type.burn_rate * mass_factor * burn_multiplier(thrust_dir) * delta, 0.0)
+		velocity += thrust_dir * ship_type.thrust / mass_factor * delta
 	since_liftoff += delta
 
 	if bouncing:
@@ -139,6 +147,10 @@ func _physics_process(delta: float) -> void:
 
 func total_mass() -> float:
 	return dry_mass + fuel
+
+
+func tank_level() -> float:
+	return fuel / ship_type.tank
 
 
 func gravity_share() -> float:
@@ -266,11 +278,11 @@ func settle(title: String) -> void:
 func rest(delta: float) -> void:
 	# A docked ship may turn in place to face the way out.
 	if docked and not level_tween.is_running():
-		rotation += Input.get_axis("ui_left", "ui_right") * ROTATION_SPEED * delta
+		rotation += Input.get_axis("ui_left", "ui_right") * ship_type.turn_rate * delta
 	rest_time += delta
-	var refueling := rest_time >= REFUEL_DELAY and fuel < FUEL_CAPACITY
+	var refueling := rest_time >= REFUEL_DELAY and fuel < ship_type.tank
 	if refueling:
-		fuel = minf(fuel + REFUEL_RATE * delta, FUEL_CAPACITY)
+		fuel = minf(fuel + ship_type.tank * REFUEL_TANK_SHARE * delta, ship_type.tank)
 	var title := "Docked!" if docked else "Landed!"
 	message.text = title + "\nRefueling…" if refueling else title
 
