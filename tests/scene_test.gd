@@ -163,7 +163,7 @@ func check_crosses_the_border_at_maximum_weight() -> void:
 	place(Vector2(World.WORLD_WIDTH / 2.0, World.BORDER_Y + 600.0))
 	var top_climb_speed := 0.0
 	hold(&"ui_up")
-	for i in roundi(15.0 * PHYSICS_FPS):
+	for i in roundi(10.0 * PHYSICS_FPS):
 		await frames(1)
 		top_climb_speed = maxf(top_climb_speed, -ship.velocity.y)
 		if ship.in_deep_space:
