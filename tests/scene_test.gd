@@ -5,6 +5,7 @@ extends RefCounted
 const MAIN_SCENE := "res://main.tscn"
 const PHYSICS_FPS := 60.0
 const RESTART_TIMEOUT_FRAMES := 600
+const POWER_TIMEOUT_FRAMES := 120
 
 var tree: SceneTree
 var failures: Array[String] = []
@@ -17,6 +18,7 @@ func start(scene_tree: SceneTree) -> void:
 	# The new scene is added on the next frame and becomes ready on the one after.
 	await tree.process_frame
 	await tree.process_frame
+	await wait_for_terminal()
 
 
 func finish() -> void:
@@ -63,6 +65,7 @@ func choose_ship(type_name := "Sparrow") -> void:
 	check(office().selected_offer().name == type_name, "the Office should offer the %s" % type_name)
 	await press(&"ui_accept")
 	await press(&"ui_accept")
+	await wait_for_terminal()
 	check(not office().showing, "choosing the %s should close the Office" % type_name)
 
 
@@ -190,15 +193,27 @@ func send(action: StringName, pressed: bool) -> void:
 	Input.parse_input_event(event)
 
 
-# Presses R and waits until the reloaded main scene is ready.
-func restart() -> void:
+# Presses R and waits until the reloaded main scene is ready and, unless
+# wait_for_power is false, until the Terminal has powered on.
+func restart(wait_for_power := true) -> void:
 	var old_scene := main()
 	await press(&"restart")
 	for i in RESTART_TIMEOUT_FRAMES:
 		if main() != old_scene and main() != null and main().is_node_ready():
+			if wait_for_power:
+				await wait_for_terminal()
 			return
 		await tree.process_frame
 	check(false, "R should have reloaded the scene")
+
+
+# Waits out the Terminal's CRT power-on/off effect, if one is running.
+func wait_for_terminal() -> void:
+	for i in POWER_TIMEOUT_FRAMES:
+		if not office().powering:
+			return
+		await frames(1)
+	check(false, "the Terminal's power-on/off effect should finish")
 
 
 # Time
