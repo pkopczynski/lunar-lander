@@ -23,8 +23,9 @@ var thrust_rating: int
 var handling_rating: int
 
 static var SPARROW := sparrow()
+static var MULE := mule()
 static var HALO := halo()
-static var ALL: Array[ShipType] = [SPARROW, HALO]
+static var ALL: Array[ShipType] = [SPARROW, MULE, HALO]
 
 
 static func sparrow() -> ShipType:
@@ -42,6 +43,24 @@ static func sparrow() -> ShipType:
 	type.turn_rate = 3.0
 	type.thrust_rating = 5
 	type.handling_rating = 5
+	return type
+
+
+static func mule() -> ShipType:
+	var type := ShipType.new()
+	type.name = "Mule"
+	type.flavour = "Long, heavy and slow. Hauls the big loads."
+	# 42×68 px, long axis along the thrust, engine on the short side at the back.
+	type.hull = PackedVector2Array([Vector2(-21, -34), Vector2(21, -34), Vector2(21, 34), Vector2(-21, 34)])
+	type.flame = PackedVector2Array([Vector2(-10, 34), Vector2(10, 34), Vector2(0, 54)])
+	type.default_dry_mass = 20000.0
+	type.maximum_weight = 35000.0
+	type.tank = 12000.0
+	type.thrust = 400.0
+	type.burn_rate = 207.0
+	type.turn_rate = 1.5
+	type.thrust_rating = 2
+	type.handling_rating = 2
 	return type
 
 
