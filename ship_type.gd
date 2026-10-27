@@ -24,7 +24,8 @@ var handling_rating: int
 
 static var SPARROW := sparrow()
 static var MULE := mule()
-static var ALL: Array[ShipType] = [SPARROW, MULE]
+static var HALO := halo()
+static var ALL: Array[ShipType] = [SPARROW, MULE, HALO]
 
 
 static func sparrow() -> ShipType:
@@ -61,3 +62,38 @@ static func mule() -> ShipType:
 	type.thrust_rating = 2
 	type.handling_rating = 2
 	return type
+
+
+# A C-shaped ring, open at the nose, with the flame at the back. Its hull is
+# concave; CollisionPolygon2D's default solids build mode splits it into convex parts.
+static func halo() -> ShipType:
+	var type := ShipType.new()
+	type.name = "Halo"
+	type.flavour = "A balanced ring for mixed runs. Open at the nose."
+	type.hull = ring(20.0, 8.0, deg_to_rad(30.0), 10)
+	type.flame = PackedVector2Array([Vector2(-6, 18), Vector2(6, 18), Vector2(0, 33)])
+	type.default_dry_mass = 14000.0
+	type.maximum_weight = 24000.0
+	type.tank = 8000.0
+	# Tuned against the Sparrow in tests/test_halo.gd: climbs off the pad at ~80%,
+	# lasts ~1.2x as long on a full tank of continuous thrust.
+	type.thrust = 214.0
+	type.burn_rate = 231.0
+	type.turn_rate = 2.2
+	type.thrust_rating = 4
+	type.handling_rating = 4
+	return type
+
+
+# Outline of a ring with a gap of 2 * gap_half_angle centred on the nose (-y):
+# the outer arc one way round, then the inner arc back.
+static func ring(outer_radius: float, inner_radius: float, gap_half_angle: float, segments: int) -> PackedVector2Array:
+	var outer := PackedVector2Array()
+	var inner := PackedVector2Array()
+	for i in segments + 1:
+		var angle := lerpf(gap_half_angle, TAU - gap_half_angle, float(i) / segments)
+		var direction := Vector2(sin(angle), -cos(angle))
+		outer.append(direction * outer_radius)
+		inner.append(direction * inner_radius)
+	inner.reverse()
+	return outer + inner

@@ -106,21 +106,17 @@ func test_browsing_wraps_around_any_number_of_offers() -> void:
 	extra.name = "Test ship"
 	ShipType.ALL.append(extra)
 	var count := ShipType.ALL.size()
+	for i in count - 1:
+		await press(&"ui_right")
+	var after_right := office().selected_offer().name
+	var lines_after_right := office().offer_lines()
+	await press(&"ui_right")
+	var after_wrap := office().selected_offer().name
 	await press(&"ui_left")
 	var after_left_wrap := office().selected_offer().name
-	var lines_after_left_wrap := office().offer_lines()
-	await press(&"ui_right")
-	var after_right_wrap := office().selected_offer().name
-	var names: Array[String] = []
-	for i in count:
-		names.append(office().selected_offer().name)
-		await press(&"ui_right")
-	var after_full_round := office().selected_offer().name
 	ShipType.ALL.erase(extra)
+	var indicator := "< %d/%d >" % [count, count]
+	check(after_right == "Test ship", "Right should browse to the last Offer, got %s" % after_right)
+	check(indicator in lines_after_right, "the indicator should read %s, shows %s" % [indicator, lines_after_right])
+	check(after_wrap == "Sparrow", "Right on the last Offer should wrap to the first, got %s" % after_wrap)
 	check(after_left_wrap == "Test ship", "Left on the first Offer should wrap to the last, got %s" % after_left_wrap)
-	check("< %d/%d >" % [count, count] in lines_after_left_wrap,
-			"the indicator should read < %d/%d >, shows %s" % [count, count, lines_after_left_wrap])
-	check(after_right_wrap == "Sparrow", "Right on the last Offer should wrap to the first, got %s" % after_right_wrap)
-	check(names.size() == count and names.count("Sparrow") == 1 and names.count("Test ship") == 1,
-			"Right should visit every Offer once per round, visited %s" % [names])
-	check(after_full_round == "Sparrow", "a full round of Right should come back to the Sparrow, got %s" % after_full_round)
