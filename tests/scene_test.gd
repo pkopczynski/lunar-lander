@@ -45,6 +45,22 @@ func message() -> String:
 	return label.text if label.visible else ""
 
 
+# Set-up
+
+# Puts the lander in free flight at a set position, out of its docked start.
+func place(position: Vector2, velocity := Vector2.ZERO) -> void:
+	var ship := lander()
+	ship.landed = false
+	ship.docked = false
+	ship.can_dock = true
+	ship.in_deep_space = position.y < World.BORDER_Y
+	ship.position = position
+	ship.velocity = velocity
+	ship.rotation = 0.0
+	ship.modulate = Color.WHITE
+	main().get_node("UI/Message").visible = false
+
+
 # Input
 
 func hold(action: StringName) -> void:
