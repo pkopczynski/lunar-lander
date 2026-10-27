@@ -41,6 +41,16 @@ const HINT_ARROW_SIZE := 12.0
 # Share of the Offer area's width and height the wireframe picture may fill.
 const PICTURE_SHARE := 0.4
 
+# The CRT power-on/off effect: the picture collapses to a bright line, then a dot
+# (power-off), or grows back from them (power-on). LINE_SHARE is the part of the
+# effect spent on the line and dot.
+const POWER_TIME := 0.3
+const LINE_SHARE := 0.35
+const MIN_PICTURE_SCALE := 0.01
+const GLOW := Color(0.8, 1.0, 0.85)
+const GLOW_WIDTH := 3.0
+const DOT_RADIUS := 4.0
+
 const POPUP_SIZE := Vector2(440, 200)
 const POPUP_BUTTON_SIZE := Vector2(120, 44)
 const POPUP_BUTTON_GAP := 48.0
@@ -54,6 +64,10 @@ var in_service: ShipType = null
 # Whether the Office opened for a Ship swap (rather than at run start), which lets
 # Escape and picking the IN SERVICE Offer cancel it.
 var swapping := false
+# Whether the Terminal is powering on or off. Office input is ignored meanwhile.
+var powering := false
+# How far the Terminal's picture is powered on: 0 is off, 1 fully on.
+var power := 1.0
 
 @onready var lander: Lander = $"../Lander"
 @onready var terminal: Control = $Terminal
@@ -66,6 +80,8 @@ func _ready() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if powering:
+		return
 	if popup != PopupKind.NONE:
 		handle_popup_input(event)
 	elif showing:
@@ -117,6 +133,30 @@ func open() -> void:
 	visible = true
 	popup = PopupKind.NONE
 	get_tree().paused = true
+	power_to(1.0)
+
+
+# Powers the Terminal off, closes the Office, then calls after_closing: the flight
+# view shows only once the effect is over.
+func power_off(after_closing: Callable) -> void:
+	popup = PopupKind.NONE
+	power_to(0.0, func() -> void:
+		close()
+		after_closing.call())
+
+
+func power_to(target: float, done := Callable()) -> void:
+	powering = true
+	var tween := create_tween().set_process_mode(Tween.TWEEN_PROCESS_PHYSICS)
+	tween.tween_method(set_power, 1.0 - target, target, POWER_TIME)
+	tween.tween_callback(func() -> void:
+		powering = false
+		if done.is_valid():
+			done.call())
+
+
+func set_power(value: float) -> void:
+	power = value
 	terminal.queue_redraw()
 
 
@@ -147,9 +187,10 @@ func answer(yes: bool) -> void:
 		else:
 			decline_swap()
 	elif yes:
-		close()
-		lander.become(selected_offer())
-		lander.start_docked()
+		var type := selected_offer()
+		power_off(func() -> void:
+			lander.become(type)
+			lander.start_docked())
 	else:
 		popup = PopupKind.NONE
 
@@ -163,9 +204,13 @@ func open_for_swap() -> void:
 
 
 # Back to the dock as before: the ship stays as it is and refuels after the usual delay.
+# From the Offer screen the Terminal powers off first; the swap popup just closes.
 func decline_swap() -> void:
-	close()
-	lander.resume_docked()
+	if showing:
+		power_off(lander.resume_docked)
+	else:
+		close()
+		lander.resume_docked()
 
 
 # Observable state
@@ -220,6 +265,34 @@ func draw_terminal() -> void:
 			draw_popup(screen)
 		return
 	terminal.draw_rect(screen, BLACK)
+	if power <= LINE_SHARE:
+		draw_power_line(screen, power / LINE_SHARE)
+		return
+	# The picture grows from (or shrinks to) the bright line across the middle.
+	var picture_scale := maxf(ease((power - LINE_SHARE) / (1.0 - LINE_SHARE), 2.0), MIN_PICTURE_SCALE)
+	var centre := screen.get_center()
+	var scale := Vector2(1.0, picture_scale)
+	terminal.draw_set_transform(centre - centre * scale, 0.0, scale)
+	draw_screen(screen)
+	if picture_scale < 1.0:
+		terminal.draw_rect(screen, Color(GLOW, 0.8 * (1.0 - picture_scale)))
+	terminal.draw_set_transform(Vector2.ZERO)
+	draw_scanlines(screen)
+
+
+# The first or last moment of the effect: a dot that stretches into a line across
+# the screen as `stretch` goes from 0 to 1.
+func draw_power_line(screen: Rect2, stretch: float) -> void:
+	var centre := screen.get_center()
+	var half_width := screen.size.x / 2.0 * ease(stretch, 2.0)
+	if half_width < DOT_RADIUS:
+		terminal.draw_circle(centre, DOT_RADIUS, GLOW)
+	else:
+		terminal.draw_line(centre - Vector2(half_width, 0.0), centre + Vector2(half_width, 0.0), GLOW, GLOW_WIDTH)
+
+
+# The Terminal's picture: frame, header, Offer, key hint and any popup.
+func draw_screen(screen: Rect2) -> void:
 	var frame := screen.grow(-MARGIN)
 	terminal.draw_rect(frame, GREEN, false, BORDER_WIDTH)
 	var inner := frame.grow(-PADDING)
@@ -239,7 +312,6 @@ func draw_terminal() -> void:
 	draw_offer(offer_area)
 	if popup != PopupKind.NONE:
 		draw_popup(screen)
-	draw_scanlines(screen)
 
 
 func draw_offer(area: Rect2) -> void:

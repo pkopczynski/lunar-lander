@@ -97,6 +97,7 @@ func answer_swap_yes() -> void:
 	await press(&"ui_left")
 	check(office().selected_button == Office.Choice.YES, "Left should select Yes")
 	await press(&"ui_accept")
+	await wait_for_terminal()
 
 
 func test_choosing_another_ship_type_puts_it_in_the_same_parking_spot() -> void:
@@ -146,6 +147,7 @@ func cancelling_the_swap_returns_to_the_dock(action: StringName) -> void:
 	await answer_swap_yes()
 	check(office().in_service_shown(), "the Office should show the IN SERVICE Halo")
 	await press(action)
+	await wait_for_terminal()
 	check(not office().showing, "%s on the IN SERVICE Offer should close the Office" % action)
 	check(office().popup == Office.PopupKind.NONE, "%s should not leave a popup open" % action)
 	check(not tree.paused, "the world should run again")

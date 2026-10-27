@@ -20,6 +20,7 @@ func test_return_asks_are_you_sure_with_yes_selected() -> void:
 func test_yes_puts_the_chosen_ship_docked_in_the_parking_spot_with_a_full_tank() -> void:
 	await press(&"ui_accept")
 	await press(&"ui_accept")
+	await wait_for_terminal()
 	var ship := lander()
 	check(not office().showing, "Yes should hide the Office")
 	check(office().popup == Office.PopupKind.NONE, "no popup should stay open, and no swap popup at run start")
