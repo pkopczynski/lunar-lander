@@ -5,6 +5,7 @@
 [ext_resource type="Script" path="res://world.gd" id="3_world"]
 [ext_resource type="Script" path="res://station.gd" id="4_station"]
 [ext_resource type="Script" path="res://camera.gd" id="5_camera"]
+[ext_resource type="Script" path="res://office.gd" id="6_office"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ground"]
 size = Vector2(4000, 40)
@@ -37,15 +38,12 @@ script = ExtResource("1_lander")
 
 [node name="Body" type="Polygon2D" parent="Lander"]
 color = Color(0.9, 0.9, 0.95, 1)
-polygon = PackedVector2Array(0, -20, 14, 14, -14, 14)
 
 [node name="Flame" type="Polygon2D" parent="Lander"]
 visible = false
 color = Color(1, 0.6, 0.1, 1)
-polygon = PackedVector2Array(-7, 14, 7, 14, 0, 30)
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="Lander"]
-polygon = PackedVector2Array(0, -20, 14, 14, -14, 14)
 
 [node name="Camera" type="Camera2D" parent="Lander"]
 position_smoothing_enabled = true
@@ -74,3 +72,16 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("2_hud")
+
+[node name="Office" type="CanvasLayer" parent="."]
+process_mode = 3
+layer = 10
+script = ExtResource("6_office")
+
+[node name="Terminal" type="Control" parent="Office"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2

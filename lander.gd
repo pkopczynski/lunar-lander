@@ -1,20 +1,15 @@
 class_name Lander
 extends CharacterBody2D
 
+# Per-ship values (thrust, turn rate, masses, tank, burn rate) live in ShipType.
 const GRAVITY := 60.0
-const THRUST := 150.0
-const ROTATION_SPEED := 3.0
 
-const DEFAULT_DRY_MASS := 10000.0
 const MIN_DRY_MASS := 5000.0
-const MAX_DRY_MASS := 17000.0
 const DRY_MASS_STEP := 1000.0
-const FUEL_CAPACITY := 5000.0
-# Mass at which thrust, gravity and burn rate are unscaled: default ship with a full tank.
+# Mass at which thrust, gravity and burn rate are unscaled: a default Sparrow with a full tank.
 const REFERENCE_MASS := 15000.0
 const GRAVITY_MASS_SCALE := 0.5
 
-const BURN_RATE := FUEL_CAPACITY / 20.0
 const LIFTOFF_BURN_MULTIPLIER := 2.0
 const LIFTOFF_BURN_TIME := 1.0
 const BRAKING_BURN_FACTOR := 1.0
@@ -22,7 +17,8 @@ const BRAKING_FULL_SPEED := 150.0
 
 const LEVEL_TIME := 0.3
 const REFUEL_DELAY := 2.0
-const REFUEL_RATE := FUEL_CAPACITY * 0.5 / 6.0
+# Share of the tank refilled per second: half a tank per 6 s.
+const REFUEL_TANK_SHARE := 0.5 / 6.0
 
 const MAX_LANDING_VERTICAL_SPEED := 50.0
 const MAX_LANDING_HORIZONTAL_SPEED := 25.0
@@ -48,13 +44,15 @@ const SOFT_WALL_WIDTH := 150.0
 const SOFT_WALL_DAMPING := 8.0
 const SOFT_WALL_PUSH := 300.0
 
+signal docked_at_station
+
 const LANDED_COLOR := Color(0.3, 1.0, 0.4)
 const CRASHED_COLOR := Color(1.0, 0.3, 0.3)
 
-var dry_mass := DEFAULT_DRY_MASS
-var fuel := FUEL_CAPACITY
-# Every run starts resting on the pad.
-var landed := true
+var ship_type: ShipType
+var dry_mass: float
+var fuel: float
+var landed := false
 var docked := false
 var rest_time := 0.0
 var since_liftoff := INF
@@ -63,7 +61,10 @@ var in_deep_space := false
 var bouncing := false
 var steering_after_crossing := false
 var can_dock := true
+# Docking asks about a Ship swap; until it's answered the ship stays frozen in the spot.
+var awaiting_swap_answer := false
 
+@onready var body: Polygon2D = $Body
 @onready var flame: Polygon2D = $Flame
 @onready var hull: CollisionPolygon2D = $CollisionPolygon2D
 @onready var camera: FollowCamera = $Camera
@@ -74,6 +75,8 @@ var can_dock := true
 
 
 func _ready() -> void:
+	become(ShipType.SPARROW)
+	start_docked()
 	var half := PAD_WIDTH / 2.0
 	pad.position.x = PAD_CENTER_X - pad.get_parent().position.x
 	pad.polygon = PackedVector2Array([
@@ -84,15 +87,78 @@ func _ready() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("restart"):
-		get_tree().reload_current_scene()
+		# A testing shortcut: in debug builds R on the Surface only puts the ship back on the pad.
+		if OS.is_debug_build() and not in_deep_space:
+			reset_to_pad()
+		else:
+			get_tree().reload_current_scene()
+	elif awaiting_swap_answer:
+		# Nothing but R happens behind the swap popup.
+		return
 	elif event.is_action_pressed("weight_up"):
-		dry_mass = minf(dry_mass + DRY_MASS_STEP, MAX_DRY_MASS)
+		dry_mass = minf(dry_mass + DRY_MASS_STEP, ship_type.maximum_weight)
 	elif event.is_action_pressed("weight_down"):
 		dry_mass = maxf(dry_mass - DRY_MASS_STEP, MIN_DRY_MASS)
 
 
+func become(type: ShipType) -> void:
+	ship_type = type
+	body.polygon = type.hull
+	hull.polygon = type.hull
+	flame.polygon = type.flame
+	dry_mass = type.default_dry_mass
+	fuel = type.tank
+
+
+# Every run starts Docked in the station's parking spot, facing up, at rest.
+func start_docked() -> void:
+	position = station.parking_spot.get_center()
+	rotation = 0.0
+	velocity = Vector2.ZERO
+	in_deep_space = true
+	landed = false
+	docked = true
+	awaiting_swap_answer = false
+	rest_time = 0.0
+	modulate = LANDED_COLOR
+	message.text = "Docked!"
+	message.visible = true
+	camera.reset_smoothing()
+
+
+# Puts the ship Landed on the pad, upright and at rest, keeping its ship type, dry mass and fuel.
+func reset_to_pad() -> void:
+	if level_tween:
+		level_tween.kill()
+	var hull_bottom := 0.0
+	for point in hull.polygon:
+		hull_bottom = maxf(hull_bottom, point.y)
+	position = Vector2(PAD_CENTER_X, ground_top() - hull_bottom)
+	rotation = 0.0
+	velocity = Vector2.ZERO
+	landed = true
+	docked = false
+	bouncing = false
+	steering_after_crossing = false
+	rest_time = 0.0
+	since_liftoff = INF
+	set_physics_process(true)
+	modulate = LANDED_COLOR
+	message.text = "Landed!"
+	message.visible = true
+	camera.reset_smoothing()
+
+
+func ground_top() -> float:
+	var shape: RectangleShape2D = ground.get_node("CollisionShape2D").shape
+	return ground.position.y - shape.size.y / 2.0
+
+
 func _physics_process(delta: float) -> void:
 	var thrusting := Input.is_action_pressed("ui_up") and fuel > 0.0
+	if awaiting_swap_answer:
+		flame.visible = false
+		return
 	flame.visible = thrusting
 	if landed or docked:
 		if not thrusting:
@@ -101,17 +167,17 @@ func _physics_process(delta: float) -> void:
 		lift_off()
 
 	if is_steered():
-		rotation = rotate_toward(rotation, steer_rotation(), ROTATION_SPEED * delta)
+		rotation = rotate_toward(rotation, steer_rotation(), ship_type.turn_rate * delta)
 	else:
-		rotation += Input.get_axis("ui_left", "ui_right") * ROTATION_SPEED * delta
+		rotation += Input.get_axis("ui_left", "ui_right") * ship_type.turn_rate * delta
 
 	var mass_factor := total_mass() / REFERENCE_MASS
 	velocity.y += GRAVITY * (1.0 + GRAVITY_MASS_SCALE * (mass_factor - 1.0)) * gravity_share() * delta
 
 	if thrusting:
 		var thrust_dir := Vector2.UP.rotated(rotation)
-		fuel = maxf(fuel - BURN_RATE * mass_factor * burn_multiplier(thrust_dir) * delta, 0.0)
-		velocity += thrust_dir * THRUST / mass_factor * delta
+		fuel = maxf(fuel - ship_type.burn_rate * mass_factor * burn_multiplier(thrust_dir) * delta, 0.0)
+		velocity += thrust_dir * ship_type.thrust / mass_factor * delta
 	since_liftoff += delta
 
 	if bouncing:
@@ -139,6 +205,10 @@ func _physics_process(delta: float) -> void:
 
 func total_mass() -> float:
 	return dry_mass + fuel
+
+
+func tank_level() -> float:
+	return fuel / ship_type.tank
 
 
 func gravity_share() -> float:
@@ -248,6 +318,14 @@ func land() -> void:
 func dock() -> void:
 	docked = true
 	settle("Docked!")
+	awaiting_swap_answer = true
+	docked_at_station.emit()
+
+
+# The swap was declined: the ship rests Docked again and refuels after the usual delay.
+func resume_docked() -> void:
+	awaiting_swap_answer = false
+	rest_time = 0.0
 
 
 func settle(title: String) -> void:
@@ -265,12 +343,12 @@ func settle(title: String) -> void:
 
 func rest(delta: float) -> void:
 	# A docked ship may turn in place to face the way out.
-	if docked and not level_tween.is_running():
-		rotation += Input.get_axis("ui_left", "ui_right") * ROTATION_SPEED * delta
+	if docked and not (level_tween and level_tween.is_running()):
+		rotation += Input.get_axis("ui_left", "ui_right") * ship_type.turn_rate * delta
 	rest_time += delta
-	var refueling := rest_time >= REFUEL_DELAY and fuel < FUEL_CAPACITY
+	var refueling := rest_time >= REFUEL_DELAY and fuel < ship_type.tank
 	if refueling:
-		fuel = minf(fuel + REFUEL_RATE * delta, FUEL_CAPACITY)
+		fuel = minf(fuel + ship_type.tank * REFUEL_TANK_SHARE * delta, ship_type.tank)
 	var title := "Docked!" if docked else "Landed!"
 	message.text = title + "\nRefueling…" if refueling else title
 
