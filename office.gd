@@ -51,6 +51,9 @@ var selected_button := Choice.YES
 var offer_index := 0
 # The ship type the player is flying, tagged IN SERVICE on its Offer. None at run start.
 var in_service: ShipType = null
+# Whether the Office opened for a Ship swap (rather than at run start), which lets
+# Escape and picking the IN SERVICE Offer cancel it.
+var swapping := false
 
 @onready var lander: Lander = $"../Lander"
 @onready var terminal: Control = $Terminal
@@ -75,7 +78,13 @@ func handle_offer_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("ui_right"):
 		browse(1)
 	elif event.is_action_pressed("ui_accept"):
-		show_popup(PopupKind.ARE_YOU_SURE, Choice.YES)
+		if swapping and selected_offer() == in_service:
+			# Picking the ship already in service declines the swap.
+			decline_swap()
+		else:
+			show_popup(PopupKind.ARE_YOU_SURE, Choice.YES)
+	elif event.is_action_pressed("ui_cancel") and swapping:
+		decline_swap()
 	else:
 		# Escape on the Offer screen at run start does nothing: a run needs a ship.
 		return
@@ -113,6 +122,7 @@ func open() -> void:
 
 func close() -> void:
 	showing = false
+	swapping = false
 	visible = false
 	popup = PopupKind.NONE
 	get_tree().paused = false
@@ -133,7 +143,7 @@ func show_popup(kind: PopupKind, default_button: Choice) -> void:
 func answer(yes: bool) -> void:
 	if popup == PopupKind.SWAP:
 		if yes:
-			pass
+			open_for_swap()
 		else:
 			decline_swap()
 	elif yes:
@@ -142,6 +152,14 @@ func answer(yes: bool) -> void:
 		lander.start_docked()
 	else:
 		popup = PopupKind.NONE
+
+
+# The Terminal powers on with the ship type being flown selected and tagged IN SERVICE.
+func open_for_swap() -> void:
+	swapping = true
+	in_service = lander.ship_type
+	offer_index = ShipType.ALL.find(in_service)
+	open()
 
 
 # Back to the dock as before: the ship stays as it is and refuels after the usual delay.
