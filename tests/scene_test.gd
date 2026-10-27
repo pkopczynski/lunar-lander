@@ -80,6 +80,14 @@ func place(position: Vector2, velocity := Vector2.ZERO) -> void:
 	main().get_node("UI/Message").visible = false
 
 
+# Flies the ship into the parking spot from free flight, which docks it (and
+# opens the swap popup).
+func dock_in_spot() -> void:
+	place(station().parking_spot.get_center())
+	await seconds(0.5)
+	check(lander().docked, "the ship should dock in the parking spot")
+
+
 # Per-ship-type measurements, for whichever ship type is chosen. Each one puts
 # the ship in free flight, so choose a ship first.
 

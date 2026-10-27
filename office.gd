@@ -3,12 +3,13 @@ extends CanvasLayer
 # The player's Office: a full-window Terminal showing one Offer per ship type.
 # It pauses the world while showing, and puts the chosen ship type in the parking spot.
 
-enum PopupKind { NONE, ARE_YOU_SURE }
+enum PopupKind { NONE, ARE_YOU_SURE, SWAP }
 enum Choice { YES, NO }
 
 const HEADER := "ORBITAL FREIGHT CO. // FLEET OFFERS"
 const KEY_HINT := "← → BROWSE   RETURN SELECT"
 const ARE_YOU_SURE_TEXT := "ARE YOU SURE?"
+const SWAP_TEXT := "WOULD YOU LIKE TO CHOOSE A DIFFERENT SHIP?"
 const IN_SERVICE_TEXT := "IN SERVICE"
 const RATING_BLOCKS := 5
 const FULL_BLOCK := "■"
@@ -50,6 +51,9 @@ var selected_button := Choice.YES
 var offer_index := 0
 # The ship type the player is flying, tagged IN SERVICE on its Offer. None at run start.
 var in_service: ShipType = null
+# Whether the Office opened for a Ship swap (rather than at run start), which lets
+# Escape and picking the IN SERVICE Offer cancel it.
+var swapping := false
 
 @onready var lander: Lander = $"../Lander"
 @onready var terminal: Control = $Terminal
@@ -57,16 +61,15 @@ var in_service: ShipType = null
 
 func _ready() -> void:
 	terminal.draw.connect(draw_terminal)
+	lander.docked_at_station.connect(offer_swap)
 	open()
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not showing:
-		return
-	if popup == PopupKind.NONE:
-		handle_offer_input(event)
-	else:
+	if popup != PopupKind.NONE:
 		handle_popup_input(event)
+	elif showing:
+		handle_offer_input(event)
 
 
 func handle_offer_input(event: InputEvent) -> void:
@@ -75,7 +78,13 @@ func handle_offer_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("ui_right"):
 		browse(1)
 	elif event.is_action_pressed("ui_accept"):
-		show_popup(PopupKind.ARE_YOU_SURE, Choice.YES)
+		if swapping and selected_offer() == in_service:
+			# Picking the ship already in service declines the swap.
+			decline_swap()
+		else:
+			show_popup(PopupKind.ARE_YOU_SURE, Choice.YES)
+	elif event.is_action_pressed("ui_cancel") and swapping:
+		decline_swap()
 	else:
 		# Escape on the Offer screen at run start does nothing: a run needs a ship.
 		return
@@ -113,9 +122,17 @@ func open() -> void:
 
 func close() -> void:
 	showing = false
+	swapping = false
 	visible = false
 	popup = PopupKind.NONE
 	get_tree().paused = false
+
+
+# Docking asks whether to swap ships, over the flight view.
+func offer_swap() -> void:
+	visible = true
+	show_popup(PopupKind.SWAP, Choice.NO)
+	terminal.queue_redraw()
 
 
 func show_popup(kind: PopupKind, default_button: Choice) -> void:
@@ -124,12 +141,31 @@ func show_popup(kind: PopupKind, default_button: Choice) -> void:
 
 
 func answer(yes: bool) -> void:
-	if yes:
+	if popup == PopupKind.SWAP:
+		if yes:
+			open_for_swap()
+		else:
+			decline_swap()
+	elif yes:
 		close()
 		lander.become(selected_offer())
 		lander.start_docked()
 	else:
 		popup = PopupKind.NONE
+
+
+# The Terminal powers on with the ship type being flown selected and tagged IN SERVICE.
+func open_for_swap() -> void:
+	swapping = true
+	in_service = lander.ship_type
+	offer_index = ShipType.ALL.find(in_service)
+	open()
+
+
+# Back to the dock as before: the ship stays as it is and refuels after the usual delay.
+func decline_swap() -> void:
+	close()
+	lander.resume_docked()
 
 
 # Observable state
@@ -178,6 +214,11 @@ static func blocks(rating: int) -> String:
 
 func draw_terminal() -> void:
 	var screen := Rect2(Vector2.ZERO, terminal.size)
+	if not showing:
+		# The swap popup sits over the flight view, without the Terminal behind it.
+		if popup != PopupKind.NONE:
+			draw_popup(screen)
+		return
 	terminal.draw_rect(screen, BLACK)
 	var frame := screen.grow(-MARGIN)
 	terminal.draw_rect(frame, GREEN, false, BORDER_WIDTH)
@@ -275,11 +316,18 @@ func draw_key_hint(baseline_left: Vector2) -> void:
 	draw_text(words, Vector2(x, baseline_left.y), HINT_SIZE)
 
 
+func popup_text() -> String:
+	return SWAP_TEXT if popup == PopupKind.SWAP else ARE_YOU_SURE_TEXT
+
+
 func draw_popup(screen: Rect2) -> void:
-	var box := Rect2(screen.get_center() - POPUP_SIZE / 2.0, POPUP_SIZE)
+	var text := popup_text()
+	var text_width := FONT.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, STAT_SIZE).x
+	var size := Vector2(maxf(POPUP_SIZE.x, text_width + 2.0 * PADDING), POPUP_SIZE.y)
+	var box := Rect2(screen.get_center() - size / 2.0, size)
 	terminal.draw_rect(box, BLACK)
 	terminal.draw_rect(box, GREEN, false, BORDER_WIDTH)
-	draw_text(ARE_YOU_SURE_TEXT, Vector2(box.position.x, box.position.y + PADDING + STAT_SIZE), STAT_SIZE,
+	draw_text(text, Vector2(box.position.x, box.position.y + PADDING + STAT_SIZE), STAT_SIZE,
 		box.size.x, HORIZONTAL_ALIGNMENT_CENTER)
 	var buttons_width := POPUP_BUTTON_SIZE.x * 2.0 + POPUP_BUTTON_GAP
 	var button_y := box.end.y - PADDING - POPUP_BUTTON_SIZE.y
