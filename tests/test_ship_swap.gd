@@ -99,12 +99,12 @@ func test_landing_on_the_pad_shows_no_swap_popup() -> void:
 
 
 func test_yes_opens_the_office_with_the_current_ship_in_service() -> void:
-	await choose_ship("Halo")
+	await choose_ship(ShipType.HALO)
 	await dock_in_spot()
 	await answer_swap_yes()
 	check(office().showing, "Yes should open the Office")
 	check(office().popup == Office.PopupKind.NONE, "the Office should open on the Offer screen")
-	check(office().selected_offer().name == "Halo", "the current ship type should be selected, got %s"
+	check(office().selected_offer() == ShipType.HALO, "the current ship type should be selected, got %s"
 		% office().selected_offer().name)
 	check(office().in_service_shown(), "the current ship type should be tagged IN SERVICE")
 	check(Array(office().offer_lines()).has("IN SERVICE"), "the Offer should read IN SERVICE")
@@ -121,7 +121,7 @@ func answer_swap_yes() -> void:
 
 
 func test_choosing_another_ship_type_puts_it_in_the_same_parking_spot() -> void:
-	await choose_ship("Sparrow")
+	await choose_ship(ShipType.SPARROW)
 	await press(&"weight_up")
 	await press(&"weight_up")
 	var ship := lander()
@@ -130,8 +130,8 @@ func test_choosing_another_ship_type_puts_it_in_the_same_parking_spot() -> void:
 	var station_node := station()
 	await dock_in_spot()
 	await answer_swap_yes()
-	await choose_ship("Mule")
-	check(ship.ship_type.name == "Mule", "the ship should now be a Mule, got %s" % ship.ship_type.name)
+	await choose_ship(ShipType.MULE)
+	check(ship.ship_type == ShipType.MULE, "the ship should now be a Mule, got %s" % ship.ship_type.name)
 	check(ship.docked, "the Mule should be Docked")
 	check(station() == station_node and station().parking_spot == spot, "the station should not be rebuilt")
 	check_near(ship.position.x, spot.get_center().x, 0.5, "x at the same parking spot centre")
@@ -158,7 +158,7 @@ func test_escape_on_the_offer_screen_returns_to_the_dock_as_no() -> void:
 
 
 func cancelling_the_swap_returns_to_the_dock(action: StringName) -> void:
-	await choose_ship("Halo")
+	await choose_ship(ShipType.HALO)
 	await press(&"weight_up")
 	var ship := lander()
 	await dock_in_spot()
@@ -171,7 +171,7 @@ func cancelling_the_swap_returns_to_the_dock(action: StringName) -> void:
 	check(not office().showing, "%s on the IN SERVICE Offer should close the Office" % action)
 	check(office().popup == Office.PopupKind.NONE, "%s should not leave a popup open" % action)
 	check(not tree.paused, "the world should run again")
-	check(ship.ship_type.name == "Halo", "the ship should still be the Halo, got %s" % ship.ship_type.name)
+	check(ship.ship_type == ShipType.HALO, "the ship should still be the Halo, got %s" % ship.ship_type.name)
 	check(ship.docked and ship.position == spot, "the ship should stay Docked where it was")
 	check_near(dry_mass(), 15000.0, 0.01, "the Halo's dry mass should be kept")
 	await seconds(Lander.REFUEL_DELAY - 0.3)

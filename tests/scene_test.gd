@@ -57,16 +57,21 @@ func message() -> String:
 
 # Picks a ship type in the Office the way a player does: browse to its Offer,
 # press Return, then Return again on Yes. Leaves the ship Docked in the parking spot.
-func choose_ship(type_name := "Sparrow") -> void:
-	for i in ShipType.ALL.size():
-		if office().selected_offer().name == type_name:
-			break
-		await press(&"ui_right")
-	check(office().selected_offer().name == type_name, "the Office should offer the %s" % type_name)
+func choose_ship(type: ShipType = ShipType.SPARROW) -> void:
+	await browse_to(type)
 	await press(&"ui_accept")
 	await press(&"ui_accept")
 	await wait_for_terminal()
-	check(not office().showing, "choosing the %s should close the Office" % type_name)
+	check(not office().showing, "choosing the %s should close the Office" % type.name)
+
+
+# Presses action (Right or Left) in the Office until it offers that ship type.
+func browse_to(type: ShipType, action := &"ui_right") -> void:
+	for i in ShipType.ALL.size():
+		if office().selected_offer() == type:
+			break
+		await press(action)
+	check(office().selected_offer() == type, "the Office should offer the %s" % type.name)
 
 
 # Puts the lander in free flight at a set position, out of its docked start.

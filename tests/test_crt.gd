@@ -27,7 +27,7 @@ func test_return_during_power_on_does_nothing() -> void:
 
 func test_confirming_a_ship_powers_off_before_the_flight_view_shows() -> void:
 	await press(&"ui_right")
-	check(office().selected_offer().name == "Mule", "Right should browse to the Mule")
+	check(office().selected_offer() == ShipType.MULE, "Right should browse to the Mule")
 	await press(&"ui_accept")
 	await press(&"ui_accept")
 	check(office().popup == Office.PopupKind.NONE, "Yes should close ARE YOU SURE?")
@@ -38,7 +38,7 @@ func test_confirming_a_ship_powers_off_before_the_flight_view_shows() -> void:
 	check(not office().powering, "power-off should be over after 0.4 s")
 	check(not office().showing, "the flight view should show after power-off")
 	check(not tree.paused, "the world should run after power-off")
-	check(lander().ship_type.name == "Mule", "the ship should be the Mule, got %s" % lander().ship_type.name)
+	check(lander().ship_type == ShipType.MULE, "the ship should be the Mule, got %s" % lander().ship_type.name)
 	check(lander().docked, "the Mule should be Docked")
 
 
@@ -50,7 +50,7 @@ func test_holding_return_through_power_off_does_not_select_again() -> void:
 	await frames(1)
 	check(not office().showing, "the Office should stay closed")
 	check(office().popup == Office.PopupKind.NONE, "holding Return should not open a popup")
-	check(lander().docked and lander().ship_type.name == "Sparrow", "the Sparrow should be Docked")
+	check(lander().docked and lander().ship_type == ShipType.SPARROW, "the Sparrow should be Docked")
 
 
 func test_return_during_power_off_does_nothing() -> void:
@@ -61,7 +61,7 @@ func test_return_during_power_off_does_nothing() -> void:
 	await seconds(0.4)
 	check(not office().showing, "the Office should close after power-off")
 	check(office().popup == Office.PopupKind.NONE, "input during power-off should not open a popup")
-	check(lander().ship_type.name == "Sparrow", "input during power-off should not change the ship")
+	check(lander().ship_type == ShipType.SPARROW, "input during power-off should not change the ship")
 
 
 func test_yes_in_the_swap_popup_powers_the_terminal_on() -> void:
