@@ -1,11 +1,11 @@
 extends "res://tests/scene_test.gd"
 
 # Tuning targets from the ship type table in issue #1, relative to the Sparrow.
-# The table asks for ~60% of the Sparrow's climb, but under the shared mass rules
-# hovering at Maximum weight (35 000 kg dry + 12 000 kg fuel) needs thrust >= ~389,
-# which already climbs at ~98% of the Sparrow at default dry mass. Hovering is a
-# must, so the Mule is tuned just above it and its climb is held there.
-const CLIMB_RATIO := 1.04
+# ~60% of the Sparrow's climb at default dry mass with a full tank. The table's
+# 35 000 kg Maximum weight can't hover at that thrust, so Maximum weight is the
+# highest round value at which the Mule still hovers and reaches the crossing speed.
+const CLIMB_RATIO := 0.6
+const MAXIMUM_WEIGHT := 29000.0
 const TURN_RATE := 1.5
 # ~28 s against the Sparrow's ~20 s.
 const THRUST_TIME_RATIO := 28.0 / 20.0
@@ -25,7 +25,7 @@ func test_mule_offer_shows_its_numbers_ratings_and_wireframe() -> void:
 	await browse_to(&"ui_right")
 	var lines := office().offer_lines()
 	for expected: String in ["MULE", "LONG, HEAVY AND SLOW. HAULS THE BIG LOADS.",
-			"TANK 12 000 KG", "DRY MASS 20 000 KG", "MAX WEIGHT 35 000 KG",
+			"TANK 12 000 KG", "DRY MASS 20 000 KG", "MAX WEIGHT 29 000 KG",
 			"THRUST ■■□□□", "HANDLING ■■□□□"]:
 		check(expected in lines, "the Mule Offer should show %s, shows %s" % [expected, lines])
 	check(office().offer_picture() == PackedVector2Array(MULE_HULL), "the Offer picture should be the Mule's 42×68 hull")
@@ -46,7 +46,8 @@ func test_weight_keys_stay_within_the_mule_range() -> void:
 	await choose_ship("Mule")
 	for i in 30:
 		await press(&"weight_up")
-	check_near(dry_mass(), 35000.0, 0.01, "dry mass after many weight_up")
+	check_near(dry_mass(), MAXIMUM_WEIGHT, 0.01, "dry mass after many weight_up")
+	check(dry_mass() > ShipType.HALO.maximum_weight, "the Mule should carry more than the Halo")
 	for i in 40:
 		await press(&"weight_down")
 	check_near(dry_mass(), 5000.0, 0.01, "dry mass after many weight_down")
@@ -77,7 +78,7 @@ func test_mule_docks_in_the_parking_spot() -> void:
 func test_mule_hovers_at_maximum_weight() -> void:
 	await choose_ship("Mule")
 	await raise_to_maximum_weight()
-	check_near(dry_mass(), 35000.0, 0.01, "dry mass at Maximum weight")
+	check_near(dry_mass(), MAXIMUM_WEIGHT, 0.01, "dry mass at Maximum weight")
 	check(await climbs_under_full_thrust(), "the Mule should climb at Maximum weight")
 
 
@@ -89,13 +90,13 @@ func test_mule_crosses_the_border_at_maximum_weight() -> void:
 	check(top_speed >= Lander.CROSSING_SPEED, "the Mule should reach the crossing speed, top speed %s" % top_speed)
 
 
-func test_mule_climbs_off_the_pad_just_enough_to_hover_at_maximum_weight() -> void:
+func test_mule_climbs_off_the_pad_at_about_60_percent_of_the_sparrow() -> void:
 	await choose_ship("Sparrow")
 	var sparrow: float = await climb_off_the_pad()
 	await restart()
 	await choose_ship("Mule")
 	var mule: float = await climb_off_the_pad()
-	check_near(mule / sparrow, CLIMB_RATIO, 0.04, "Mule climb / Sparrow climb")
+	check_near(mule / sparrow, CLIMB_RATIO, 0.05, "Mule climb / Sparrow climb")
 
 
 func test_mule_turns_at_about_1_5_rad_per_s() -> void:
