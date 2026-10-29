@@ -54,7 +54,7 @@ static func mule() -> ShipType:
 	type.name = "Mule"
 	type.flavour = "Long, heavy and slow. Hauls the big loads."
 	# 42×68 px, long axis along the thrust, engine on the short side at the back.
-	type.hull = PackedVector2Array([Vector2(-21, -34), Vector2(21, -34), Vector2(21, 34), Vector2(-21, 34)])
+	type.hull = rounded_nose_box(42.0, 68.0, 4.0, 3)
 	type.flame = PackedVector2Array([Vector2(-10, 34), Vector2(10, 34), Vector2(0, 54)])
 	type.default_dry_mass = 20000.0
 	type.maximum_weight = 29000.0
@@ -86,6 +86,21 @@ static func halo() -> ShipType:
 	type.thrust_rating = 4
 	type.handling_rating = 4
 	return type
+
+
+# Outline of a width × height box centred on the origin, with its two nose (-y)
+# corners rounded to radius in segments steps each; the back corners stay square.
+static func rounded_nose_box(width: float, height: float, radius: float, segments: int) -> PackedVector2Array:
+	var half := Vector2(width, height) / 2.0
+	var outline := PackedVector2Array()
+	for corner: Vector2 in [Vector2(-half.x + radius, -half.y + radius), Vector2(half.x - radius, -half.y + radius)]:
+		var start_angle := PI if corner.x < 0.0 else PI * 1.5
+		for i in segments + 1:
+			var angle := start_angle + PI / 2.0 * float(i) / segments
+			outline.append(corner + Vector2(cos(angle), sin(angle)) * radius)
+	outline.append(Vector2(half.x, half.y))
+	outline.append(Vector2(-half.x, half.y))
+	return outline
 
 
 # Outline of a ring with a gap of 2 * gap_half_angle centred on the nose (-y):

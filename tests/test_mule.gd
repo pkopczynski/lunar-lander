@@ -9,7 +9,8 @@ const MAXIMUM_WEIGHT := 29000.0
 const TURN_RATE := 1.5
 # ~28 s against the Sparrow's ~20 s.
 const THRUST_TIME_RATIO := 28.0 / 20.0
-const MULE_HULL := [Vector2(-21, -34), Vector2(21, -34), Vector2(21, 34), Vector2(-21, 34)]
+# 42×68 px, nose corners rounded to 4 px, back corners square.
+const NOSE_RADIUS := 4.0
 
 
 func test_mule_offer_is_reachable_with_left_and_right() -> void:
@@ -28,7 +29,7 @@ func test_mule_offer_shows_its_numbers_ratings_and_wireframe() -> void:
 			"TANK 12 000 KG", "DRY MASS 20 000 KG", "MAX WEIGHT 29 000 KG",
 			"THRUST ■■□□□", "HANDLING ■■□□□"]:
 		check(expected in lines, "the Mule Offer should show %s, shows %s" % [expected, lines])
-	check(office().offer_picture() == PackedVector2Array(MULE_HULL), "the Offer picture should be the Mule's 42×68 hull")
+	check(office().offer_picture() == ShipType.MULE.hull, "the Offer picture should be the Mule's hull")
 
 
 func test_choosing_the_mule_docks_it_with_a_full_tank_inside_the_spot() -> void:
@@ -39,7 +40,30 @@ func test_choosing_the_mule_docks_it_with_a_full_tank_inside_the_spot() -> void:
 	check(ship.is_inside_spot(), "the whole Mule hull should be inside the parking spot")
 	check_near(ship.fuel, 12000.0, 0.01, "fuel")
 	check_near(ship.total_mass(), 32000.0, 0.01, "total mass")
-	check(ship.hull.polygon == PackedVector2Array(MULE_HULL), "the collision shape should match the Mule's hull")
+	check(ship.hull.polygon == ShipType.MULE.hull, "the collision shape should match the Mule's hull")
+
+
+func test_mule_hull_is_a_42_by_68_box_with_a_rounded_nose() -> void:
+	var hull := ShipType.MULE.hull
+	var bounds := Rect2(hull[0], Vector2.ZERO)
+	for point in hull:
+		bounds = bounds.expand(point)
+	check(bounds.is_equal_approx(Rect2(-21, -34, 42, 68)), "the hull should span 42×68 px, spans %s" % bounds)
+	for corner: Vector2 in [Vector2(-21, 34), Vector2(21, 34)]:
+		check(hull.has(corner), "the back corner %s should stay square" % corner)
+	for corner: Vector2 in [Vector2(-21, -34), Vector2(21, -34)]:
+		check(not hull.has(corner), "the nose corner %s should be rounded" % corner)
+		var along_nose := corner + Vector2(-signf(corner.x) * NOSE_RADIUS, 0)
+		var along_side := corner + Vector2(0, NOSE_RADIUS)
+		for tangent_point: Vector2 in [along_nose, along_side]:
+			check(hull_has_near(hull, tangent_point), "the rounding should start %d px in, at %s" % [NOSE_RADIUS, tangent_point])
+
+
+func hull_has_near(hull: PackedVector2Array, point: Vector2) -> bool:
+	for vertex in hull:
+		if vertex.distance_to(point) < 0.001:
+			return true
+	return false
 
 
 func test_weight_keys_stay_within_the_mule_range() -> void:
