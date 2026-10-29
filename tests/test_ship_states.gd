@@ -12,12 +12,12 @@ func test_docking_mid_lift_off_burn_undocks_at_the_default_burn() -> void:
 	hold(&"ui_up")
 	await seconds(0.2)
 	release(&"ui_up")
-	check(not ship.landed, "Up should lift off the pad")
+	check(ship.state != Lander.State.LANDED, "Up should lift off the pad")
 	ship.start_docked()
 	ship.fuel = full_tank
-	check_near(await fuel_burned_undocking(0.5), default_burn, default_burn * 0.02,
+	# A frame of input timing is ~3% of the burn; a leftover lift-off burn adds 30% or more.
+	check_near(await fuel_burned_undocking(0.5), default_burn, default_burn * 0.1,
 		"fuel burned undocking after a lift-off")
-
 
 
 func test_docking_mid_bounce_undocks_without_a_kick() -> void:
@@ -45,7 +45,7 @@ func test_docking_after_a_crash_lets_the_ship_undock() -> void:
 	hold(&"ui_up")
 	await seconds(0.5)
 	release(&"ui_up")
-	check(not ship.docked, "Up should undock after a crash")
+	check(ship.state != Lander.State.DOCKED, "Up should undock after a crash")
 	check(ship.position.y < spot.y, "the ship should climb out of the spot, y is %s from %s" % [ship.position.y, spot.y])
 
 
@@ -55,5 +55,5 @@ func fuel_burned_undocking(duration: float) -> float:
 	hold(&"ui_up")
 	await seconds(duration)
 	release(&"ui_up")
-	check(not lander().docked, "Up should undock")
+	check(lander().state != Lander.State.DOCKED, "Up should undock")
 	return before - lander().fuel

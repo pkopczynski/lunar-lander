@@ -102,12 +102,18 @@ _Avoid_: Capacity (on its own), fuel max
 
 ## Ship states
 
+A ship is always in exactly one of these four states.
+
+**Flying**:
+The ship is in free flight, under the player's control. It's the state between leaving the pad or the parking spot and landing, docking or crashing.
+_Avoid_: Airborne, in flight, free
+
 **Landed**:
 The ship is resting on the pad after a safe touchdown.
 _Avoid_: Touched down, parked
 
 **Docked**:
-The ship is resting inside the parking spot. This is the deep-space counterpart of Landed.
+The ship is resting inside the parking spot. This is the deep-space counterpart of Landed. While the swap popup is open a Docked ship is held: it ignores the controls and doesn't refuel.
 _Avoid_: Parked, landed (in deep space)
 
 **Crashed**:

@@ -17,7 +17,7 @@ func test_r_on_the_surface_teleports_to_the_pad_landed() -> void:
 	await frames(2)
 	check(main() == scene, "R on the Surface should not reload the scene")
 	check(not office().showing, "R on the Surface should not open the Office")
-	check(ship.landed, "the ship should be Landed after the teleport")
+	check(ship.state == Lander.State.LANDED, "the ship should be Landed after the teleport")
 	check(not ship.in_deep_space, "the ship should still be on the Surface")
 	check_near(ship.position.x, Lander.PAD_CENTER_X, 0.5, "x at the pad centre")
 	check_near(ship.rotation, 0.0, 0.0001, "rotation (upright)")
@@ -34,13 +34,13 @@ func test_the_teleported_ship_rests_on_the_pad_and_can_lift_off() -> void:
 	place(Vector2(300, 100))
 	await press(&"restart")
 	await seconds(1.0)
-	check(ship.landed, "the Mule should stay Landed on the pad, says %s" % message())
+	check(ship.state == Lander.State.LANDED, "the Mule should stay Landed on the pad, says %s" % message())
 	check(not message().begins_with("Crashed"), "the Mule should not crash after the teleport")
 	var rest_y := ship.position.y
 	hold(&"ui_up")
 	await seconds(0.5)
 	release(&"ui_up")
-	check(not ship.landed, "Up should lift off the pad")
+	check(ship.state != Lander.State.LANDED, "Up should lift off the pad")
 	check(ship.position.y < rest_y, "the ship should climb off the pad, y is %s from %s" % [ship.position.y, rest_y])
 
 
@@ -53,12 +53,12 @@ func test_r_after_a_crash_on_the_surface_teleports_to_the_pad() -> void:
 	await press(&"restart")
 	await frames(2)
 	check(not office().showing, "R after a crash on the Surface should not open the Office")
-	check(ship.landed, "the ship should be Landed on the pad after the teleport")
+	check(ship.state == Lander.State.LANDED, "the ship should be Landed on the pad after the teleport")
 	check(message().begins_with("Landed!"), "the crash message should clear, got %s" % message())
 	hold(&"ui_up")
 	await seconds(0.5)
 	release(&"ui_up")
-	check(not ship.landed, "the ship should fly again after the teleport")
+	check(ship.state != Lander.State.LANDED, "the ship should fly again after the teleport")
 
 
 func test_r_while_flying_in_deep_space_returns_to_the_office() -> void:

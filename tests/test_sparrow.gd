@@ -6,7 +6,7 @@ func test_lands_on_the_pad() -> void:
 	var ship := lander()
 	place(Vector2(Lander.PAD_CENTER_X, 580), Vector2(0, 20))
 	await seconds(4.0)
-	check(ship.landed, "Sparrow should be landed")
+	check(ship.state == Lander.State.LANDED, "Sparrow should be landed")
 	check(message().begins_with("Landed!"), "message should say Landed!, got %s" % message())
 
 
@@ -34,9 +34,9 @@ func test_docks_in_the_parking_spot_and_refuels() -> void:
 	await choose_ship()
 	var ship := lander()
 	place(station().parking_spot.get_center())
-	check(not ship.docked, "should start the test in free flight")
+	check(ship.state != Lander.State.DOCKED, "should start the test in free flight")
 	await seconds(0.5)
-	check(ship.docked, "Sparrow should be docked")
+	check(ship.state == Lander.State.DOCKED, "Sparrow should be docked")
 	check(message() == "Docked!", "message should say Docked!, got %s" % message())
 	ship.fuel = 1000.0
 	# Decline the Ship swap.

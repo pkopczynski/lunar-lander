@@ -28,7 +28,7 @@ func test_choosing_the_halo_docks_it_with_a_full_tank_inside_the_spot() -> void:
 	await choose_ship(ShipType.HALO)
 	var ship := lander()
 	check(ship.ship_type == ShipType.HALO, "the ship should be a Halo, got %s" % ship.ship_type.name)
-	check(ship.docked, "the Halo should be Docked")
+	check(ship.state == Lander.State.DOCKED, "the Halo should be Docked")
 	check(ship.is_inside_spot(), "the whole Halo hull should be inside the parking spot")
 	check_near(ship.fuel, 8000.0, 0.01, "fuel")
 	check_near(ship.total_mass(), 22000.0, 0.01, "total mass")
@@ -61,7 +61,7 @@ func test_halo_lands_on_the_pad_with_the_sparrows_limits() -> void:
 	# Hull bottom ~8 px above the pad.
 	place(Vector2(Lander.PAD_CENTER_X, 580), Vector2(0, 20))
 	await seconds(4.0)
-	check(ship.landed, "a gentle Halo should land on the pad")
+	check(ship.state == Lander.State.LANDED, "a gentle Halo should land on the pad")
 	await restart()
 	await choose_ship(ShipType.HALO)
 	place(Vector2(Lander.PAD_CENTER_X, 520), Vector2(0, Lander.MAX_LANDING_VERTICAL_SPEED + 30.0))
@@ -74,7 +74,7 @@ func test_halo_docks_in_the_parking_spot() -> void:
 	var ship := lander()
 	place(station().parking_spot.get_center())
 	await seconds(0.5)
-	check(ship.docked, "the Halo should dock in the parking spot")
+	check(ship.state == Lander.State.DOCKED, "the Halo should dock in the parking spot")
 
 
 func test_halo_hovers_at_maximum_weight() -> void:
