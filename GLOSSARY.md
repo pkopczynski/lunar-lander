@@ -81,7 +81,7 @@ The small, light, quick triangle ship. It's the ship type the game started with.
 _Avoid_: Triangle, default ship
 
 **Mule**:
-The long, heavy, slow rectangular cargo ship, with the engine on a short side.
+The long, heavy, slow boxy cargo ship with a rounded nose, with the engine on a short side.
 _Avoid_: Cargo ship, rectangle
 
 **Halo**:
