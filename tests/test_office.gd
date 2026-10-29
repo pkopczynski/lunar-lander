@@ -26,7 +26,7 @@ func test_yes_puts_the_chosen_ship_docked_in_the_parking_spot_with_a_full_tank()
 	check(office().popup == Office.PopupKind.NONE, "no popup should stay open, and no swap popup at run start")
 	check(not tree.paused, "the world should run once a ship is chosen")
 	check(ship.ship_type == ShipType.SPARROW, "the ship should be a Sparrow, got %s" % ship.ship_type.name)
-	check(ship.docked, "the ship should be Docked")
+	check(ship.state == Lander.State.DOCKED, "the ship should be Docked")
 	check(ship.is_inside_spot(), "the whole hull should be inside the parking spot")
 	check_near(ship.tank_level(), 1.0, 0.0001, "tank level")
 	check(message() == "Docked!", "message should say Docked!, got %s" % message())
@@ -73,7 +73,7 @@ func test_the_ship_does_not_move_while_the_office_is_showing() -> void:
 	await seconds(0.5)
 	release(&"ui_up")
 	check(lander().position == start, "the ship should not move behind the Office, moved to %s" % lander().position)
-	check(lander().docked, "the ship should stay Docked behind the Office")
+	check(lander().state == Lander.State.DOCKED, "the ship should stay Docked behind the Office")
 
 
 func test_r_returns_to_the_office() -> void:

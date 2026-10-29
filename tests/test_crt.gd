@@ -39,7 +39,7 @@ func test_confirming_a_ship_powers_off_before_the_flight_view_shows() -> void:
 	check(not office().showing, "the flight view should show after power-off")
 	check(not tree.paused, "the world should run after power-off")
 	check(lander().ship_type == ShipType.MULE, "the ship should be the Mule, got %s" % lander().ship_type.name)
-	check(lander().docked, "the Mule should be Docked")
+	check(lander().state == Lander.State.DOCKED, "the Mule should be Docked")
 
 
 func test_holding_return_through_power_off_does_not_select_again() -> void:
@@ -50,7 +50,7 @@ func test_holding_return_through_power_off_does_not_select_again() -> void:
 	await frames(1)
 	check(not office().showing, "the Office should stay closed")
 	check(office().popup == Office.PopupKind.NONE, "holding Return should not open a popup")
-	check(lander().docked and lander().ship_type == ShipType.SPARROW, "the Sparrow should be Docked")
+	check(lander().state == Lander.State.DOCKED and lander().ship_type == ShipType.SPARROW, "the Sparrow should be Docked")
 
 
 func test_return_during_power_off_does_nothing() -> void:
@@ -89,7 +89,7 @@ func test_cancelling_a_swap_powers_off_before_the_flight_view_shows() -> void:
 	check(office().showing and tree.paused, "the Terminal should cover the paused world during power-off")
 	await seconds(0.4)
 	check(not office().showing and not tree.paused, "the flight view should show after power-off")
-	check(lander().docked, "the ship should stay Docked")
+	check(lander().state == Lander.State.DOCKED, "the ship should stay Docked")
 
 
 func test_no_in_the_swap_popup_closes_it_without_an_effect() -> void:

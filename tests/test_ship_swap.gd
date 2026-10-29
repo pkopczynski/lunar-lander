@@ -4,14 +4,14 @@ extends "res://tests/scene_test.gd"
 func test_run_start_shows_no_swap_popup() -> void:
 	await choose_ship()
 	await seconds(0.5)
-	check(lander().docked, "the run should start Docked")
+	check(lander().state == Lander.State.DOCKED, "the run should start Docked")
 	check(office().popup == Office.PopupKind.NONE, "the run start should not open the swap popup")
 
 
 func test_docking_opens_the_swap_popup_with_no_selected() -> void:
 	await choose_ship()
 	await dock_in_spot()
-	check(lander().docked, "the ship should be Docked")
+	check(lander().state == Lander.State.DOCKED, "the ship should be Docked")
 	check(office().popup == Office.PopupKind.SWAP, "docking should open the swap popup")
 	check(office().selected_button == Office.Choice.NO, "the swap popup should have No selected")
 	check(not office().showing, "the Terminal should not be showing behind the swap popup")
@@ -25,7 +25,7 @@ func test_ship_is_frozen_while_the_swap_popup_is_open() -> void:
 	hold(&"ui_up")
 	await seconds(0.5)
 	release(&"ui_up")
-	check(ship.docked, "Up should not undock while the swap popup is open")
+	check(ship.state == Lander.State.DOCKED, "Up should not undock while the swap popup is open")
 	check(ship.position == spot, "the ship should not move, %s from %s" % [ship.position, spot])
 	hold(&"ui_left")
 	await seconds(0.5)
@@ -77,7 +77,7 @@ func declining_refuels_after_the_delay(action: StringName) -> void:
 	await press(action)
 	check(office().popup == Office.PopupKind.NONE, "%s should close the swap popup" % action)
 	check(not office().showing, "%s should not open the Office" % action)
-	check(ship.docked, "the ship should stay Docked")
+	check(ship.state == Lander.State.DOCKED, "the ship should stay Docked")
 	await seconds(Lander.REFUEL_DELAY - 0.3)
 	check_near(ship.fuel, 1000.0, 0.0001, "fuel before the refuel delay is over")
 	await seconds(1.0)
@@ -86,14 +86,14 @@ func declining_refuels_after_the_delay(action: StringName) -> void:
 	hold(&"ui_up")
 	await seconds(0.4)
 	release(&"ui_up")
-	check(not ship.docked, "Up should undock once the swap popup is closed")
+	check(ship.state != Lander.State.DOCKED, "Up should undock once the swap popup is closed")
 
 
 func test_landing_on_the_pad_shows_no_swap_popup() -> void:
 	await choose_ship()
 	place(Vector2(Lander.PAD_CENTER_X, 580), Vector2(0, 20))
 	await seconds(4.0)
-	check(lander().landed, "the ship should be Landed on the pad")
+	check(lander().state == Lander.State.LANDED, "the ship should be Landed on the pad")
 	check(office().popup == Office.PopupKind.NONE, "landing on the pad should not open the swap popup")
 	check(not office().showing, "landing on the pad should not open the Office")
 
@@ -132,7 +132,7 @@ func test_choosing_another_ship_type_puts_it_in_the_same_parking_spot() -> void:
 	await answer_swap_yes()
 	await choose_ship(ShipType.MULE)
 	check(ship.ship_type == ShipType.MULE, "the ship should now be a Mule, got %s" % ship.ship_type.name)
-	check(ship.docked, "the Mule should be Docked")
+	check(ship.state == Lander.State.DOCKED, "the Mule should be Docked")
 	check(station() == station_node and station().parking_spot == spot, "the station should not be rebuilt")
 	check_near(ship.position.x, spot.get_center().x, 0.5, "x at the same parking spot centre")
 	check_near(ship.position.y, spot.get_center().y, 0.5, "y at the same parking spot centre")
@@ -146,7 +146,7 @@ func test_choosing_another_ship_type_puts_it_in_the_same_parking_spot() -> void:
 	hold(&"ui_up")
 	await seconds(0.5)
 	release(&"ui_up")
-	check(not ship.docked, "Up should undock the Mule")
+	check(ship.state != Lander.State.DOCKED, "Up should undock the Mule")
 
 
 func test_choosing_the_in_service_ship_type_returns_to_the_dock_as_no() -> void:
@@ -172,7 +172,7 @@ func cancelling_the_swap_returns_to_the_dock(action: StringName) -> void:
 	check(office().popup == Office.PopupKind.NONE, "%s should not leave a popup open" % action)
 	check(not tree.paused, "the world should run again")
 	check(ship.ship_type == ShipType.HALO, "the ship should still be the Halo, got %s" % ship.ship_type.name)
-	check(ship.docked and ship.position == spot, "the ship should stay Docked where it was")
+	check(ship.state == Lander.State.DOCKED and ship.position == spot, "the ship should stay Docked where it was")
 	check_near(dry_mass(), 15000.0, 0.01, "the Halo's dry mass should be kept")
 	await seconds(Lander.REFUEL_DELAY - 0.3)
 	check_near(ship.fuel, 1000.0, 0.0001, "fuel before the refuel delay is over")

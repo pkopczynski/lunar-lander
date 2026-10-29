@@ -74,18 +74,9 @@ func browse_to(type: ShipType, action := &"ui_right") -> void:
 	check(office().selected_offer() == type, "the Office should offer the %s" % type.name)
 
 
-# Puts the lander in free flight at a set position, out of its docked start.
+# Puts the lander Flying at a set position, upright, out of whatever state it was in.
 func place(position: Vector2, velocity := Vector2.ZERO) -> void:
-	var ship := lander()
-	ship.landed = false
-	ship.docked = false
-	ship.can_dock = true
-	ship.in_deep_space = position.y < World.BORDER_Y
-	ship.position = position
-	ship.velocity = velocity
-	ship.rotation = 0.0
-	ship.modulate = Color.WHITE
-	main().get_node("UI/Message").visible = false
+	lander().fly_from(position, velocity)
 
 
 # Flies the ship up into the station's underside, away from the entry, which crashes it in deep space.
@@ -101,7 +92,7 @@ func crash_in_deep_space() -> void:
 func dock_in_spot() -> void:
 	place(station().parking_spot.get_center())
 	await seconds(0.5)
-	check(lander().docked, "the ship should dock in the parking spot")
+	check(lander().state == Lander.State.DOCKED, "the ship should dock in the parking spot")
 
 
 # Per-ship-type measurements, for whichever ship type is chosen. Each one puts

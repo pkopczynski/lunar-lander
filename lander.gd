@@ -46,14 +46,18 @@ const SOFT_WALL_PUSH := 300.0
 
 signal docked_at_station
 
+enum State { FLYING, LANDED, DOCKED, CRASHED }
+
 const LANDED_COLOR := Color(0.3, 1.0, 0.4)
 const CRASHED_COLOR := Color(1.0, 0.3, 0.3)
 
 var ship_type: ShipType
 var dry_mass: float
 var fuel: float
-var landed := false
-var docked := false
+# Change only through enter(), which resets what the old state left behind.
+var state := State.FLYING
+# Set from outside through hold() and release(): a held ship ignores the controls and stays put.
+var held := false
 var rest_time := 0.0
 var since_liftoff := INF
 var level_tween: Tween
@@ -61,8 +65,6 @@ var in_deep_space := false
 var bouncing := false
 var steering_after_crossing := false
 var can_dock := true
-# Docking asks about a Ship swap; until it's answered the ship stays frozen in the spot.
-var awaiting_swap_answer := false
 
 @onready var body: Polygon2D = $Body
 @onready var flame: Polygon2D = $Flame
@@ -75,8 +77,7 @@ var awaiting_swap_answer := false
 
 
 func _ready() -> void:
-	become(ShipType.SPARROW)
-	start_docked()
+	start_docked(ShipType.SPARROW)
 	var half := PAD_WIDTH / 2.0
 	pad.position.x = PAD_CENTER_X - pad.get_parent().position.x
 	pad.polygon = PackedVector2Array([
@@ -92,7 +93,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			reset_to_pad()
 		else:
 			get_tree().reload_current_scene()
-	elif awaiting_swap_answer:
+	elif held:
 		# Nothing but R happens behind the swap popup.
 		return
 	elif event.is_action_pressed("weight_up"):
@@ -110,42 +111,66 @@ func become(type: ShipType) -> void:
 	fuel = type.tank
 
 
-# Every run starts Docked in the station's parking spot, facing up, at rest.
-func start_docked() -> void:
-	position = station.parking_spot.get_center()
-	rotation = 0.0
-	velocity = Vector2.ZERO
-	in_deep_space = true
-	landed = false
-	docked = true
-	awaiting_swap_answer = false
-	rest_time = 0.0
-	modulate = LANDED_COLOR
-	message.text = "Docked!"
-	message.visible = true
-	camera.reset_smoothing()
+# Every run, and every Ship swap, starts Docked in the station's parking spot as
+# the given ship type, facing up, at rest, at its default dry mass with a full tank.
+func start_docked(type: ShipType) -> void:
+	become(type)
+	enter(State.DOCKED)
+	move_to(station.parking_spot.get_center())
 
 
 # Puts the ship Landed on the pad, upright and at rest, keeping its ship type, dry mass and fuel.
 func reset_to_pad() -> void:
-	if level_tween:
-		level_tween.kill()
 	var hull_bottom := 0.0
 	for point in hull.polygon:
 		hull_bottom = maxf(hull_bottom, point.y)
-	position = Vector2(PAD_CENTER_X, ground_top() - hull_bottom)
-	rotation = 0.0
-	velocity = Vector2.ZERO
-	landed = true
-	docked = false
-	bouncing = false
-	steering_after_crossing = false
+	enter(State.LANDED)
+	move_to(Vector2(PAD_CENTER_X, ground_top() - hull_bottom))
+
+
+# Puts the ship Flying at a position, upright, keeping its ship type, dry mass and fuel.
+func fly_from(at: Vector2, at_velocity := Vector2.ZERO) -> void:
+	enter(State.FLYING)
+	move_to(at, at_velocity)
+
+
+# The one way into a Ship state. Every state starts fresh: not held, no lift-off
+# burn, docking armed, no leveling under way.
+func enter(new_state: State) -> void:
+	state = new_state
+	held = false
 	rest_time = 0.0
 	since_liftoff = INF
-	set_physics_process(true)
-	modulate = LANDED_COLOR
-	message.text = "Landed!"
+	can_dock = true
+	if level_tween:
+		level_tween.kill()
+	match new_state:
+		State.FLYING:
+			modulate = Color.WHITE
+			message.visible = false
+		State.LANDED:
+			show_state("Landed!", LANDED_COLOR)
+		State.DOCKED:
+			show_state("Docked!", LANDED_COLOR)
+		State.CRASHED:
+			flame.visible = false
+			show_state("Crashed!\nPress R to retry", CRASHED_COLOR)
+
+
+func show_state(title: String, color: Color) -> void:
+	modulate = color
+	message.text = title
 	message.visible = true
+
+
+# Moves the ship upright to a position, leaving any border bounce or steering behind.
+func move_to(at: Vector2, at_velocity := Vector2.ZERO) -> void:
+	position = at
+	rotation = 0.0
+	velocity = at_velocity
+	in_deep_space = at.y < World.BORDER_Y
+	bouncing = false
+	steering_after_crossing = false
 	camera.reset_smoothing()
 
 
@@ -156,11 +181,11 @@ func ground_top() -> float:
 
 func _physics_process(delta: float) -> void:
 	var thrusting := Input.is_action_pressed("ui_up") and fuel > 0.0
-	if awaiting_swap_answer:
+	if held or state == State.CRASHED:
 		flame.visible = false
 		return
 	flame.visible = thrusting
-	if landed or docked:
+	if state != State.FLYING:
 		if not thrusting:
 			rest(delta)
 			return
@@ -309,67 +334,59 @@ func is_safe_landing(impact_velocity: Vector2) -> bool:
 
 
 func land() -> void:
-	landed = true
-	settle("Landed!")
+	enter(State.LANDED)
+	settle()
 	# Leveling lifts the corner that touched down, so drop back onto the ground.
 	level_tween.tween_callback(move_and_collide.bind(Vector2.DOWN * PAD_HEIGHT * 4.0))
 
 
 func dock() -> void:
-	docked = true
-	settle("Docked!")
-	awaiting_swap_answer = true
+	enter(State.DOCKED)
+	settle()
 	docked_at_station.emit()
 
 
-# The swap was declined: the ship rests Docked again and refuels after the usual delay.
-func resume_docked() -> void:
-	awaiting_swap_answer = false
-	rest_time = 0.0
+# Freezes the ship in whatever state it's in until release() or the next state.
+func hold() -> void:
+	held = true
 
 
-func settle(title: String) -> void:
-	rest_time = 0.0
+func release() -> void:
+	held = false
+
+
+# Stops the ship where it touched down and levels it.
+func settle() -> void:
 	velocity = Vector2.ZERO
 	# Wrap first so leveling never unwinds the player's full spins.
 	rotation = wrapf(rotation, -PI, PI)
 	level_tween = create_tween()
 	level_tween.tween_property(self, "rotation", 0.0, LEVEL_TIME) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	modulate = LANDED_COLOR
-	message.text = title
-	message.visible = true
 
 
 func rest(delta: float) -> void:
 	# A docked ship may turn in place to face the way out.
-	if docked and not (level_tween and level_tween.is_running()):
+	if state == State.DOCKED and not (level_tween and level_tween.is_running()):
 		rotation += Input.get_axis("ui_left", "ui_right") * ship_type.turn_rate * delta
 	rest_time += delta
 	var refueling := rest_time >= REFUEL_DELAY and fuel < ship_type.tank
 	if refueling:
 		fuel = minf(fuel + ship_type.tank * REFUEL_TANK_SHARE * delta, ship_type.tank)
-	var title := "Docked!" if docked else "Landed!"
+	var title := "Docked!" if state == State.DOCKED else "Landed!"
 	message.text = title + "\nRefueling…" if refueling else title
 
 
 func lift_off() -> void:
+	var from := state
+	enter(State.FLYING)
 	# Only leaving the pad costs extra fuel; undocking burns at the default rate.
-	if landed:
+	if from == State.LANDED:
 		since_liftoff = 0.0
-	if docked:
+	# Undocking mustn't dock again before the ship has left the spot.
+	if from == State.DOCKED:
 		can_dock = false
-	landed = false
-	docked = false
-	if level_tween:
-		level_tween.kill()
-	modulate = Color.WHITE
-	message.visible = false
 
 
 func crash() -> void:
-	set_physics_process(false)
-	flame.visible = false
-	modulate = CRASHED_COLOR
-	message.text = "Crashed!\nPress R to retry"
-	message.visible = true
+	enter(State.CRASHED)
