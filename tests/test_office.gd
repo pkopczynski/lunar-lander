@@ -119,3 +119,8 @@ func test_browsing_wraps_around_any_number_of_offers() -> void:
 	check(indicator in lines_after_right, "the indicator should read %s, shows %s" % [indicator, lines_after_right])
 	check(after_wrap == "Sparrow", "Right on the last Offer should wrap to the first, got %s" % after_wrap)
 	check(after_left_wrap == "Test ship", "Left on the first Offer should wrap to the last, got %s" % after_left_wrap)
+
+
+func test_the_terminal_shows_the_game_version() -> void:
+	await frames(2)
+	check(office().version_text() == "V" + GameVersion.VERSION, "the Terminal should show V%s, got %s" % [GameVersion.VERSION, office().version_text()])
