@@ -11,6 +11,7 @@ const KEY_HINT := "← → BROWSE   RETURN SELECT"
 const ARE_YOU_SURE_TEXT := "ARE YOU SURE?"
 const SWAP_TEXT := "WOULD YOU LIKE TO CHOOSE A DIFFERENT SHIP?"
 const IN_SERVICE_TEXT := "IN SERVICE"
+const VERSION_PREFIX := "V"
 const RATING_BLOCKS := 5
 const FULL_BLOCK := "■"
 const EMPTY_BLOCK := "□"
@@ -330,6 +331,8 @@ func draw_screen(screen: Rect2) -> void:
 	var hint_rule_y := hint_y - HINT_SIZE - LINE_GAP
 	terminal.draw_line(Vector2(frame.position.x, hint_rule_y), Vector2(frame.end.x, hint_rule_y), GREEN, LINE_WIDTH)
 	draw_key_hint(Vector2(inner.position.x, hint_y))
+	draw_text(version_text(), Vector2(inner.position.x, hint_y), HINT_SIZE, inner.size.x,
+		HORIZONTAL_ALIGNMENT_RIGHT, DIM_GREEN)
 
 	var offer_area := Rect2(inner.position.x, rule_y + LINE_GAP, inner.size.x, hint_rule_y - rule_y - 2.0 * LINE_GAP)
 	draw_offer(offer_area)
@@ -416,6 +419,10 @@ func draw_key_hint(baseline_left: Vector2) -> void:
 		Vector2(x + HINT_ARROW_SIZE, mid_y), Vector2(x, mid_y - h), Vector2(x, mid_y + h)]), GREEN)
 	x += HINT_ARROW_SIZE * 1.5 + LINE_GAP
 	draw_text(words, Vector2(x, baseline_left.y), HINT_SIZE)
+
+
+func version_text() -> String:
+	return VERSION_PREFIX + GameVersion.VERSION
 
 
 func popup_text() -> String:

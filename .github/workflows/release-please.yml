@@ -1,0 +1,15 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      # A PAT, not GITHUB_TOKEN: PRs opened with GITHUB_TOKEN don't trigger the
+      # required PR title check, so release PRs could never be merged.
+      - uses: googleapis/release-please-action@v5
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
