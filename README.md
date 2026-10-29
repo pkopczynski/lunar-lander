@@ -16,7 +16,7 @@ Every run opens on the Office, a retro green-on-black Terminal where the player 
 | `ship_type.gd` | The ship type table (`class_name ShipType`): each ship type's name, flavour line, hull and flame shapes, default dry mass, Maximum weight, Tank, thrust, fuel burn, turn rate, and the Offer's THRUST and HANDLING ratings (out of 5 blocks). The Sparrow, the Mule and the Halo (`ShipType.SPARROW`, `ShipType.MULE`, `ShipType.HALO`, listed in `ShipType.ALL` in Offer order). |
 | `office.gd` | The Office (`class_name Office`): the Terminal's Offers, browsing, the "ARE YOU SURE?" and Ship swap popups, pausing the world while showing, and drawing the Terminal. Attached to `Office`. |
 | `fonts/` | `Silkscreen-Regular.ttf` (the Terminal's pixel font) and its licence `OFL.txt`. See `docs/adr/0001-bundled-pixel-font.md`. |
-| `lander.gd` | Flight physics, fuel and mass, border crossing, steering, landing and docking judgement, refuelling, result display, restart. Attached to `Lander` (`class_name Lander`). `become(type)` turns it into a ship type: hull, collision shape and flame, default dry mass, full Tank. |
+| `lander.gd` | Flight physics, fuel and mass, border crossing, steering, landing and docking judgement, refuelling, result display, restart. Attached to `Lander` (`class_name Lander`). `start_docked(type)` turns it into a ship type (hull, collision shape and flame, default dry mass, full Tank) Docked in the parking spot. |
 | `camera.gd` | Follows the lander, zooms with speed, shakes on border crossings (`class_name FollowCamera`). Attached to `Lander/Camera`. |
 | `hud.gd` | Draws the fuel bar and weight readout from the lander's state. Attached to `UI/Hud`. |
 | `tests/` | Committed headless tests: `run_tests.gd` (runner), `scene_test.gd` (base class), `test_*.gd` (tests). See "Running and validating". |
@@ -32,7 +32,7 @@ Main (Node2D)                  world.gd; draws the background (gradient, Backdro
 │   └── Pad (Polygon2D)        visual only; shape/position set from constants in lander.gd
 ├── Mountains (StaticBody2D)   empty; world.gd adds both mountains' polygons at runtime
 ├── Station (StaticBody2D)     station.gd; adds its wall polygons at runtime
-├── Lander (CharacterBody2D)   lander.gd; moved into the parking spot by start_docked() in _ready()
+├── Lander (CharacterBody2D)   lander.gd; moved into the parking spot by start_docked(type) in _ready()
 │   ├── Body (Polygon2D)       ship type's hull, set at runtime by become()
 │   ├── Flame (Polygon2D)      ship type's flame, shown while thrusting
 │   ├── CollisionPolygon2D     same hull as Body
@@ -102,7 +102,7 @@ Deliberately not built yet: score, HUD readouts (speed, altitude), terrain gener
 - The pad has no collider; landing is judged against the ground collider, and the "on the pad" check compares x positions. The pad only appears at runtime, because `_ready()` builds its shape.
 - `Station` must stay above `Lander` in `main.tscn`: siblings become ready in order, and the Lander's `_ready()` reads `station.parking_spot` to place the docked start.
 - The Office pauses the whole tree (`get_tree().paused`) while showing; only the Office (process mode Always) handles input then. R is handled by the Lander, so it does nothing while the Office is showing. `SceneTree.paused` survives a scene reload; the new Office sets it again in `_ready()`.
-- The Lander's `_ready()` still makes it a Docked Sparrow behind the Office; choosing an Offer calls `become(type)` then `start_docked()` again. `start_docked()` never asks about a swap; only `dock()` does, by setting `held` (which freezes `_physics_process`) and emitting `docked_at_station`, which the Office answers with the swap popup. Declining calls `resume_docked()`, which restarts the refuel delay.
+- The Lander's `_ready()` still makes it a Docked Sparrow behind the Office; choosing an Offer calls `start_docked(type)` again. `start_docked()` never asks about a swap; only `dock()` does, by emitting `docked_at_station`. The Office answers with the swap popup and calls `lander.hold()`, which freezes `_physics_process` and the weight keys; the Lander doesn't know why it's held. Declining calls `release()`; the refuel delay starts over because docking zeroed it and a held ship doesn't count it down. Choosing a ship type calls `start_docked(type)`, and entering Docked releases the hold.
 - The Lander's `state` (Flying, Landed, Docked, Crashed) changes only through `enter()`, which starts every state fresh: not held, no lift-off burn, docking armed, leveling stopped, with the state's colour and message. `start_docked()`, `reset_to_pad()` and `fly_from()` also move the ship and clear any border bounce or steering. `lift_off()` is the only transition that looks at the state it leaves (the lift-off burn from the pad, no re-docking from the spot). Crashed and held make `_physics_process` return early; Landed and Docked skip gravity and judging. Restart and weight keys are handled in `_unhandled_input`.
 - Leveling after a landing lifts the corner that touched down, so the level tween ends with a `move_and_collide()` back onto the ground.
 

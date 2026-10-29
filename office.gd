@@ -179,8 +179,10 @@ func close() -> void:
 	get_tree().paused = false
 
 
-# Docking asks whether to swap ships, over the flight view.
+# Docking asks whether to swap ships, over the flight view. The ship is held until
+# the answer: No releases it, a new ship type replaces it.
 func offer_swap() -> void:
+	lander.hold()
 	visible = true
 	show_popup(PopupKind.SWAP, Choice.NO)
 	terminal.queue_redraw()
@@ -199,9 +201,7 @@ func answer(choice: Choice) -> void:
 			decline_swap()
 		[PopupKind.ARE_YOU_SURE, Choice.YES]:
 			var type := selected_offer()
-			power_off(func() -> void:
-				lander.become(type)
-				lander.start_docked())
+			power_off(lander.start_docked.bind(type))
 		[PopupKind.ARE_YOU_SURE, Choice.NO]:
 			popup = PopupKind.NONE
 
@@ -218,10 +218,10 @@ func open_for_swap() -> void:
 # From the Offer screen the Terminal powers off first; the swap popup just closes.
 func decline_swap() -> void:
 	if showing:
-		power_off(lander.resume_docked)
+		power_off(lander.release)
 	else:
 		close()
-		lander.resume_docked()
+		lander.release()
 
 
 # Observable state

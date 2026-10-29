@@ -56,7 +56,7 @@ var dry_mass: float
 var fuel: float
 # Change only through enter(), which resets what the old state left behind.
 var state := State.FLYING
-# Docking asks about a Ship swap; until it's answered the Docked ship is held in the spot.
+# Set from outside through hold() and release(): a held ship ignores the controls and stays put.
 var held := false
 var rest_time := 0.0
 var since_liftoff := INF
@@ -77,8 +77,7 @@ var can_dock := true
 
 
 func _ready() -> void:
-	become(ShipType.SPARROW)
-	start_docked()
+	start_docked(ShipType.SPARROW)
 	var half := PAD_WIDTH / 2.0
 	pad.position.x = PAD_CENTER_X - pad.get_parent().position.x
 	pad.polygon = PackedVector2Array([
@@ -112,8 +111,10 @@ func become(type: ShipType) -> void:
 	fuel = type.tank
 
 
-# Every run starts Docked in the station's parking spot, facing up, at rest.
-func start_docked() -> void:
+# Every run, and every Ship swap, starts Docked in the station's parking spot as
+# the given ship type, facing up, at rest, at its default dry mass with a full tank.
+func start_docked(type: ShipType) -> void:
+	become(type)
 	enter(State.DOCKED)
 	move_to(station.parking_spot.get_center())
 
@@ -342,14 +343,16 @@ func land() -> void:
 func dock() -> void:
 	enter(State.DOCKED)
 	settle()
-	held = true
 	docked_at_station.emit()
 
 
-# The swap was declined: the ship rests Docked again and refuels after the usual delay.
-func resume_docked() -> void:
+# Freezes the ship in whatever state it's in until release() or the next state.
+func hold() -> void:
+	held = true
+
+
+func release() -> void:
 	held = false
-	rest_time = 0.0
 
 
 # Stops the ship where it touched down and levels it.
