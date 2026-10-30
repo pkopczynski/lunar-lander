@@ -98,27 +98,25 @@ func _physics_process(delta: float) -> void:
 				lander.show_status(UNLOADING_TEXT % ceili(unloading_left))
 
 
-# NONE → LOADING: holds the ship Docked while the Contracts' Load goes aboard.
+# NONE → LOADING: keeps the ship Docked, refuelling up to the cap for the Contracts' Load,
+# while that Load goes aboard.
 func start_loading() -> void:
 	if phase != Phase.NONE or contracts.is_empty():
 		return
 	phase = Phase.LOADING
 	loading_left = LOADING_TIME + contract_passengers() * LOADING_TIME_PER_PASSENGER \
 		+ contract_cargo() / 1000.0 * LOADING_TIME_PER_TONNE
-	lander.hold()
+	lander.start_loading(contract_load_mass())
 	lander.show_status(LOADING_TEXT % ceili(loading_left))
 
 
-# LOADING → DELIVERING: the Load goes on, fuel above the cap is pumped out, and the
-# delivery clock starts.
+# LOADING → DELIVERING: the Load joins the ship's mass and the delivery clock starts.
 func finish_loading() -> void:
 	if phase != Phase.LOADING:
 		return
 	phase = Phase.DELIVERING
 	delivery_time = 0.0
-	lander.load_mass = contract_load_mass()
-	lander.fuel = minf(lander.fuel, lander.fuel_cap())
-	lander.release()
+	lander.finish_loading()
 	var status := LOADED_TEXT % TransportOffer.countdown(deadline())
 	if lander.fuel_cap() < lander.ship_type.tank:
 		status += "\n" + FUEL_LIMITED_TEXT % Hud.format_kg(lander.fuel_cap())
