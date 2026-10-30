@@ -30,10 +30,12 @@ func test_mule_ship_offer_shows_its_numbers_ratings_and_wireframe() -> void:
 	await browse_to(ShipType.MULE, &"ui_right")
 	var lines := office().ship_offer_lines()
 	for expected: String in ["MULE", "LONG, HEAVY AND SLOW. HAULS THE BIG LOADS.",
-			"TANK 12 000 KG", "DRY MASS 20 000 KG", "MAX WEIGHT 41 000 KG",
-			"SEATS 4", "CARGO 16 000 KG",
+			"TANK 12 000 KG", "SEATS 4", "CARGO 9 000 KG", "MAX CAPACITY 16 000 KG",
 			"THRUST ■■□□□", "HANDLING ■■□□□"]:
 		check(expected in lines, "the Mule Ship offer should show %s, shows %s" % [expected, lines])
+	for removed: String in ["DRY MASS", "MAX WEIGHT"]:
+		check(not Array(lines).any(func(line: String) -> bool: return line.begins_with(removed)),
+			"the Ship offer should not show %s, shows %s" % [removed, lines])
 	check(office().ship_offer_picture() == ShipType.MULE.hull, "the Ship offer picture should be the Mule's hull")
 
 

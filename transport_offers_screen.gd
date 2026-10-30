@@ -181,8 +181,9 @@ func contract_lines() -> PackedStringArray:
 
 
 # Under the Contracts: seats taken, cargo against the full-Tank cargo for the accepted
-# passengers, and FUEL LIMITED (the fuel cap over the Tank) once the Load leaves less room
-# than a full Tank, which is exactly when the cargo passes the full-Tank cargo.
+# passengers, FUEL LIMITED (the fuel cap over the Tank) once the Load leaves less room
+# than a full Tank, which is exactly when the cargo passes the full-Tank cargo, then, with
+# Contracts, DELIVER WITHIN (the shortest Deadline) and TOTAL VALUE (the sum of rewards).
 func summary() -> PackedStringArray:
 	var lines := PackedStringArray()
 	for part in summary_parts():
@@ -227,7 +228,17 @@ func summary_parts() -> Array[Array]:
 	if fuel_limited:
 		parts.append([FUEL_LIMITED_LABEL, kg_of(ship.fuel_cap_for(load_mass), ship.ship_type.tank),
 			Office.RED, Office.RED])
+	if not economy.contracts.is_empty():
+		parts.append(["DELIVER WITHIN", TransportOffer.countdown(economy.deadline()), Office.GREEN, Office.WHITE])
+		parts.append(["TOTAL VALUE", Economy.eur(total_value()), Office.GREEN, Office.WHITE])
 	return parts
+
+
+func total_value() -> int:
+	var total := 0
+	for contract in economy.contracts:
+		total += contract.reward()
+	return total
 
 
 func limits_fuel(load_mass: float) -> bool:

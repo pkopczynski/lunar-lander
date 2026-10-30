@@ -161,10 +161,12 @@ func test_ship_offer_shows_the_ship_types_numbers_and_ratings() -> void:
 	await open_ship_selection()
 	var lines := office().ship_offer_lines()
 	for expected: String in ["SPARROW", "SMALL, LIGHT AND QUICK. BUILT FOR SHORT HOPS.",
-			"TANK 5 000 KG", "DRY MASS 10 000 KG", "MAX WEIGHT 22 000 KG",
-			"SEATS 4", "CARGO 8 000 KG",
+			"TANK 5 000 KG", "SEATS 4", "CARGO 7 000 KG", "MAX CAPACITY 8 000 KG",
 			"THRUST ■■■■■", "HANDLING ■■■■■", "< 1/%d >" % ShipType.ALL.size()]:
 		check(expected in lines, "the Ship offer should show %s, shows %s" % [expected, lines])
+	for removed: String in ["DRY MASS", "MAX WEIGHT"]:
+		check(not Array(lines).any(func(line: String) -> bool: return line.begins_with(removed)),
+			"the Ship offer should not show %s, shows %s" % [removed, lines])
 	check(office().ship_offer_picture() == ShipType.SPARROW.hull, "the Ship offer picture should be the Sparrow's hull")
 
 
