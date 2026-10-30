@@ -37,8 +37,6 @@ const BOUNCE_STIFFNESS := 9.0
 const STEER_DISTANCE := 150.0
 const STEER_SPEED := 100.0
 const STEER_BRAKING := 600.0
-# Below this vertical speed, steering turns the nose up.
-const STEER_STILL_SPEED := 20.0
 
 const SOFT_WALL_WIDTH := 150.0
 const SOFT_WALL_DAMPING := 8.0
@@ -200,10 +198,7 @@ func _physics_process(delta: float) -> void:
 			return
 		lift_off()
 
-	if is_steered():
-		rotation = rotate_toward(rotation, steer_rotation(), ship_type.turn_rate * delta)
-	else:
-		rotation += Input.get_axis("ui_left", "ui_right") * ship_type.turn_rate * delta
+	rotation += Input.get_axis("ui_left", "ui_right") * ship_type.turn_rate * delta
 
 	var mass_factor := total_mass() / REFERENCE_MASS
 	velocity.y += GRAVITY * (1.0 + GRAVITY_MASS_SCALE * (mass_factor - 1.0)) * gravity_share() * delta
@@ -267,14 +262,6 @@ func burn_multiplier(thrust_dir: Vector2) -> float:
 	var opposing := maxf(0.0, -thrust_dir.dot(velocity.normalized()))
 	var speed_share := clampf(velocity.length() / BRAKING_FULL_SPEED, 0.0, 1.0)
 	return multiplier * (1.0 + BRAKING_BURN_FACTOR * opposing * speed_share)
-
-
-func is_steered() -> bool:
-	return steering_after_crossing or soft_wall_depth() > 0.0
-
-
-func steer_rotation() -> float:
-	return PI if velocity.y > STEER_STILL_SPEED else 0.0
 
 
 func soft_wall_depth() -> float:
