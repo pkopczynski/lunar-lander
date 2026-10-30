@@ -33,7 +33,7 @@ A world edge that steers the ship back inside instead of crashing it.
 _Avoid_: Bumper, invisible wall
 
 **Steering**:
-The world briefly taking over: it damps the ship's speed and turns its nose up or down. This happens at soft walls and just after crossing the border.
+The world briefly slowing the ship down: it damps the ship's speed and pushes it back, but never turns its nose, so the player keeps Left/Right control. This happens at soft walls and just after crossing the border.
 _Avoid_: Autopilot, assist
 
 **Zoom punch**:
