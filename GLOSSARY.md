@@ -33,7 +33,7 @@ A world edge that steers the ship back inside instead of crashing it.
 _Avoid_: Bumper, invisible wall
 
 **Steering**:
-The world briefly taking over: it damps the ship's speed and turns its nose up or down. This happens at soft walls and just after crossing the border.
+The world briefly slowing the ship down: it damps the ship's speed and pushes it back, but never turns its nose, so the player keeps Left/Right control. This happens at soft walls and just after crossing the border.
 _Avoid_: Autopilot, assist
 
 **Zoom punch**:
@@ -105,7 +105,7 @@ A delivery still under way after its deadline has passed.
 _Avoid_: Late (on its own), expired
 
 **Loading**:
-Putting the load aboard at the parking spot, after the player accepts their contracts. The ship stays docked and held until it finishes, and the deadline starts counting then.
+Putting the load aboard at the parking spot, after the player accepts their contracts. The ship stays docked and held until it finishes, refuelling meanwhile, and the deadline starts counting then.
 _Avoid_: Boarding, embarking
 
 **Unloading**:
@@ -179,7 +179,7 @@ The ship is resting on the pad after a safe touchdown.
 _Avoid_: Touched down, parked
 
 **Docked**:
-The ship is resting inside the parking spot. This is the deep-space counterpart of Landed. From docking until the player declines to enter the office or leaves it, and during loading, a Docked ship is held: it ignores the controls and doesn't refuel.
+The ship is resting inside the parking spot. This is the deep-space counterpart of Landed. From docking until the player declines to enter the office or leaves it, a Docked ship is held: it ignores the controls and doesn't refuel. During loading it also ignores the controls, but refuels.
 _Avoid_: Parked, landed (in deep space)
 
 **Crashed**:

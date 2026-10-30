@@ -218,13 +218,13 @@ func climbs_under_full_thrust() -> bool:
 
 
 # Holds full thrust from below the border band until the ship crosses into deep
-# space or 10 s pass; returns the top climb speed reached.
+# space or 15 s pass; returns the top climb speed reached.
 func top_climb_speed_to_the_border() -> float:
 	var ship := lander()
 	place(Vector2(World.WORLD_WIDTH / 2.0, World.BORDER_Y + 600.0))
 	var top_speed := 0.0
 	hold(&"ui_up")
-	for i in roundi(10.0 * PHYSICS_FPS):
+	for i in roundi(15.0 * PHYSICS_FPS):
 		await frames(1)
 		top_speed = maxf(top_speed, -ship.velocity.y)
 		if ship.in_deep_space:
