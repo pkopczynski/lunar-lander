@@ -41,8 +41,10 @@ func test_an_offer_past_the_maximum_capacity_reads_overloaded_and_cant_be_accept
 	check(reason_for(too_heavy) == "OVERLOADED", "8 100 kg on a Sparrow should read OVERLOADED, got %s" % reason_for(too_heavy))
 	check(red_note_for(too_heavy) == "", "an overloaded offer gets no FUEL LIMITED note, got %s" % red_note_for(too_heavy))
 	await open_details(too_heavy)
+	await press(&"ui_down")
+	check(not offers().on_accept(), "Down should skip an overloaded offer's dimmed ACCEPT")
 	await press(&"ui_accept")
-	check(office().popup == Office.PopupKind.NONE, "ACCEPT on an overloaded offer should do nothing")
+	check(office().popup == Office.PopupKind.NONE, "nothing should accept an overloaded offer")
 
 
 func test_a_fitting_offer_that_would_limit_fuel_stays_lit_with_a_red_note_and_can_be_accepted() -> void:

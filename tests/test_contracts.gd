@@ -7,6 +7,7 @@ func test_accepting_asks_are_you_sure_and_moves_the_offer_to_the_contracts() -> 
 	economy().put_offer(offer)
 	await open_transport_offers()
 	await open_details(offer)
+	await press(&"ui_down")
 	await press(&"ui_accept")
 	check(office().popup == Office.PopupKind.ACCEPT_OFFER, "ACCEPT should ask ARE YOU SURE?")
 	check(office().popup_text() == "ARE YOU SURE?", "the popup should ask ARE YOU SURE?, got %s" % office().popup_text())
@@ -15,7 +16,7 @@ func test_accepting_asks_are_you_sure_and_moves_the_offer_to_the_contracts() -> 
 	check(office().popup == Office.PopupKind.NONE, "Yes should close the popup")
 	check(economy().contracts.size() == 1 and economy().contracts[0] == offer, "Yes should make the offer a Contract")
 	check(not listed("#%03d " % offer.number), "the Contract should leave the offer list, lists %s" % offers().rows())
-	check(offers().details().is_empty(), "the details should close")
+	check(offers().expanded_rows().is_empty(), "the details should close")
 	check("#%03d TEST RUN" % offer.number in offers().contract_lines(),
 		"the Contracts column should list it, lists %s" % offers().contract_lines())
 	check(offers().rows().size() == 5, "nothing should take the Contract's place, lists %s" % offers().rows())
@@ -38,11 +39,12 @@ func test_an_offer_that_expires_during_are_you_sure_cant_be_accepted_and_shows_o
 	economy().put_offer(offer)
 	await open_transport_offers()
 	await open_details(offer)
+	await press(&"ui_down")
 	await press(&"ui_accept")
 	check(office().popup == Office.PopupKind.ACCEPT_OFFER, "ACCEPT should ask ARE YOU SURE?")
 	await seconds(1.0)
 	check(office().popup == Office.PopupKind.NONE, "the offer expiring should close ARE YOU SURE?")
-	check(offers().details().is_empty(), "the offer expiring should close its details")
+	check(offers().expanded_rows().is_empty(), "the offer expiring should close its details")
 	check(offers().notice() == "OFFER EXPIRED", "OFFER EXPIRED should show, got %s" % offers().notice())
 	await press(&"ui_accept")
 	check(economy().contracts.is_empty(), "nothing should be accepted, got %d Contracts" % economy().contracts.size())
@@ -50,14 +52,18 @@ func test_an_offer_that_expires_during_are_you_sure_cant_be_accepted_and_shows_o
 	check(offers().notice() == "", "OFFER EXPIRED should only show briefly, got %s" % offers().notice())
 
 
-func test_an_offer_that_expires_with_its_details_open_closes_them_and_shows_offer_expired() -> void:
+func test_an_open_offer_that_expires_just_closes_and_leaves_the_others_open() -> void:
 	var offer := known_offer(1, 0.0, 1.0)
-	economy().put_offer(offer)
+	var other := known_offer(1, 0.0)
+	for each in [offer, other]:
+		economy().put_offer(each)
 	await open_transport_offers()
 	await open_details(offer)
+	await open_details(other)
 	await seconds(1.0)
-	check(offers().details().is_empty(), "the offer expiring should close its details")
-	check(offers().notice() == "OFFER EXPIRED", "OFFER EXPIRED should show, got %s" % offers().notice())
+	check(not listed("#%03d " % offer.number), "the offer should have expired")
+	check(offers().expanded_rows() == [economy().offers.find(other)], "only the other offer should stay open, open %s" % [offers().expanded_rows()])
+	check(offers().notice() == "", "OFFER EXPIRED should show only for an open ARE YOU SURE?, got %s" % offers().notice())
 
 
 func test_confirming_an_offer_that_is_already_gone_accepts_nothing() -> void:
@@ -65,6 +71,7 @@ func test_confirming_an_offer_that_is_already_gone_accepts_nothing() -> void:
 	economy().put_offer(offer)
 	await open_transport_offers()
 	await open_details(offer)
+	await press(&"ui_down")
 	await press(&"ui_accept")
 	# Gone from the pool without the screen hearing of it yet.
 	economy().offers.erase(offer)
@@ -87,9 +94,8 @@ func test_offers_that_would_exceed_the_seats_or_cargo_left_are_disabled_with_the
 	check(reason_for(too_heavy) == "OVERLOADED", "3 500 kg on 3 000 kg left should read OVERLOADED, got %s" % reason_for(too_heavy))
 	check(reason_for(fits) == "", "what's left should still take 1 passenger and 3 000 kg, got %s" % reason_for(fits))
 	await open_details(too_many)
-	await press(&"ui_accept")
-	check(office().popup == Office.PopupKind.NONE, "ACCEPT on an offer that doesn't fit should do nothing")
-	await press(&"ui_cancel")
+	await press(&"ui_down")
+	check(not offers().on_accept(), "Down should skip the dimmed ACCEPT of an offer that doesn't fit")
 	await accept(fits)
 	check(economy().contracts.size() == 2, "the ship should take both offers, has %d Contracts" % economy().contracts.size())
 

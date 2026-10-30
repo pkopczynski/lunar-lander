@@ -32,10 +32,15 @@ const NOTICE_TIME := 2.0
 var office: Office
 var economy: Economy
 var focus := Column.OFFERS
-var selected_index := 0
-# The offer whose details are open under its row, if any. Kept by offer, not row, so it
-# stays with its offer while others above it expire.
-var expanded: TransportOffer
+# The open offers and the cursor over their rows and ACCEPT buttons.
+var list := ExpandableList.new()
+# The row under the cursor.
+var selected_index: int:
+	get:
+		sync()
+		return list.row
+# The offer whose ARE YOU SURE? is showing, if any.
+var accepting: TransportOffer
 var notice_text := ""
 var notice_left := 0.0
 
@@ -50,14 +55,14 @@ func tick(delta: float) -> void:
 	notice_left = maxf(notice_left - delta, 0.0)
 
 
-# An offer expiring while its details or its ARE YOU SURE? are open closes them and says so.
+# An open offer that expires just closes; one whose ARE YOU SURE? is showing closes that too
+# and says so.
 func on_offer_expired(offer: TransportOffer) -> void:
-	if offer != expanded:
-		return
-	expanded = null
-	if office.popup == Office.PopupKind.ACCEPT_OFFER:
+	sync()
+	if offer == accepting and office.popup == Office.PopupKind.ACCEPT_OFFER:
 		office.popup = Office.PopupKind.NONE
-	show_notice(OFFER_EXPIRED_TEXT)
+		accepting = null
+		show_notice(OFFER_EXPIRED_TEXT)
 
 
 func show_notice(text: String) -> void:
@@ -65,12 +70,11 @@ func show_notice(text: String) -> void:
 	notice_left = NOTICE_TIME
 
 
-# Returns whether it used the event; Escape with no details open is left to the Office.
+# Returns whether it used the event; Escape with no open offer under the cursor is left to
+# the Office.
 func handle_input(event: InputEvent) -> bool:
-	follow_expanded()
+	sync()
 	if event.is_action_pressed("ui_right"):
-		# Only one thing is open at a time: leaving the list closes the details.
-		expanded = null
 		focus = Column.CONTRACTS
 	elif event.is_action_pressed("ui_left"):
 		focus = Column.OFFERS
@@ -81,42 +85,35 @@ func handle_input(event: InputEvent) -> bool:
 		return event.is_action_pressed("ui_accept") or event.is_action_pressed("ui_up") \
 			or event.is_action_pressed("ui_down")
 	elif event.is_action_pressed("ui_up"):
-		move(-1)
+		list.move(economy.offers, -1, fits)
 	elif event.is_action_pressed("ui_down"):
-		move(1)
+		list.move(economy.offers, 1, fits)
 	elif event.is_action_pressed("ui_accept"):
-		if expanded == null:
-			if not economy.offers.is_empty():
-				expanded = economy.offers[selected_index]
-		elif economy.misfit_reason(expanded) == "":
+		if list.on_button:
+			accepting = list.selected()
 			office.show_popup(Office.PopupKind.ACCEPT_OFFER, Office.Choice.YES)
-	elif event.is_action_pressed("ui_cancel") and expanded != null:
-		expanded = null
-	else:
+		else:
+			list.toggle()
+	elif not (event.is_action_pressed("ui_cancel") and list.close_selected()):
 		return false
 	return true
 
 
 # Yes on ARE YOU SURE?: the Economy checks again that the offer is still there and still fits.
 func confirm_accept() -> void:
-	if not economy.accept(expanded) and not expanded in economy.offers:
+	if not economy.accept(accepting) and not accepting in economy.offers:
 		show_notice(OFFER_EXPIRED_TEXT)
-	expanded = null
+	accepting = null
 
 
-# Moving to another row closes the open details: only one offer's are open at a time.
-func move(step: int) -> void:
-	expanded = null
-	selected_index = clampi(selected_index + step, 0, economy.offers.size() - 1)
+# Keeps the open offers and the cursor with their offers, and in range, as offers come and go.
+func sync() -> void:
+	list.sync(economy.offers, fits)
 
 
-# Keeps the selection on the expanded offer, and in range, as offers come and go.
-func follow_expanded() -> void:
-	if expanded != null and not expanded in economy.offers:
-		expanded = null
-	if expanded != null:
-		selected_index = economy.offers.find(expanded)
-	selected_index = clampi(selected_index, 0, economy.offers.size() - 1)
+# An offer's ACCEPT can be selected only when the offer fits.
+func fits(offer: TransportOffer) -> bool:
+	return economy.misfit_reason(offer) == ""
 
 
 # Observable state
@@ -126,19 +123,28 @@ func notice() -> String:
 	return notice_text if notice_left > 0.0 else ""
 
 
-# The row whose details are open, or -1.
-func expanded_row() -> int:
-	follow_expanded()
-	return economy.offers.find(expanded) if expanded != null else -1
+# The rows whose details are open, top to bottom.
+func expanded_rows() -> Array:
+	sync()
+	var open := []
+	for i in economy.offers.size():
+		if economy.offers[i] in list.expanded:
+			open.append(i)
+	return open
 
 
-# The open details' text, ending with the ACCEPT button; empty when none are open.
-func details() -> PackedStringArray:
-	follow_expanded()
+# Whether the cursor is on an ACCEPT rather than a row.
+func on_accept() -> bool:
+	sync()
+	return list.on_button
+
+
+# The row's details, ending with the ACCEPT button; empty when the row isn't open.
+func details(row: int) -> PackedStringArray:
 	var lines := PackedStringArray()
-	if expanded == null:
+	if not row in expanded_rows():
 		return lines
-	for detail: Array in detail_pairs(expanded):
+	for detail: Array in detail_pairs(economy.offers[row]):
 		lines.append("%s %s" % detail)
 	lines.append(ACCEPT_TEXT)
 	return lines
@@ -246,19 +252,20 @@ static func row_text(offer: TransportOffer) -> String:
 # Drawing
 
 func draw(area: Rect2) -> void:
-	follow_expanded()
-	var list := Rect2(area.position, Vector2(area.size.x * LIST_SHARE, area.size.y))
-	var y := list.position.y
+	sync()
+	var column := Rect2(area.position, Vector2(area.size.x * LIST_SHARE, area.size.y))
+	var y := column.position.y
 	for i in economy.offers.size():
 		var offer := economy.offers[i]
-		var row := Rect2(list.position.x, y, list.size.x, ROW_HEIGHT)
+		var row := Rect2(column.position.x, y, column.size.x, ROW_HEIGHT)
 		# With focus on the Contracts, the list's row is outlined instead of inverted.
-		var selected := i == selected_index and focus == Column.OFFERS
+		var under_cursor := i == list.row and not list.on_button
+		var selected := under_cursor and focus == Column.OFFERS
 		var reason := economy.misfit_reason(offer).to_upper()
 		var lit := Office.GREEN if reason == "" else Office.DIM_GREEN
 		if selected:
 			office.terminal.draw_rect(row, lit)
-		elif i == selected_index:
+		elif under_cursor:
 			office.terminal.draw_rect(row, lit, false, Office.LINE_WIDTH)
 		var color := Office.BLACK if selected else lit
 		var baseline := Vector2(row.position.x + ROW_PADDING, row.get_center().y + Office.TEXT_SIZE / 2.0)
@@ -277,11 +284,12 @@ func draw(area: Rect2) -> void:
 			office.draw_text(note, Vector2(baseline.x, y + Office.TEXT_SIZE), Office.TEXT_SIZE, width,
 				HORIZONTAL_ALIGNMENT_RIGHT, Office.RED)
 			y += ROW_HEIGHT
-		if offer == expanded:
-			y = draw_details(offer, Vector2(baseline.x, y), width, reason == "")
+		if offer in list.expanded:
+			var accept_selected := i == list.row and list.on_button and focus == Column.OFFERS
+			y = draw_details(offer, Vector2(baseline.x, y), width, reason == "", accept_selected)
 	if notice() != "":
-		draw_notice(Vector2(list.position.x, list.end.y))
-	var right_x := list.end.x + COLUMN_GAP
+		draw_notice(Vector2(column.position.x, column.end.y))
+	var right_x := column.end.x + COLUMN_GAP
 	draw_contracts(Rect2(right_x, area.position.y, area.end.x - right_x, area.size.y))
 
 
@@ -324,9 +332,10 @@ func draw_contracts(area: Rect2) -> void:
 		Office.TEXT_SIZE, button.size.x, HORIZONTAL_ALIGNMENT_CENTER, Office.BLACK if focused else lit)
 
 
-# Draws the details in two columns under the row, then ACCEPT (dimmed when the offer doesn't
-# fit); returns the y below them.
-func draw_details(offer: TransportOffer, top_left: Vector2, width: float, fits: bool) -> float:
+# Draws the details in two columns under the row, labels green and values white, then ACCEPT
+# at their bottom right (inverted when selected, dimmed when the offer doesn't fit); returns
+# the y below them.
+func draw_details(offer: TransportOffer, top_left: Vector2, width: float, fits: bool, selected: bool) -> float:
 	var y := top_left.y
 	var pairs := detail_pairs(offer)
 	var column_width := width / DETAIL_COLUMNS
@@ -334,12 +343,17 @@ func draw_details(offer: TransportOffer, top_left: Vector2, width: float, fits: 
 		var x := top_left.x + (i % DETAIL_COLUMNS) * column_width
 		if i % DETAIL_COLUMNS == 0:
 			y += ROW_HEIGHT
-		office.draw_text("%s %s" % pairs[i], Vector2(x, y), Office.TEXT_SIZE, column_width)
-	var button := Rect2(Vector2(top_left.x, y + ROW_PADDING * 2.0), ACCEPT_SIZE)
-	if fits:
-		office.terminal.draw_rect(button, Office.GREEN)
+		var label: String = pairs[i][0] + " "
+		office.draw_text(label, Vector2(x, y), Office.TEXT_SIZE, column_width)
+		var label_width := office.text_width(label, Office.TEXT_SIZE)
+		office.draw_text(pairs[i][1], Vector2(x + label_width, y), Office.TEXT_SIZE, column_width - label_width,
+			HORIZONTAL_ALIGNMENT_LEFT, Office.WHITE)
+	var button := Rect2(Vector2(top_left.x + width - ACCEPT_SIZE.x, y + ROW_PADDING * 2.0), ACCEPT_SIZE)
+	var lit := Office.GREEN if fits else Office.DIM_GREEN
+	if selected:
+		office.terminal.draw_rect(button, lit)
 	else:
-		office.terminal.draw_rect(button, Office.DIM_GREEN, false, Office.LINE_WIDTH)
+		office.terminal.draw_rect(button, lit, false, Office.LINE_WIDTH)
 	office.draw_text(ACCEPT_TEXT, Vector2(button.position.x, button.get_center().y + Office.TEXT_SIZE / 2.0),
-		Office.TEXT_SIZE, button.size.x, HORIZONTAL_ALIGNMENT_CENTER, Office.BLACK if fits else Office.DIM_GREEN)
+		Office.TEXT_SIZE, button.size.x, HORIZONTAL_ALIGNMENT_CENTER, Office.BLACK if selected else lit)
 	return button.end.y + ROW_PADDING * 2.0
