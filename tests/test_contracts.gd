@@ -2,6 +2,7 @@ extends "res://tests/scene_test.gd"
 
 
 func test_accepting_asks_are_you_sure_and_moves_the_offer_to_the_contracts() -> void:
+	economy().reseed(1)
 	var offer := known_offer(2, 1500.0)
 	economy().put_offer(offer)
 	await open_transport_offers()
@@ -17,7 +18,19 @@ func test_accepting_asks_are_you_sure_and_moves_the_offer_to_the_contracts() -> 
 	check(offers().details().is_empty(), "the details should close")
 	check("#%03d TEST RUN" % offer.number in offers().contract_lines(),
 		"the Contracts column should list it, lists %s" % offers().contract_lines())
-	check(offers().rows().size() == 5, "the list should refill to 5, lists %s" % offers().rows())
+	check(offers().rows().size() == 5, "nothing should take the Contract's place, lists %s" % offers().rows())
+
+
+func test_a_new_offer_arrives_within_90_seconds_of_accepting() -> void:
+	economy().reseed(1)
+	var offer := known_offer(1, 0.0)
+	economy().put_offer(offer)
+	await open_transport_offers()
+	await accept(offer)
+	await seconds(Economy.MIN_OFFER_INTERVAL - 1.0)
+	check(offers().rows().size() == 5, "nothing should arrive straight after accepting, lists %s" % offers().rows())
+	await seconds(Economy.MAX_OFFER_INTERVAL - Economy.MIN_OFFER_INTERVAL + 1.0)
+	check(offers().rows().size() == 6, "a new offer should arrive within 90 s, lists %s" % offers().rows())
 
 
 func test_an_offer_that_expires_during_are_you_sure_cant_be_accepted_and_shows_offer_expired() -> void:
@@ -45,27 +58,6 @@ func test_an_offer_that_expires_with_its_details_open_closes_them_and_shows_offe
 	await seconds(1.0)
 	check(offers().details().is_empty(), "the offer expiring should close its details")
 	check(offers().notice() == "OFFER EXPIRED", "OFFER EXPIRED should show, got %s" % offers().notice())
-
-
-func test_an_open_offer_replaced_because_nothing_fits_closes_quietly_without_offer_expired() -> void:
-	economy().reseed(1)
-	# Takes every seat and leaves 600 kg of cargo: only the 500 kg offer still fits.
-	var big := known_offer(4, 7400.0)
-	var too_heavy := known_offer(0, 1000.0)
-	var last_fit := known_offer(0, 500.0)
-	for offer in [big, too_heavy, last_fit]:
-		economy().put_offer(offer)
-	# Closest to expiring after the last fit, so it's the one replaced once nothing fits.
-	too_heavy.time_left = 60.0
-	last_fit.time_left = 5.0
-	await open_transport_offers()
-	await accept(big)
-	await open_details(too_heavy)
-	await seconds(5.0)
-	check(not listed("#%03d " % last_fit.number), "the last offer that fits should have expired, lists %s" % offers().rows())
-	check(not listed("#%03d " % too_heavy.number), "the open offer should be replaced, lists %s" % offers().rows())
-	check(offers().details().is_empty(), "the replaced offer's details should close")
-	check(offers().notice() == "", "a replaced offer didn't expire: no OFFER EXPIRED, got %s" % offers().notice())
 
 
 func test_confirming_an_offer_that_is_already_gone_accepts_nothing() -> void:
@@ -186,25 +178,3 @@ func test_ship_swapping_is_locked_while_contracts_exist() -> void:
 	check(office().popup == Office.PopupKind.NONE, "Return on a locked Ship offer should do nothing")
 	check(office().screen == Office.Screen.SHIP_SELECTION, "Return on a locked Ship offer should stay on Ship selection")
 	check(lander().ship_type == ShipType.SPARROW, "the Sparrow should stay in service")
-
-
-func test_after_accepting_at_least_one_offer_fits_what_is_left_over_several_seeds() -> void:
-	await open_transport_offers()
-	for seed_value in [1, 2, 3, 4, 5]:
-		economy().contracts.clear()
-		economy().reseed(seed_value)
-		# A pool of passenger offers, one of which fills every seat: once it's accepted,
-		# only the one generated in its place could fit.
-		var full := known_offer(4, 0.0, 2000.0)
-		var others: Array[TransportOffer] = []
-		for i in Economy.MAX_OFFERS - 1:
-			others.append(known_offer(1, 0.0, 1000.0 + i))
-			economy().put_offer(others[i])
-		economy().put_offer(full)
-		await frames(1)
-		await accept(full)
-		check(offers().rows().size() == 5, "seed %d should keep 5 offers, gives %s" % [seed_value, offers().rows()])
-		check("" in offers().reasons(), "seed %d should leave an offer the full Sparrow can take, reasons %s" % [seed_value, offers().reasons()])
-		for i in range(1, others.size()):
-			check(others[i] in economy().offers, "seed %d should keep the offers further from expiring, lists %s" % [seed_value, offers().rows()])
-

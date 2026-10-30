@@ -14,30 +14,57 @@ func test_the_screen_lists_five_offers_whose_countdowns_run_while_the_office_is_
 	check(offers().rows()[0] != before, "the countdown should advance while the Office is open: %s, then %s" % [before, offers().rows()[0]])
 
 
-func test_an_offer_whose_time_runs_out_disappears_and_the_list_refills_to_five() -> void:
+func test_an_offer_whose_time_runs_out_disappears_and_nothing_takes_its_place() -> void:
+	economy().reseed(1)
 	await open_transport_offers()
 	var offer := known_offer(2, 0.0, 1.5)
 	economy().put_offer(offer)
 	var row := TransportOffersScreen.row_text(offer)
 	check(row in offers().rows(), "the known offer should be listed, lists %s" % offers().rows())
+	check(offers().rows().size() == 6, "the known offer should join the 5, lists %s" % offers().rows())
 	await seconds(2.0)
 	check(not listed("#%03d " % offer.number), "the expired offer should be gone, lists %s" % offers().rows())
-	check(offers().rows().size() == 5, "the list should refill to 5, lists %s" % offers().rows())
+	check(offers().rows().size() == 5, "nothing should take the expired offer's place, lists %s" % offers().rows())
+
+
+func test_new_offers_arrive_every_30_to_90_seconds() -> void:
+	await open_transport_offers()
+	for seed_value in [1, 2, 3]:
+		economy().reseed(seed_value)
+		await seconds(Economy.MIN_OFFER_INTERVAL - 0.5)
+		check(offers().rows().size() == 5, "seed %d should add nothing within 30 s, lists %s" % [seed_value, offers().rows()])
+		await seconds(Economy.MAX_OFFER_INTERVAL - Economy.MIN_OFFER_INTERVAL + 1.0)
+		check(offers().rows().size() == 6, "seed %d should add one offer within 90 s, lists %s" % [seed_value, offers().rows()])
+
+
+func test_the_list_never_grows_past_seven_and_refills_once_one_goes() -> void:
+	economy().reseed(1)
+	await open_transport_offers()
+	var short := known_offer(1, 0.0, 100.0)
+	economy().put_offer(short)
+	economy().put_offer(known_offer(1, 0.0))
+	check(offers().rows().size() == 7, "the list should hold 7, lists %s" % offers().rows())
+	await seconds(Economy.MAX_OFFER_INTERVAL + 5.0)
+	check(offers().rows().size() == 7, "a full list should get no new offer, lists %s" % offers().rows())
+	await seconds(10.0)
+	check(offers().rows().size() == 6, "the short offer should have expired, lists %s" % offers().rows())
+	await seconds(Economy.MAX_OFFER_INTERVAL)
+	check(offers().rows().size() == 7, "a new offer should arrive within 90 s once one goes, lists %s" % offers().rows())
 
 
 func test_return_expands_one_offers_details_at_a_time_and_escape_collapses_them() -> void:
 	economy().put_offer(known_offer(3, 1200.0))
 	await open_transport_offers()
-	await select_row(4)
+	await select_row(5)
 	check(offers().details().is_empty(), "no details should show before Return")
 	await press(&"ui_accept")
 	var details := offers().details()
 	for expected: String in ["PASSENGERS 3", "CARGO 1 200 KG", "DEADLINE 1:30", "TRADER TEST TRADER", "VALUE €420", "ACCEPT"]:
 		check(expected in details, "the details should show %s, show %s" % [expected, details])
-	check(offers().expanded_row() == 4, "the details should open under the selected row, got %d" % offers().expanded_row())
+	check(offers().expanded_row() == 5, "the details should open under the selected row, got %d" % offers().expanded_row())
 	await press(&"ui_up")
 	await press(&"ui_accept")
-	check(offers().expanded_row() == 3, "Return on another row should open its details instead, got %d" % offers().expanded_row())
+	check(offers().expanded_row() == 4, "Return on another row should open its details instead, got %d" % offers().expanded_row())
 	await press(&"ui_cancel")
 	check(offers().details().is_empty(), "Escape should close the details")
 	check(office().screen == Office.Screen.TRANSPORT_OFFERS, "closing the details should stay on Transport offers")
@@ -74,26 +101,40 @@ func test_offers_too_big_for_the_ship_show_why_and_fuel_never_disables_one() -> 
 	check(reason_for(too_many) == "", "5 passengers should fit a Halo, got %s" % reason_for(too_many))
 
 
-func test_at_least_one_offer_fits_the_sparrow_over_several_seeds() -> void:
+func test_every_new_pool_starts_with_five_offers_open_for_180_to_600_seconds() -> void:
 	await open_transport_offers()
 	for seed_value in [1, 2, 3, 4, 5, 6, 7, 8]:
 		economy().reseed(seed_value)
 		await frames(1)
 		check(offers().rows().size() == 5, "seed %d should give 5 offers, gives %s" % [seed_value, offers().rows()])
-		check("" in offers().reasons(), "seed %d should give an offer the Sparrow can take, reasons %s" % [seed_value, offers().reasons()])
+		for offer in economy().offers:
+			check(offer.time_left > 179.0 and offer.time_left <= 600.0,
+				"seed %d: offer #%03d should be open for 180-600 s, has %.1f s" % [seed_value, offer.number, offer.time_left])
 
 
-func test_when_nothing_fits_the_offer_closest_to_expiring_is_replaced_right_away() -> void:
+func test_offers_that_dont_fit_are_never_replaced() -> void:
 	var too_big: Array[TransportOffer] = []
 	for i in Economy.MAX_OFFERS:
-		too_big.append(known_offer(10, 0.0, TransportOffer.MAX_EXPIRY + 100.0 + i))
+		too_big.append(known_offer(10, 0.0, 1000.0 + i))
 		economy().put_offer(too_big[i])
 	await open_transport_offers()
-	check(not listed("#%03d " % too_big[0].number), "the offer closest to expiring should be gone, lists %s" % offers().rows())
-	for i in range(1, Economy.MAX_OFFERS):
-		check(listed("#%03d " % too_big[i].number), "the other offers should stay, lists %s" % offers().rows())
-	check(offers().rows().size() == 5, "the list should hold 5 offers, lists %s" % offers().rows())
-	check("" in offers().reasons(), "the replacement should fit the Sparrow, reasons %s" % offers().reasons())
+	await seconds(1.0)
+	for offer in too_big:
+		check(listed("#%03d " % offer.number), "offer #%03d should stay though nothing fits, lists %s" % [offer.number, offers().rows()])
+	check(offers().rows().size() == 7, "the list should hold 7 offers, lists %s" % offers().rows())
+
+
+func test_return_does_nothing_once_every_offer_is_gone() -> void:
+	await open_transport_offers()
+	economy().reseed(1)
+	for offer in economy().offers:
+		offer.time_left = 0.5
+	await seconds(1.0)
+	check(offers().rows().is_empty(), "every offer should have expired, lists %s" % offers().rows())
+	await press(&"ui_down")
+	await press(&"ui_accept")
+	check(offers().details().is_empty(), "Return on an empty list should open nothing")
+	check(office().screen == Office.Screen.TRANSPORT_OFFERS, "the screen should stay on Transport offers")
 
 
 func test_offer_timers_keep_running_in_flight() -> void:
@@ -111,5 +152,4 @@ func test_offer_numbers_start_again_from_001_on_a_new_run() -> void:
 	await restart()
 	await open_transport_offers()
 	check(offers().rows()[0].begins_with("#001 "), "a new run should number offers from #001, lists %s" % offers().rows())
-	# Not "#006 is gone": a new pool with nothing the Sparrow fits replaces one at once, taking #006.
 	check(not " TEST RUN " in " ".join(offers().rows()), "the last run's known offer should be gone, lists %s" % offers().rows())

@@ -42,23 +42,21 @@ var notice_left := 0.0
 func _init(owner: Office, owner_economy: Economy) -> void:
 	office = owner
 	economy = owner_economy
-	economy.offer_withdrawn.connect(on_offer_withdrawn)
+	economy.offer_expired.connect(on_offer_expired)
 
 
 func tick(delta: float) -> void:
 	notice_left = maxf(notice_left - delta, 0.0)
 
 
-# An offer going while its details or its ARE YOU SURE? are open closes them; only one
-# that expired says so.
-func on_offer_withdrawn(offer: TransportOffer, expired: bool) -> void:
+# An offer expiring while its details or its ARE YOU SURE? are open closes them and says so.
+func on_offer_expired(offer: TransportOffer) -> void:
 	if offer != expanded:
 		return
 	expanded = null
 	if office.popup == Office.PopupKind.ACCEPT_OFFER:
 		office.popup = Office.PopupKind.NONE
-	if expired:
-		show_notice(OFFER_EXPIRED_TEXT)
+	show_notice(OFFER_EXPIRED_TEXT)
 
 
 func show_notice(text: String) -> void:
@@ -87,7 +85,8 @@ func handle_input(event: InputEvent) -> bool:
 		move(1)
 	elif event.is_action_pressed("ui_accept"):
 		if expanded == null:
-			expanded = economy.offers[selected_index]
+			if not economy.offers.is_empty():
+				expanded = economy.offers[selected_index]
 		elif economy.misfit_reason(expanded) == "":
 			office.show_popup(Office.PopupKind.ACCEPT_OFFER, Office.Choice.YES)
 	elif event.is_action_pressed("ui_cancel") and expanded != null:

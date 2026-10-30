@@ -7,7 +7,7 @@ extends RefCounted
 const PASSENGER_MASS := 80.0
 
 # Generation
-const MIN_EXPIRY := 120
+const MIN_EXPIRY := 180
 const MAX_EXPIRY := 600
 const MIN_DEADLINE := 60
 const MAX_DEADLINE := 180
@@ -113,12 +113,7 @@ static func countdown(seconds_left: float) -> String:
 	return "%d:%02d" % [whole / 60, whole % 60]
 
 
-# Whether anything at all could be generated within these limits.
-static func could_fit(seats_left: int, cargo_left: float) -> bool:
-	return seats_left >= 1 or cargo_left >= MIN_CARGO
-
-
-# A random offer of at most max_passengers and max_cargo; could_fit() must hold for them.
+# A random offer of at most max_passengers (at least 1) and max_cargo (at least MIN_CARGO).
 static func generate(rng: RandomNumberGenerator, offer_number: int, max_passengers: int,
 		max_cargo: float) -> TransportOffer:
 	var kinds: Array[Kind] = []
