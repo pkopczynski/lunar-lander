@@ -55,20 +55,38 @@ _Avoid_: Dock, slot, destination
 ## Office
 
 **Office**:
-The player's transport company office on the station, where every run begins and where the player picks a ship type.
+The player's transport company office on the station, where every run begins. There the player picks a ship type, takes on transport offers and checks the bank account.
 _Avoid_: Menu, shop, hangar
 
 **Terminal**:
-The retro green-on-black screen in the office that shows the offers.
+The retro green-on-black screen in the office that shows ship offers, transport offers and the bank account.
 _Avoid_: Monitor, display, console
 
-**Offer**:
-One ship type shown on the terminal, with its picture and characteristics. Taking an offer costs nothing.
-_Avoid_: Listing, card, product
+**Ship offer**:
+One ship type shown on the terminal, with its picture and characteristics. Taking a ship offer costs nothing.
+_Avoid_: Offer (on its own), listing, card, product
 
 **Ship swap**:
 Going back to the office from the parking spot to trade the current ship for another ship type. The new ship takes the old one's place in the parking spot with a full tank.
 _Avoid_: Respawn, change ship
+
+## Transport
+
+**Transport offer**:
+A job on the terminal, not yet accepted: carry passengers, cargo or both from the station to the pad. It is only available for a limited time.
+_Avoid_: Offer (on its own), job, mission
+
+**Contract**:
+A transport offer the player has accepted. All contracts accepted together are delivered in one flight.
+_Avoid_: Order, accepted offer
+
+**Load**:
+Everything carried for the contracts: passengers and cargo together.
+_Avoid_: Cargo (for the whole load), payload, freight
+
+**Cargo**:
+Goods carried for a contract, measured only by mass.
+_Avoid_: Load (for goods alone), freight
 
 ## Ship
 
@@ -93,7 +111,7 @@ The ship's mass without fuel.
 _Avoid_: Empty weight, base mass
 
 **Maximum weight**:
-The heaviest dry mass a ship type can carry. It stands in for cargo capacity until cargo exists.
+The heaviest a ship type may be in total: dry mass, fuel and load together. Load comes first, so a heavy load leaves less room for fuel.
 _Avoid_: Max load, payload
 
 **Tank**:
