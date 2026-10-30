@@ -131,7 +131,7 @@ _Avoid_: Load (for goods alone), freight
 ## Ship
 
 **Ship type**:
-A kind of ship with its own shape, dry mass, maximum weight, tank, passenger seats, cargo capacity, thrust and turn rate. The game has three: the Sparrow, the Mule and the Halo.
+A kind of ship with its own shape, dry mass, maximum weight, tank, passenger seats, maximum capacity, thrust and turn rate. The game has three: the Sparrow, the Mule and the Halo.
 _Avoid_: Model, class, variant
 
 **Sparrow**:
@@ -157,6 +157,14 @@ _Avoid_: Max load, payload
 **Tank**:
 How much fuel a ship type holds when full.
 _Avoid_: Capacity (on its own), fuel max
+
+**Maximum capacity**:
+The most cargo a ship type can take at all. A transport offer that would go past it is overloaded and can't be accepted.
+_Avoid_: Cargo capacity (on its own), max load
+
+**Full-Tank cargo**:
+The most cargo a ship can carry and still have room for a full tank under its maximum weight, given the passengers aboard. It shrinks with each passenger and is never above the maximum capacity. Cargo past it is allowed, but limits the fuel.
+_Avoid_: Cargo limit, comfortable load, safe cargo
 
 ## Ship states
 
