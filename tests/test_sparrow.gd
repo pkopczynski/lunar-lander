@@ -19,15 +19,24 @@ func test_starts_as_a_sparrow_with_a_full_tank() -> void:
 	check_near(ship.tank_level(), 1.0, 0.0001, "tank level")
 
 
-func test_weight_keys_stay_within_the_sparrow_range() -> void:
+func test_plus_and_minus_keys_no_longer_change_the_ship() -> void:
 	await choose_ship()
 	var ship := lander()
-	for i in 20:
-		await press(&"weight_up")
-	check_near(ship.total_mass() - ship.fuel, 17000.0, 0.01, "dry mass after many weight_up")
-	for i in 30:
-		await press(&"weight_down")
-	check_near(ship.total_mass() - ship.fuel, 5000.0, 0.01, "dry mass after many weight_down")
+	for key: Key in [KEY_EQUAL, KEY_MINUS, KEY_KP_ADD, KEY_KP_SUBTRACT]:
+		await press_key(key)
+	check_near(ship.dry_mass, ShipType.SPARROW.default_dry_mass, 0.01, "dry mass after + and -")
+	check_near(ship.total_mass(), 15000.0, 0.01, "total mass after + and -")
+	for action: StringName in [&"weight_up", &"weight_down"]:
+		check(not InputMap.has_action(action), "the %s action should be gone" % action)
+
+
+func press_key(key: Key) -> void:
+	for pressed: bool in [true, false]:
+		var event := InputEventKey.new()
+		event.physical_keycode = key
+		event.pressed = pressed
+		Input.parse_input_event(event)
+		await frames(1)
 
 
 func test_docks_in_the_parking_spot_and_refuels() -> void:
@@ -46,10 +55,45 @@ func test_docks_in_the_parking_spot_and_refuels() -> void:
 	check(message().contains("Refueling"), "message should mention refuelling, got %s" % message())
 
 
+# Sparrow: 22 000 kg Maximum weight − 10 000 kg dry mass − 9 000 kg Load leaves room for 3 000 kg of fuel.
+const LOAD_FOR_TESTS := 9000.0
+const FUEL_CAP_WITH_LOAD := 3000.0
+
+
+func test_a_load_stops_refuelling_at_the_station_short_of_a_full_tank() -> void:
+	await choose_ship()
+	var ship := lander()
+	await dock_in_spot()
+	ship.load_mass = LOAD_FOR_TESTS
+	ship.fuel = 1000.0
+	# Decline the Ship swap.
+	await press(&"ui_accept")
+	await seconds(10.0)
+	check_near(ship.fuel_cap(), FUEL_CAP_WITH_LOAD, 0.01, "fuel cap with a Load")
+	check_near(ship.fuel, FUEL_CAP_WITH_LOAD, 0.01, "fuel after refuelling with a Load")
+	check(message() == "Docked!", "refuelling should be over, got %s" % message())
+
+
+func test_a_load_stops_refuelling_on_the_pad_short_of_a_full_tank() -> void:
+	await choose_ship()
+	var ship := lander()
+	ship.load_mass = LOAD_FOR_TESTS
+	ship.fuel = 1000.0
+	ship.reset_to_pad()
+	await seconds(10.0)
+	check_near(ship.fuel, FUEL_CAP_WITH_LOAD, 0.01, "fuel after refuelling on the pad with a Load")
+	check(message() == "Landed!", "refuelling should be over, got %s" % message())
+
+
+func test_without_a_load_the_fuel_cap_is_the_tank() -> void:
+	await choose_ship()
+	check_near(lander().fuel_cap(), ShipType.SPARROW.tank, 0.01, "fuel cap without a Load")
+
+
 func test_hovers_at_maximum_weight() -> void:
 	await choose_ship()
 	await raise_to_maximum_weight()
-	check_near(dry_mass(), 17000.0, 0.01, "dry mass at Maximum weight")
+	check_near(lander().total_mass(), 22000.0, 0.01, "total mass at Maximum weight")
 	check(await climbs_under_full_thrust(), "the Sparrow should climb at Maximum weight")
 
 

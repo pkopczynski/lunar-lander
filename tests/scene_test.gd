@@ -60,7 +60,7 @@ func message() -> String:
 # Set-up
 
 # Picks a ship type in the Office the way a player does, from the main screen: open
-# Ship selection, browse to its Offer, press Return and confirm Yes (the ship type
+# Ship selection, browse to its Ship offer, press Return and confirm Yes (the ship type
 # in service needs no confirming), then Escape. Leaves the ship Docked in the parking spot.
 func choose_ship(type: ShipType = ShipType.SPARROW) -> void:
 	await open_ship_selection()
@@ -86,10 +86,10 @@ func open_ship_selection() -> void:
 # Presses action (Right or Left) in the Office until it offers that ship type.
 func browse_to(type: ShipType, action := &"ui_right") -> void:
 	for i in ShipType.ALL.size():
-		if office().selected_offer() == type:
+		if office().selected_ship_offer() == type:
 			break
 		await press(action)
-	check(office().selected_offer() == type, "the Office should offer the %s" % type.name)
+	check(office().selected_ship_offer() == type, "the Office should offer the %s" % type.name)
 
 
 # Puts the lander Flying at a set position, upright, out of whatever state it was in.
@@ -117,14 +117,13 @@ func dock_in_spot() -> void:
 # the ship in free flight, so choose a ship first.
 
 func dry_mass() -> float:
-	return lander().total_mass() - lander().fuel
+	return lander().dry_mass
 
 
-# Presses + until dry mass reaches the ship type's Maximum weight.
+# Adds a Load that brings the ship, with its full Tank, to its Maximum weight.
 func raise_to_maximum_weight() -> void:
-	var steps := ceili((lander().ship_type.maximum_weight - dry_mass()) / Lander.DRY_MASS_STEP)
-	for i in steps + 1:
-		await press(&"weight_up")
+	var ship := lander()
+	ship.load_mass = ship.ship_type.maximum_weight - ship.total_mass()
 
 
 # Whether a second of full thrust above the pad leaves the ship climbing.

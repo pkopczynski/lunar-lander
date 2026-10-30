@@ -42,17 +42,6 @@ func test_ship_is_frozen_while_the_office_popup_is_open() -> void:
 	check(office().popup == Office.PopupKind.ENTER_OFFICE, "the Enter-the-Office popup should still be open")
 
 
-func test_weight_keys_do_nothing_while_the_office_popup_is_open() -> void:
-	await choose_ship()
-	await dock_in_spot()
-	var before := dry_mass()
-	await press(&"weight_up")
-	await press(&"weight_down")
-	await press(&"weight_down")
-	check_near(dry_mass(), before, 0.01, "dry mass while the Enter-the-Office popup is open")
-	check(office().popup == Office.PopupKind.ENTER_OFFICE, "the Enter-the-Office popup should still be open")
-
-
 func test_r_in_the_office_popup_returns_to_the_office() -> void:
 	await choose_ship()
 	await dock_in_spot()
@@ -107,12 +96,12 @@ func test_yes_opens_the_office_main_screen_with_the_current_ship_in_service() ->
 	check(office().popup == Office.PopupKind.NONE and office().screen == Office.Screen.MAIN,
 		"the Office should open on the main screen")
 	await open_ship_selection()
-	check(office().selected_offer() == ShipType.HALO, "the current ship type should be selected, got %s"
-		% office().selected_offer().name)
+	check(office().selected_ship_offer() == ShipType.HALO, "the current ship type should be selected, got %s"
+		% office().selected_ship_offer().name)
 	check(office().in_service_shown(), "the current ship type should be tagged IN SERVICE")
-	check(Array(office().offer_lines()).has("IN SERVICE"), "the Offer should read IN SERVICE")
+	check(Array(office().ship_offer_lines()).has("IN SERVICE"), "the Ship offer should read IN SERVICE")
 	await press(&"ui_right")
-	check(not office().in_service_shown(), "other Offers should not be tagged IN SERVICE")
+	check(not office().in_service_shown(), "other Ship offers should not be tagged IN SERVICE")
 
 
 func answer_swap_yes() -> void:
@@ -125,8 +114,6 @@ func answer_swap_yes() -> void:
 
 func test_choosing_another_ship_type_puts_it_in_the_same_parking_spot() -> void:
 	await choose_ship(ShipType.SPARROW)
-	await press(&"weight_up")
-	await press(&"weight_up")
 	var ship := lander()
 	ship.fuel = 1500.0
 	var spot := station().parking_spot
@@ -142,7 +129,6 @@ func test_choosing_another_ship_type_puts_it_in_the_same_parking_spot() -> void:
 	check(ship.is_inside_spot(), "the whole Mule should be inside the parking spot")
 	check_near(ship.tank_level(), 1.0, 0.0001, "the Mule's tank level")
 	check_near(dry_mass(), ShipType.MULE.default_dry_mass, 0.01, "the Mule's dry mass")
-	check(dry_mass() != 12000.0, "the Sparrow's raised dry mass should not carry over")
 	await seconds(0.5)
 	check(office().popup == Office.PopupKind.NONE, "the swap should not ask about a swap again")
 	check(not tree.paused, "the world should run again after the swap")
@@ -162,7 +148,6 @@ func test_choosing_the_in_service_ship_type_then_leaving_returns_to_the_dock_as_
 
 func leaving_the_office_returns_to_the_dock(choose_in_service: bool) -> void:
 	await choose_ship(ShipType.HALO)
-	await press(&"weight_up")
 	var ship := lander()
 	await dock_in_spot()
 	var spot := ship.position
@@ -172,7 +157,7 @@ func leaving_the_office_returns_to_the_dock(choose_in_service: bool) -> void:
 		await open_ship_selection()
 		check(office().in_service_shown(), "the Office should show the IN SERVICE Halo")
 		await press(&"ui_accept")
-		check(office().screen == Office.Screen.MAIN, "Return on the IN SERVICE Offer should return to the main screen")
+		check(office().screen == Office.Screen.MAIN, "Return on the IN SERVICE Ship offer should return to the main screen")
 	await press(&"ui_cancel")
 	await wait_for_terminal()
 	check(not office().showing, "Escape on the main screen should close the Office")
@@ -180,7 +165,7 @@ func leaving_the_office_returns_to_the_dock(choose_in_service: bool) -> void:
 	check(not tree.paused, "the world should run again")
 	check(ship.ship_type == ShipType.HALO, "the ship should still be the Halo, got %s" % ship.ship_type.name)
 	check(ship.state == Lander.State.DOCKED and ship.position == spot, "the ship should stay Docked where it was")
-	check_near(dry_mass(), 15000.0, 0.01, "the Halo's dry mass should be kept")
+	check_near(dry_mass(), ShipType.HALO.default_dry_mass, 0.01, "the Halo's dry mass should be kept")
 	await seconds(Lander.REFUEL_DELAY - 0.3)
 	check_near(ship.fuel, 1000.0, 0.0001, "fuel before the refuel delay is over")
 	await seconds(1.0)

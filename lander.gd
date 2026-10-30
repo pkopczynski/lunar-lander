@@ -4,8 +4,6 @@ extends CharacterBody2D
 # Per-ship values (thrust, turn rate, masses, tank, burn rate) live in ShipType.
 const GRAVITY := 60.0
 
-const MIN_DRY_MASS := 5000.0
-const DRY_MASS_STEP := 1000.0
 # Mass at which thrust, gravity and burn rate are unscaled: a default Sparrow with a full tank.
 const REFERENCE_MASS := 15000.0
 const GRAVITY_MASS_SCALE := 0.5
@@ -54,6 +52,8 @@ const CRASHED_COLOR := Color(1.0, 0.3, 0.3)
 var ship_type: ShipType
 var dry_mass: float
 var fuel: float
+# Passengers and cargo carried for the Contracts.
+var load_mass := 0.0
 # Change only through enter(), which resets what the old state left behind.
 var state := State.FLYING
 # Set from outside through hold() and release(): a held ship ignores the controls and stays put.
@@ -93,13 +93,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			reset_to_pad()
 		else:
 			get_tree().reload_current_scene()
-	elif held:
-		# Nothing but R happens behind the swap popup.
-		return
-	elif event.is_action_pressed("weight_up"):
-		dry_mass = minf(dry_mass + DRY_MASS_STEP, ship_type.maximum_weight)
-	elif event.is_action_pressed("weight_down"):
-		dry_mass = maxf(dry_mass - DRY_MASS_STEP, MIN_DRY_MASS)
 
 
 func become(type: ShipType) -> void:
@@ -229,7 +222,13 @@ func _physics_process(delta: float) -> void:
 
 
 func total_mass() -> float:
-	return dry_mass + fuel
+	return dry_mass + fuel + load_mass
+
+
+# The most fuel refuelling may fill: a full Tank, or less if the Load would push
+# the ship past its Maximum weight.
+func fuel_cap() -> float:
+	return clampf(ship_type.maximum_weight - dry_mass - load_mass, 0.0, ship_type.tank)
 
 
 func tank_level() -> float:
@@ -370,9 +369,9 @@ func rest(delta: float) -> void:
 	if state == State.DOCKED and not (level_tween and level_tween.is_running()):
 		rotation += Input.get_axis("ui_left", "ui_right") * ship_type.turn_rate * delta
 	rest_time += delta
-	var refueling := rest_time >= REFUEL_DELAY and fuel < ship_type.tank
+	var refueling := rest_time >= REFUEL_DELAY and fuel < fuel_cap()
 	if refueling:
-		fuel = minf(fuel + ship_type.tank * REFUEL_TANK_SHARE * delta, ship_type.tank)
+		fuel = minf(fuel + ship_type.tank * REFUEL_TANK_SHARE * delta, fuel_cap())
 	var title := "Docked!" if state == State.DOCKED else "Landed!"
 	message.text = title + "\nRefueling…" if refueling else title
 

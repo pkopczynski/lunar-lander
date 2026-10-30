@@ -1,7 +1,7 @@
 class_name Office
 extends CanvasLayer
 # The player's Office: a full-window Terminal with a main screen of tiles opening Ship
-# selection (one Offer per ship type), Transport offers and the Bank account. It pauses
+# selection (one Ship offer per ship type), Transport offers and the Bank account. It pauses
 # the world while showing, and puts the chosen ship type in the parking spot.
 
 enum Screen { MAIN, SHIP_SELECTION, TRANSPORT_OFFERS, BANK_ACCOUNT }
@@ -56,13 +56,13 @@ const BLOCK_SIZE := Vector2(22, 22)
 const BLOCK_GAP := 6.0
 const RATING_LABEL_WIDTH := 200.0
 const HINT_ARROW_SIZE := 12.0
-# The Offer's text block (name, flavour, stats, ratings) is centred on the picture by
-# starting this far above the Offer area's middle.
-const OFFER_TEXT_LIFT := 4.0 * STAT_SIZE + 2.0 * LINE_GAP
+# The Ship offer's text block (name, flavour, stats, ratings) is centred on the picture by
+# starting this far above the Ship offer area's middle.
+const SHIP_OFFER_TEXT_LIFT := 5.0 * STAT_SIZE + 3.0 * LINE_GAP
 # Padding around the IN SERVICE tag's text, and how far the tag sits above the name's middle.
 const TAG_PADDING := Vector2(8, 4)
 const TAG_RAISE := 4.0
-# Share of the Offer area's width and height the wireframe picture may fill.
+# Share of the Ship offer area's width and height the wireframe picture may fill.
 const PICTURE_SHARE := 0.4
 
 # The CRT power-on/off effect: the picture collapses to a bright line, then a dot
@@ -91,7 +91,7 @@ var screen := Screen.MAIN
 var tile_index := 0
 var popup := PopupKind.NONE
 var selected_button := Choice.YES
-var offer_index := 0
+var ship_offer_index := 0
 # Whether the Terminal is powering on or off. Office input is ignored meanwhile.
 var powering := false
 # How far the Terminal's picture is powered on: 0 is off, 1 fully on.
@@ -121,7 +121,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		screen = Screen.MAIN
 		handled()
 	elif screen == Screen.SHIP_SELECTION:
-		handle_offer_input(event)
+		handle_ship_offer_input(event)
 
 
 func handle_main_input(event: InputEvent) -> void:
@@ -139,7 +139,7 @@ func handle_main_input(event: InputEvent) -> void:
 	handled()
 
 
-func handle_offer_input(event: InputEvent) -> void:
+func handle_ship_offer_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_left"):
 		browse(-1)
 	elif event.is_action_pressed("ui_right"):
@@ -164,7 +164,7 @@ func handled() -> void:
 func open_screen(which: Screen) -> void:
 	screen = which
 	if which == Screen.SHIP_SELECTION:
-		offer_index = ShipType.ALL.find(lander.ship_type)
+		ship_offer_index = ShipType.ALL.find(lander.ship_type)
 
 
 func handle_popup_input(event: InputEvent) -> void:
@@ -183,7 +183,7 @@ func handle_popup_input(event: InputEvent) -> void:
 
 # Browsing wraps around at both ends.
 func browse(step: int) -> void:
-	offer_index = posmod(offer_index + step, ShipType.ALL.size())
+	ship_offer_index = posmod(ship_offer_index + step, ShipType.ALL.size())
 
 
 func open() -> void:
@@ -249,7 +249,7 @@ func answer(choice: Choice) -> void:
 			close()
 			lander.release()
 		[PopupKind.ARE_YOU_SURE, Choice.YES]:
-			lander.start_docked(selected_offer())
+			lander.start_docked(selected_ship_offer())
 			popup = PopupKind.NONE
 			screen = Screen.MAIN
 		[PopupKind.ARE_YOU_SURE, Choice.NO]:
@@ -273,49 +273,50 @@ func bank_lines() -> PackedStringArray:
 	return PackedStringArray([Economy.PILOT, "BALANCE " + Economy.eur(economy.balance)])
 
 
-func selected_offer() -> ShipType:
-	return ShipType.ALL[offer_index]
+func selected_ship_offer() -> ShipType:
+	return ShipType.ALL[ship_offer_index]
 
 
 # The ship type in the parking spot is the one in service.
 func in_service_shown() -> bool:
-	return showing and screen == Screen.SHIP_SELECTION and selected_offer() == lander.ship_type
+	return showing and screen == Screen.SHIP_SELECTION and selected_ship_offer() == lander.ship_type
 
 
-func offer_indicator() -> String:
-	return "< %d/%d >" % [offer_index + 1, ShipType.ALL.size()]
+func ship_offer_indicator() -> String:
+	return "< %d/%d >" % [ship_offer_index + 1, ShipType.ALL.size()]
 
 
-# The text the selected Offer shows, with ratings written as blocks.
-func offer_lines() -> PackedStringArray:
-	var type := selected_offer()
+# The text the selected Ship offer shows, with ratings written as blocks.
+func ship_offer_lines() -> PackedStringArray:
+	var type := selected_ship_offer()
 	var lines := PackedStringArray([type.name.to_upper(), type.flavour.to_upper()])
-	for stat: Array in offer_stats():
+	for stat: Array in ship_offer_stats():
 		lines.append("%s %s" % stat)
-	for rating: Array in offer_ratings():
+	for rating: Array in ship_offer_ratings():
 		lines.append("%s %s" % [rating[0], blocks(rating[1])])
-	lines.append(offer_indicator())
+	lines.append(ship_offer_indicator())
 	if in_service_shown():
 		lines.append(IN_SERVICE_TEXT)
 	return lines
 
 
-# The selected Offer's masses as [label, text in kg] pairs.
-func offer_stats() -> Array[Array]:
-	var type := selected_offer()
+# The selected Ship offer's numbers as [label, text] pairs.
+func ship_offer_stats() -> Array[Array]:
+	var type := selected_ship_offer()
 	return [["TANK", kg(type.tank)], ["DRY MASS", kg(type.default_dry_mass)],
-		["MAX WEIGHT", kg(type.maximum_weight)]]
+		["MAX WEIGHT", kg(type.maximum_weight)], ["SEATS", str(type.passenger_seats)],
+		["CARGO", kg(type.cargo_capacity)]]
 
 
-# The selected Offer's ratings as [label, blocks out of RATING_BLOCKS] pairs.
-func offer_ratings() -> Array[Array]:
-	var type := selected_offer()
+# The selected Ship offer's ratings as [label, blocks out of RATING_BLOCKS] pairs.
+func ship_offer_ratings() -> Array[Array]:
+	var type := selected_ship_offer()
 	return [["THRUST", type.thrust_rating], ["HANDLING", type.handling_rating]]
 
 
 # The wireframe picture's outline: the ship type's hull.
-func offer_picture() -> PackedVector2Array:
-	return selected_offer().hull
+func ship_offer_picture() -> PackedVector2Array:
+	return selected_ship_offer().hull
 
 
 static func kg(value: float) -> String:
@@ -372,7 +373,7 @@ func draw_screen(view: Rect2) -> void:
 	var rule_y := inner.position.y + HEADER_SIZE + LINE_GAP
 	terminal.draw_line(Vector2(frame.position.x, rule_y), Vector2(frame.end.x, rule_y), GREEN, LINE_WIDTH)
 	if screen == Screen.SHIP_SELECTION:
-		draw_text(offer_indicator(), Vector2(inner.position.x, rule_y + LINE_GAP + TEXT_SIZE), TEXT_SIZE,
+		draw_text(ship_offer_indicator(), Vector2(inner.position.x, rule_y + LINE_GAP + TEXT_SIZE), TEXT_SIZE,
 			inner.size.x, HORIZONTAL_ALIGNMENT_RIGHT)
 
 	var hint_y := inner.end.y
@@ -387,7 +388,7 @@ func draw_screen(view: Rect2) -> void:
 		Screen.MAIN:
 			draw_tiles(body)
 		Screen.SHIP_SELECTION:
-			draw_offer(body)
+			draw_ship_offer(body)
 		Screen.BANK_ACCOUNT:
 			draw_bank_account(body)
 	if popup != PopupKind.NONE:
@@ -419,15 +420,15 @@ func draw_bank_account(area: Rect2) -> void:
 	draw_text(lines[1], Vector2(area.position.x, y), STAT_SIZE)
 
 
-func draw_offer(area: Rect2) -> void:
-	var type := selected_offer()
+func draw_ship_offer(area: Rect2) -> void:
+	var type := selected_ship_offer()
 	var half := area.size.x / 2.0
 	var picture_box := Rect2(area.position, Vector2(half, area.size.y))
-	draw_wireframe(offer_picture(), picture_box)
+	draw_wireframe(ship_offer_picture(), picture_box)
 
 	var x := area.position.x + half
 	var width := half
-	var y := area.get_center().y - OFFER_TEXT_LIFT + NAME_SIZE
+	var y := area.get_center().y - SHIP_OFFER_TEXT_LIFT + NAME_SIZE
 	var title := type.name.to_upper()
 	draw_text(title, Vector2(x, y), NAME_SIZE, width)
 	if in_service_shown():
@@ -436,12 +437,12 @@ func draw_offer(area: Rect2) -> void:
 	y += LINE_GAP + TEXT_SIZE
 	draw_text(type.flavour.to_upper(), Vector2(x, y), TEXT_SIZE, width)
 	y += 2.0 * LINE_GAP
-	for stat: Array in offer_stats():
+	for stat: Array in ship_offer_stats():
 		y += STAT_SIZE + LINE_GAP
 		draw_text(stat[0], Vector2(x, y), STAT_SIZE, RATING_LABEL_WIDTH)
 		draw_text(stat[1], Vector2(x + RATING_LABEL_WIDTH, y), STAT_SIZE, width - RATING_LABEL_WIDTH)
 	y += LINE_GAP
-	for rating: Array in offer_ratings():
+	for rating: Array in ship_offer_ratings():
 		y += STAT_SIZE + LINE_GAP
 		draw_text(rating[0], Vector2(x, y), STAT_SIZE, RATING_LABEL_WIDTH)
 		draw_rating(rating[1], Vector2(x + RATING_LABEL_WIDTH, y - BLOCK_SIZE.y))

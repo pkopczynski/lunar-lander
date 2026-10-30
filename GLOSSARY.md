@@ -91,7 +91,7 @@ _Avoid_: Load (for goods alone), freight
 ## Ship
 
 **Ship type**:
-A kind of ship with its own shape, dry mass, tank, thrust and turn rate. The game has three: the Sparrow, the Mule and the Halo.
+A kind of ship with its own shape, dry mass, maximum weight, tank, passenger seats, cargo capacity, thrust and turn rate. The game has three: the Sparrow, the Mule and the Halo.
 _Avoid_: Model, class, variant
 
 **Sparrow**:

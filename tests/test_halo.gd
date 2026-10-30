@@ -7,25 +7,25 @@ const TURN_RATE := 2.2
 const THRUST_TIME_RATIO := 24.0 / 20.0
 
 
-func test_halo_offer_is_reachable_with_left_and_right() -> void:
+func test_halo_ship_offer_is_reachable_with_left_and_right() -> void:
 	await open_ship_selection()
 	await browse_to(ShipType.HALO, &"ui_right")
-	check(office().selected_offer() == ShipType.HALO, "Right should reach the Halo Offer")
+	check(office().selected_ship_offer() == ShipType.HALO, "Right should reach the Halo Ship offer")
 	await press(&"ui_cancel")
 	await restart_office()
 	await open_ship_selection()
 	await browse_to(ShipType.HALO, &"ui_left")
-	check(office().selected_offer() == ShipType.HALO, "Left should reach the Halo Offer")
+	check(office().selected_ship_offer() == ShipType.HALO, "Left should reach the Halo Ship offer")
 
 
-func test_halo_offer_shows_its_numbers_ratings_and_wireframe() -> void:
+func test_halo_ship_offer_shows_its_numbers_ratings_and_wireframe() -> void:
 	await open_ship_selection()
 	await browse_to(ShipType.HALO, &"ui_right")
-	var lines := office().offer_lines()
-	for expected: String in ["HALO", "TANK 8 000 KG", "DRY MASS 14 000 KG", "MAX WEIGHT 24 000 KG",
-			"THRUST ■■■■□", "HANDLING ■■■■□"]:
-		check(expected in lines, "the Halo Offer should show %s, shows %s" % [expected, lines])
-	check(office().offer_picture() == office().selected_offer().hull, "the Offer picture should be the Halo's hull")
+	var lines := office().ship_offer_lines()
+	for expected: String in ["HALO", "TANK 8 000 KG", "DRY MASS 14 000 KG", "MAX WEIGHT 32 000 KG",
+			"SEATS 10", "CARGO 11 000 KG", "THRUST ■■■■□", "HANDLING ■■■■□"]:
+		check(expected in lines, "the Halo Ship offer should show %s, shows %s" % [expected, lines])
+	check(office().ship_offer_picture() == office().selected_ship_offer().hull, "the Ship offer picture should be the Halo's hull")
 
 
 func test_choosing_the_halo_docks_it_with_a_full_tank_inside_the_spot() -> void:
@@ -84,7 +84,7 @@ func test_halo_docks_in_the_parking_spot() -> void:
 func test_halo_hovers_at_maximum_weight() -> void:
 	await choose_ship(ShipType.HALO)
 	await raise_to_maximum_weight()
-	check_near(dry_mass(), 24000.0, 0.01, "dry mass at Maximum weight")
+	check_near(lander().total_mass(), 32000.0, 0.01, "total mass at Maximum weight")
 	check(await climbs_under_full_thrust(), "the Halo should climb at Maximum weight")
 
 
