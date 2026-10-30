@@ -42,7 +42,7 @@ const TRADERS: Array[String] = ["Tycho Haulage", "Selene Mining", "Mare Logistic
 	"Kepler Supply", "Apollo Freight", "Regolith & Sons", "Crater Works"]
 
 const NOT_ENOUGH_SEATS := "Not enough passenger seats"
-const CARGO_EXCEEDED := "Cargo capacity exceeded"
+const OVERLOADED := "Overloaded"
 
 
 # A delivered Contract's line in the Bank account, in euros.
@@ -90,7 +90,7 @@ func misfit_reason(seats_left: int, cargo_left: float) -> String:
 	if passengers > seats_left:
 		return NOT_ENOUGH_SEATS
 	if cargo_mass > cargo_left:
-		return CARGO_EXCEEDED
+		return OVERLOADED
 	return ""
 
 

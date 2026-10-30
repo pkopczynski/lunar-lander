@@ -92,7 +92,7 @@ func test_offers_that_would_exceed_the_seats_or_cargo_left_are_disabled_with_the
 	check(reason_for(too_many) == "", "2 passengers should fit an empty Sparrow, got %s" % reason_for(too_many))
 	await accept(first)
 	check(reason_for(too_many) == "NOT ENOUGH PASSENGER SEATS", "2 more passengers than seats left should read NOT ENOUGH PASSENGER SEATS, got %s" % reason_for(too_many))
-	check(reason_for(too_heavy) == "CARGO CAPACITY EXCEEDED", "3 500 kg on 3 000 kg left should read CARGO CAPACITY EXCEEDED, got %s" % reason_for(too_heavy))
+	check(reason_for(too_heavy) == "OVERLOADED", "3 500 kg on 3 000 kg left should read OVERLOADED, got %s" % reason_for(too_heavy))
 	check(reason_for(fits) == "", "what's left should still take 1 passenger and 3 000 kg, got %s" % reason_for(fits))
 	await open_details(too_many)
 	await press(&"ui_accept")
@@ -106,11 +106,11 @@ func test_the_summary_shows_passengers_cargo_and_start_loading() -> void:
 	var offer := known_offer(3, 2500.0)
 	economy().put_offer(offer)
 	await open_transport_offers()
-	check(offers().summary() == PackedStringArray(["PASSENGERS 0/4", "CARGO 0/8 000 KG"]),
+	check(offers().summary() == PackedStringArray(["PASSENGERS 0/4", "CARGO 0/7 000 KG"]),
 		"an empty Sparrow's summary, got %s" % offers().summary())
 	check(not offers().start_loading_enabled(), "START LOADING should be disabled with no Contracts")
 	await accept(offer)
-	check(offers().summary() == PackedStringArray(["PASSENGERS 3/4", "CARGO 2 500/8 000 KG"]),
+	check(offers().summary() == PackedStringArray(["PASSENGERS 3/4", "CARGO 2 500/6 760 KG"]),
 		"the summary should count the Contract, got %s" % offers().summary())
 	check(offers().start_loading_enabled(), "START LOADING should be enabled with a Contract")
 

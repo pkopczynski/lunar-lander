@@ -40,6 +40,9 @@ const Hud := preload("res://hud.gd")
 const GREEN := Color(0.25, 1.0, 0.4)
 const DIM_GREEN := Color(0.25, 1.0, 0.4, 0.25)
 const BLACK := Color.BLACK
+# Values next to green labels, and values over a limit.
+const WHITE := Color(0.9, 1.0, 0.92)
+const RED := Color(1.0, 0.3, 0.25)
 const SCANLINE_COLOR := Color(0.0, 0.0, 0.0, 0.35)
 const SCANLINE_SPACING := 4.0
 

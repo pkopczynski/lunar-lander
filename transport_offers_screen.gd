@@ -20,7 +20,8 @@ const NOTICE_PADDING := Vector2(8, 4)
 # Text
 const ACCEPT_TEXT := "ACCEPT"
 const CONTRACTS_TEXT := "CONTRACTS"
-const FUEL_LIMITED_PREFIX := "FUEL LIMITED: "
+const FUEL_LIMITED_LABEL := "FUEL LIMITED:"
+const FUEL_LIMITED_NOTE := "FUEL LIMITED"
 const START_LOADING_TEXT := "START LOADING"
 const KG_SUFFIX := " KG"
 const OFFER_EXPIRED_TEXT := "OFFER EXPIRED"
@@ -174,17 +175,59 @@ func contract_lines() -> PackedStringArray:
 	return lines
 
 
-# Under the Contracts: seats and cargo taken, and FUEL LIMITED when the Load leaves less
-# room than a full Tank.
+# Under the Contracts: seats taken, cargo against the full-Tank cargo for the accepted
+# passengers, and FUEL LIMITED (the fuel cap over the Tank) once the Load leaves less room
+# than a full Tank, which is exactly when the cargo passes the full-Tank cargo.
 func summary() -> PackedStringArray:
-	var ship := economy.lander
-	var lines := PackedStringArray([
-		"PASSENGERS %d/%d" % [economy.contract_passengers(), ship.ship_type.passenger_seats],
-		"CARGO " + kg_of(economy.contract_cargo(), ship.ship_type.cargo_capacity)])
-	var fuel_cap := ship.fuel_cap_for(economy.contract_load_mass())
-	if fuel_cap < ship.ship_type.tank:
-		lines.append(FUEL_LIMITED_PREFIX + kg_of(fuel_cap, ship.ship_type.tank))
+	var lines := PackedStringArray()
+	for part in summary_parts():
+		lines.append("%s %s" % [part[0], part[1]])
 	return lines
+
+
+# The summary lines whose value is red.
+func red_summary_lines() -> PackedStringArray:
+	var lines := PackedStringArray()
+	for part in summary_parts():
+		if part[3] == Office.RED:
+			lines.append("%s %s" % [part[0], part[1]])
+	return lines
+
+
+# Per row, the red note under a fitting offer that would leave less room than a full Tank
+# on top of the Contracts, or "".
+func red_notes() -> PackedStringArray:
+	var lines := PackedStringArray()
+	for offer in economy.offers:
+		lines.append(red_note(offer))
+	return lines
+
+
+func red_note(offer: TransportOffer) -> String:
+	if economy.misfit_reason(offer) != "" or not limits_fuel(economy.contract_load_mass() + offer.load_mass()):
+		return ""
+	return FUEL_LIMITED_NOTE
+
+
+# The summary as [label, value, label colour, value colour].
+func summary_parts() -> Array[Array]:
+	var ship := economy.lander
+	var passengers := economy.contract_passengers()
+	var load_mass := economy.contract_load_mass()
+	var fuel_limited := limits_fuel(load_mass)
+	var parts: Array[Array] = [
+		["PASSENGERS", "%d/%d" % [passengers, ship.ship_type.passenger_seats], Office.GREEN, Office.WHITE],
+		["CARGO", kg_of(economy.contract_cargo(), ship.ship_type.full_tank_cargo(passengers)), Office.GREEN,
+			Office.RED if fuel_limited else Office.WHITE]]
+	if fuel_limited:
+		parts.append([FUEL_LIMITED_LABEL, kg_of(ship.fuel_cap_for(load_mass), ship.ship_type.tank),
+			Office.RED, Office.RED])
+	return parts
+
+
+func limits_fuel(load_mass: float) -> bool:
+	var ship := economy.lander
+	return ship.fuel_cap_for(load_mass) < ship.ship_type.tank
 
 
 func start_loading_enabled() -> bool:
@@ -230,6 +273,11 @@ func draw(area: Rect2) -> void:
 			office.draw_text(reason, Vector2(baseline.x, y + Office.TEXT_SIZE), Office.TEXT_SIZE, width,
 				HORIZONTAL_ALIGNMENT_RIGHT, Office.DIM_GREEN)
 			y += ROW_HEIGHT
+		var note := red_note(offer)
+		if note != "":
+			office.draw_text(note, Vector2(baseline.x, y + Office.TEXT_SIZE), Office.TEXT_SIZE, width,
+				HORIZONTAL_ALIGNMENT_RIGHT, Office.RED)
+			y += ROW_HEIGHT
 		if offer == expanded:
 			y = draw_details(offer, Vector2(baseline.x, y), width, reason == "")
 	if notice() != "":
@@ -258,9 +306,14 @@ func draw_contracts(area: Rect2) -> void:
 			office.terminal.draw_line(Vector2(area.position.x, y + ROW_PADDING),
 				Vector2(area.end.x, y + ROW_PADDING), Office.GREEN, Office.LINE_WIDTH)
 	y += ROW_HEIGHT
-	for line in summary():
+	for part in summary_parts():
 		y += ROW_HEIGHT
-		office.draw_text(line, Vector2(area.position.x, y), Office.TEXT_SIZE, area.size.x)
+		var label: String = part[0] + " "
+		office.draw_text(label, Vector2(area.position.x, y), Office.TEXT_SIZE, area.size.x,
+			HORIZONTAL_ALIGNMENT_LEFT, part[2])
+		var label_width := office.text_width(label, Office.TEXT_SIZE)
+		office.draw_text(part[1], Vector2(area.position.x + label_width, y), Office.TEXT_SIZE,
+			area.size.x - label_width, HORIZONTAL_ALIGNMENT_LEFT, part[3])
 	var button := Rect2(Vector2(area.position.x, y + ROW_HEIGHT), START_LOADING_SIZE)
 	var lit := Office.GREEN if start_loading_enabled() else Office.DIM_GREEN
 	var focused := focus == Column.CONTRACTS

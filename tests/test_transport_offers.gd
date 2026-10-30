@@ -63,7 +63,7 @@ func test_offers_too_big_for_the_ship_show_why_and_fuel_never_disables_one() -> 
 		economy().put_offer(offer)
 	await open_transport_offers()
 	check(reason_for(too_many) == "NOT ENOUGH PASSENGER SEATS", "5 passengers on a Sparrow should read NOT ENOUGH PASSENGER SEATS, got %s" % reason_for(too_many))
-	check(reason_for(too_heavy) == "CARGO CAPACITY EXCEEDED", "8 100 kg on a Sparrow should read CARGO CAPACITY EXCEEDED, got %s" % reason_for(too_heavy))
+	check(reason_for(too_heavy) == "OVERLOADED", "8 100 kg on a Sparrow should read OVERLOADED, got %s" % reason_for(too_heavy))
 	check(reason_for(fits) == "", "a full Sparrow's Load should fit, even with less room for fuel, got %s" % reason_for(fits))
 	await press(&"ui_cancel")
 	await open_ship_selection()
