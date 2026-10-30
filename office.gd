@@ -302,9 +302,9 @@ func bank_lines() -> PackedStringArray:
 func transaction_lines() -> PackedStringArray:
 	var lines := PackedStringArray()
 	for transaction in economy.transactions:
-		var contract: TransportOffer = transaction.contract
-		lines.append("#%03d %s  %s  %s - %s = %s" % [contract.number, contract.title.to_upper(),
-			TransportOffer.KIND_LABELS[contract.kind()], Economy.eur(transaction.base),
+		var contract := transaction.contract
+		lines.append("%s  %s  %s - %s = %s" % [contract.label(),
+			TransportOffer.KIND_LABELS[contract.kind()], Economy.eur(transaction.reward),
 			Economy.eur(transaction.penalty), Economy.eur(transaction.payout)])
 	return lines
 

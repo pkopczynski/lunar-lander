@@ -44,6 +44,15 @@ const TRADERS: Array[String] = ["Tycho Haulage", "Selene Mining", "Mare Logistic
 const NOT_ENOUGH_SEATS := "Not enough passenger seats"
 const CARGO_EXCEEDED := "Cargo capacity exceeded"
 
+
+# A delivered Contract's line in the Bank account, in euros.
+class Transaction:
+	var contract: TransportOffer
+	var reward: int
+	var penalty: int
+	var payout: int
+
+
 var number: int
 var title: String
 var trader: String
@@ -69,8 +78,13 @@ func load_mass() -> float:
 	return passengers * PASSENGER_MASS + cargo_mass
 
 
-func value() -> int:
+func reward() -> int:
 	return passenger_reward + cargo_reward
+
+
+# Its number and title, as #004 MINING SUPPLIES.
+func label() -> String:
+	return "#%03d %s" % [number, title.to_upper()]
 
 
 # Why it doesn't fit the seats and cargo left, or "" when it does.
@@ -82,13 +96,23 @@ func misfit_reason(seats_left: int, cargo_left: float) -> String:
 	return ""
 
 
-# What it pays when delivered overdue_seconds late: base reward, penalty and payout, each in
-# euros. The passenger and cargo parts are penalised separately, each never below €0.
-func settlement(overdue_seconds: float) -> Dictionary:
+# What it pays when delivered overdue_seconds late. The passenger and cargo parts are
+# penalised separately, each never below €0.
+func settlement(overdue_seconds: float) -> Transaction:
 	var late := maxi(floori(overdue_seconds), 0)
-	var penalty := mini(roundi(passenger_reward * PASSENGER_PENALTY_SHARE * late), passenger_reward) \
+	var transaction := Transaction.new()
+	transaction.contract = self
+	transaction.reward = reward()
+	transaction.penalty = mini(roundi(passenger_reward * PASSENGER_PENALTY_SHARE * late), passenger_reward) \
 		+ mini(roundi(cargo_reward * CARGO_PENALTY_SHARE * late), cargo_reward)
-	return {"base": value(), "penalty": penalty, "payout": value() - penalty}
+	transaction.payout = transaction.reward - transaction.penalty
+	return transaction
+
+
+# Whole seconds as m:ss, counting a started second as a whole one.
+static func countdown(seconds_left: float) -> String:
+	var whole := maxi(ceili(seconds_left), 0)
+	return "%d:%02d" % [whole / 60, whole % 60]
 
 
 # Whether anything at all could be generated within these limits.

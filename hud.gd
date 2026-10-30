@@ -106,10 +106,9 @@ func delivery_text() -> String:
 		return ""
 	var left := economy.delivery_left()
 	if left >= 0.0:
-		return DELIVERY_PREFIX + TransportOffersScreen.countdown(left)
+		return DELIVERY_PREFIX + TransportOffer.countdown(left)
 	# Whole overdue seconds, rounded down like the penalty.
-	var overdue := floori(-left)
-	return OVERDUE_PREFIX + "%d:%02d" % [overdue / 60, overdue % 60]
+	return OVERDUE_PREFIX + TransportOffer.countdown(floorf(-left))
 
 
 func delivery_overdue() -> bool:

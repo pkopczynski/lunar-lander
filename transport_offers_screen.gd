@@ -143,8 +143,8 @@ func details() -> PackedStringArray:
 # The offer's details as [label, text] pairs.
 static func detail_pairs(offer: TransportOffer) -> Array[Array]:
 	return [["PASSENGERS", str(offer.passengers)], ["CARGO", Office.kg(offer.cargo_mass)],
-		["DEADLINE", countdown(offer.deadline)], ["TRADER", offer.trader.to_upper()],
-		["VALUE", Economy.eur(offer.value())]]
+		["DEADLINE", TransportOffer.countdown(offer.deadline)], ["TRADER", offer.trader.to_upper()],
+		["VALUE", Economy.eur(offer.reward())]]
 
 
 func rows() -> PackedStringArray:
@@ -166,7 +166,7 @@ func reasons() -> PackedStringArray:
 func contract_lines() -> PackedStringArray:
 	var lines := PackedStringArray([CONTRACTS_TEXT])
 	for contract in economy.contracts:
-		lines.append(contract_text(contract))
+		lines.append(contract.label())
 	return lines
 
 
@@ -192,19 +192,9 @@ static func kg_of(part: float, whole: float) -> String:
 	return "%s/%s" % [Office.kg(part).trim_suffix(KG_SUFFIX), Office.kg(whole)]
 
 
-static func contract_text(contract: TransportOffer) -> String:
-	return "#%03d %s" % [contract.number, contract.title.to_upper()]
-
-
 static func row_text(offer: TransportOffer) -> String:
-	return "#%03d %s %s %s" % [offer.number, offer.title.to_upper(), TransportOffer.KIND_LABELS[offer.kind()],
-		countdown(offer.time_left)]
-
-
-# Whole seconds as m:ss, counting a started second as a whole one.
-static func countdown(seconds_left: float) -> String:
-	var whole := maxi(ceili(seconds_left), 0)
-	return "%d:%02d" % [whole / 60, whole % 60]
+	return "%s %s %s" % [offer.label(), TransportOffer.KIND_LABELS[offer.kind()],
+		TransportOffer.countdown(offer.time_left)]
 
 
 # Drawing
@@ -227,9 +217,9 @@ func draw(area: Rect2) -> void:
 		var color := Office.BLACK if selected else lit
 		var baseline := Vector2(row.position.x + ROW_PADDING, row.get_center().y + Office.TEXT_SIZE / 2.0)
 		var width := row.size.x - 2.0 * ROW_PADDING
-		office.draw_text("#%03d %s" % [offer.number, offer.title.to_upper()], baseline, Office.TEXT_SIZE, width,
+		office.draw_text(offer.label(), baseline, Office.TEXT_SIZE, width,
 			HORIZONTAL_ALIGNMENT_LEFT, color)
-		office.draw_text("%s   %s" % [TransportOffer.KIND_LABELS[offer.kind()], countdown(offer.time_left)],
+		office.draw_text("%s   %s" % [TransportOffer.KIND_LABELS[offer.kind()], TransportOffer.countdown(offer.time_left)],
 			baseline, Office.TEXT_SIZE, width, HORIZONTAL_ALIGNMENT_RIGHT, color)
 		y += ROW_HEIGHT
 		if reason != "":

@@ -37,8 +37,8 @@ enum Phase { NONE, LOADING, DELIVERING, UNLOADING }
 
 # In whole euros. It may go negative.
 var balance := 0
-# One per delivered Contract, newest first: its settlement (base, penalty, payout) plus "contract".
-var transactions: Array[Dictionary] = []
+# One per delivered Contract, newest first.
+var transactions: Array[TransportOffer.Transaction] = []
 # The Transport offers on the Terminal, oldest first.
 var offers: Array[TransportOffer] = []
 # Accepted Transport offers.
@@ -107,7 +107,7 @@ func finish_loading() -> void:
 	lander.load_mass = contract_load_mass()
 	lander.fuel = minf(lander.fuel, lander.fuel_cap())
 	lander.release()
-	var status := LOADED_TEXT % TransportOffersScreen.countdown(deadline())
+	var status := LOADED_TEXT % TransportOffer.countdown(deadline())
 	if lander.fuel_cap() < lander.ship_type.tank:
 		status += "\n" + FUEL_LIMITED_TEXT % Hud.format_kg(lander.fuel_cap())
 	lander.show_status(status)
@@ -133,10 +133,9 @@ func finish_unloading() -> void:
 	phase = Phase.NONE
 	var total := 0
 	for contract in contracts:
-		var settlement := contract.settlement(-delivery_left())
-		settlement.contract = contract
-		transactions.push_front(settlement)
-		total += settlement.payout
+		var transaction := contract.settlement(-delivery_left())
+		transactions.push_front(transaction)
+		total += transaction.payout
 	balance += total
 	contracts.clear()
 	lander.load_mass = 0.0
@@ -248,7 +247,10 @@ func contract_cargo() -> float:
 
 # The Contracts' Load: passengers and cargo, in kg.
 func contract_load_mass() -> float:
-	return contract_passengers() * TransportOffer.PASSENGER_MASS + contract_cargo()
+	var total := 0.0
+	for contract in contracts:
+		total += contract.load_mass()
+	return total
 
 
 # Generated offers may be too big for the smaller ship types on purpose.
