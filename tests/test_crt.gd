@@ -19,43 +19,45 @@ func test_return_during_power_on_does_nothing() -> void:
 	await choose_ship()
 	await restart(false)
 	await press(&"ui_accept")
-	check(office().popup == Office.PopupKind.NONE, "Return during power-on should not open ARE YOU SURE?")
+	check(office().screen == Office.Screen.MAIN, "Return during power-on should not open a tile")
 	await wait_for_terminal()
 	await press(&"ui_accept")
-	check(office().popup == Office.PopupKind.ARE_YOU_SURE, "Return after power-on should open ARE YOU SURE?")
+	check(office().screen == Office.Screen.SHIP_SELECTION, "Return after power-on should open Ship selection")
 
 
-func test_confirming_a_ship_powers_off_before_the_flight_view_shows() -> void:
-	await press(&"ui_right")
-	check(office().selected_offer() == ShipType.MULE, "Right should browse to the Mule")
-	await press(&"ui_accept")
-	await press(&"ui_accept")
-	check(office().popup == Office.PopupKind.NONE, "Yes should close ARE YOU SURE?")
-	check(office().powering, "Yes should power the Terminal off")
+func test_escape_on_the_main_screen_powers_off_before_the_flight_view_shows() -> void:
+	await press(&"ui_cancel")
+	check(office().powering, "Escape should power the Terminal off")
 	check(office().showing, "the Terminal should cover the flight view during power-off")
 	check(tree.paused, "the world should stay paused during power-off")
 	await seconds(0.4)
 	check(not office().powering, "power-off should be over after 0.4 s")
 	check(not office().showing, "the flight view should show after power-off")
 	check(not tree.paused, "the world should run after power-off")
-	check(lander().ship_type == ShipType.MULE, "the ship should be the Mule, got %s" % lander().ship_type.name)
-	check(lander().state == Lander.State.DOCKED, "the Mule should be Docked")
+	check(lander().state == Lander.State.DOCKED, "the ship should be Docked")
 
 
-func test_holding_return_through_power_off_does_not_select_again() -> void:
+func test_choosing_a_ship_stays_powered_on() -> void:
+	await open_ship_selection()
+	await browse_to(ShipType.MULE)
 	await press(&"ui_accept")
-	hold(&"ui_accept")
+	await press(&"ui_accept")
+	check(not office().powering, "choosing a ship should not power the Terminal off")
+	check(office().showing and office().screen == Office.Screen.MAIN, "choosing a ship should show the main screen")
+
+
+func test_holding_escape_through_power_off_does_not_reopen_anything() -> void:
+	hold(&"ui_cancel")
 	await seconds(1.0)
-	release(&"ui_accept")
+	release(&"ui_cancel")
 	await frames(1)
 	check(not office().showing, "the Office should stay closed")
-	check(office().popup == Office.PopupKind.NONE, "holding Return should not open a popup")
+	check(office().popup == Office.PopupKind.NONE, "holding Escape should not open a popup")
 	check(lander().state == Lander.State.DOCKED and lander().ship_type == ShipType.SPARROW, "the Sparrow should be Docked")
 
 
-func test_return_during_power_off_does_nothing() -> void:
-	await press(&"ui_accept")
-	await press(&"ui_accept")
+func test_input_during_power_off_does_nothing() -> void:
+	await press(&"ui_cancel")
 	await press(&"ui_accept")
 	await press(&"ui_left")
 	await seconds(0.4)
@@ -64,7 +66,7 @@ func test_return_during_power_off_does_nothing() -> void:
 	check(lander().ship_type == ShipType.SPARROW, "input during power-off should not change the ship")
 
 
-func test_yes_in_the_swap_popup_powers_the_terminal_on() -> void:
+func test_yes_in_the_office_popup_powers_the_terminal_on() -> void:
 	await choose_ship()
 	await dock_in_spot()
 	await press(&"ui_left")
@@ -72,13 +74,13 @@ func test_yes_in_the_swap_popup_powers_the_terminal_on() -> void:
 	check(office().showing, "Yes should open the Office")
 	check(office().powering, "Yes should power the Terminal on")
 	await press(&"ui_accept")
-	check(office().showing and office().popup == Office.PopupKind.NONE,
-		"Return during power-on should not pick the IN SERVICE Offer")
+	check(office().showing and office().screen == Office.Screen.MAIN,
+		"Return during power-on should not open a tile")
 	await wait_for_terminal()
-	check(office().in_service_shown(), "the IN SERVICE Offer should show after power-on")
+	check(office().screen == Office.Screen.MAIN, "the main screen should show after power-on")
 
 
-func test_cancelling_a_swap_powers_off_before_the_flight_view_shows() -> void:
+func test_leaving_the_office_after_docking_powers_off_before_the_flight_view_shows() -> void:
 	await choose_ship()
 	await dock_in_spot()
 	await press(&"ui_left")
@@ -92,9 +94,9 @@ func test_cancelling_a_swap_powers_off_before_the_flight_view_shows() -> void:
 	check(lander().state == Lander.State.DOCKED, "the ship should stay Docked")
 
 
-func test_no_in_the_swap_popup_closes_it_without_an_effect() -> void:
+func test_no_in_the_office_popup_closes_it_without_an_effect() -> void:
 	await choose_ship()
 	await dock_in_spot()
 	await press(&"ui_accept")
-	check(not office().powering, "the swap popup is not the Terminal, so No plays no effect")
-	check(office().popup == Office.PopupKind.NONE and not office().showing, "No should close the swap popup")
+	check(not office().powering, "the Enter-the-Office popup is not the Terminal, so No plays no effect")
+	check(office().popup == Office.PopupKind.NONE and not office().showing, "No should close the Enter-the-Office popup")

@@ -44,6 +44,10 @@ func office() -> Office:
 	return main().get_node("Office")
 
 
+func economy() -> Economy:
+	return main().get_node("Economy")
+
+
 func station() -> Station:
 	return main().get_node("Station")
 
@@ -55,14 +59,28 @@ func message() -> String:
 
 # Set-up
 
-# Picks a ship type in the Office the way a player does: browse to its Offer,
-# press Return, then Return again on Yes. Leaves the ship Docked in the parking spot.
+# Picks a ship type in the Office the way a player does, from the main screen: open
+# Ship selection, browse to its Offer, press Return and confirm Yes (the ship type
+# in service needs no confirming), then Escape. Leaves the ship Docked in the parking spot.
 func choose_ship(type: ShipType = ShipType.SPARROW) -> void:
+	await open_ship_selection()
 	await browse_to(type)
 	await press(&"ui_accept")
-	await press(&"ui_accept")
+	if office().popup == Office.PopupKind.ARE_YOU_SURE:
+		await press(&"ui_accept")
+	check(office().screen == Office.Screen.MAIN, "choosing the %s should return to the main screen" % type.name)
+	check(lander().ship_type == type, "choosing the %s should put it in the parking spot" % type.name)
+	await press(&"ui_cancel")
 	await wait_for_terminal()
-	check(not office().showing, "choosing the %s should close the Office" % type.name)
+	check(not office().showing, "Escape on the main screen should close the Office")
+
+
+# Opens the Ship selection tile from the Office main screen.
+func open_ship_selection() -> void:
+	for i in Office.TILES.size():
+		await press(&"ui_left")
+	await press(&"ui_accept")
+	check(office().screen == Office.Screen.SHIP_SELECTION, "Return should open Ship selection")
 
 
 # Presses action (Right or Left) in the Office until it offers that ship type.
@@ -88,7 +106,7 @@ func crash_in_deep_space() -> void:
 
 
 # Flies the ship into the parking spot from free flight, which docks it (and
-# opens the swap popup).
+# opens the Enter-the-Office popup).
 func dock_in_spot() -> void:
 	place(station().parking_spot.get_center())
 	await seconds(0.5)

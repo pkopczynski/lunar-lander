@@ -8,14 +8,18 @@ const THRUST_TIME_RATIO := 24.0 / 20.0
 
 
 func test_halo_offer_is_reachable_with_left_and_right() -> void:
+	await open_ship_selection()
 	await browse_to(ShipType.HALO, &"ui_right")
 	check(office().selected_offer() == ShipType.HALO, "Right should reach the Halo Offer")
+	await press(&"ui_cancel")
 	await restart_office()
+	await open_ship_selection()
 	await browse_to(ShipType.HALO, &"ui_left")
 	check(office().selected_offer() == ShipType.HALO, "Left should reach the Halo Offer")
 
 
 func test_halo_offer_shows_its_numbers_ratings_and_wireframe() -> void:
+	await open_ship_selection()
 	await browse_to(ShipType.HALO, &"ui_right")
 	var lines := office().offer_lines()
 	for expected: String in ["HALO", "TANK 8 000 KG", "DRY MASS 14 000 KG", "MAX WEIGHT 24 000 KG",

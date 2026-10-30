@@ -1,23 +1,24 @@
 extends "res://tests/scene_test.gd"
 
 
-func test_run_start_shows_no_swap_popup() -> void:
+func test_run_start_shows_no_office_popup() -> void:
 	await choose_ship()
 	await seconds(0.5)
 	check(lander().state == Lander.State.DOCKED, "the run should start Docked")
-	check(office().popup == Office.PopupKind.NONE, "the run start should not open the swap popup")
+	check(office().popup == Office.PopupKind.NONE, "the run start should not open the Enter-the-Office popup")
 
 
-func test_docking_opens_the_swap_popup_with_no_selected() -> void:
+func test_docking_asks_to_enter_the_office_with_no_selected() -> void:
 	await choose_ship()
 	await dock_in_spot()
 	check(lander().state == Lander.State.DOCKED, "the ship should be Docked")
-	check(office().popup == Office.PopupKind.SWAP, "docking should open the swap popup")
-	check(office().selected_button == Office.Choice.NO, "the swap popup should have No selected")
-	check(not office().showing, "the Terminal should not be showing behind the swap popup")
+	check(office().popup == Office.PopupKind.ENTER_OFFICE, "docking should open the Enter-the-Office popup")
+	check(office().popup_text() == "ENTER THE OFFICE?", "the popup should ask ENTER THE OFFICE?, got %s" % office().popup_text())
+	check(office().selected_button == Office.Choice.NO, "the Enter-the-Office popup should have No selected")
+	check(not office().showing, "the Terminal should not be showing behind the Enter-the-Office popup")
 
 
-func test_ship_is_frozen_while_the_swap_popup_is_open() -> void:
+func test_ship_is_frozen_while_the_office_popup_is_open() -> void:
 	await choose_ship()
 	await dock_in_spot()
 	var ship := lander()
@@ -25,7 +26,7 @@ func test_ship_is_frozen_while_the_swap_popup_is_open() -> void:
 	hold(&"ui_up")
 	await seconds(0.5)
 	release(&"ui_up")
-	check(ship.state == Lander.State.DOCKED, "Up should not undock while the swap popup is open")
+	check(ship.state == Lander.State.DOCKED, "Up should not undock while the Enter-the-Office popup is open")
 	check(ship.position == spot, "the ship should not move, %s from %s" % [ship.position, spot])
 	hold(&"ui_left")
 	await seconds(0.5)
@@ -33,39 +34,39 @@ func test_ship_is_frozen_while_the_swap_popup_is_open() -> void:
 	hold(&"ui_right")
 	await seconds(0.2)
 	release(&"ui_right")
-	check_near(ship.rotation, 0.0, 0.0001, "rotation while the swap popup is open")
+	check_near(ship.rotation, 0.0, 0.0001, "rotation while the Enter-the-Office popup is open")
 	ship.fuel = 1000.0
 	await seconds(Lander.REFUEL_DELAY + 1.0)
-	check_near(ship.fuel, 1000.0, 0.0001, "fuel while the swap popup is open")
-	check(not message().contains("Refueling"), "should not refuel while the swap popup is open, got %s" % message())
-	check(office().popup == Office.PopupKind.SWAP, "the swap popup should still be open")
+	check_near(ship.fuel, 1000.0, 0.0001, "fuel while the Enter-the-Office popup is open")
+	check(not message().contains("Refueling"), "should not refuel while the Enter-the-Office popup is open, got %s" % message())
+	check(office().popup == Office.PopupKind.ENTER_OFFICE, "the Enter-the-Office popup should still be open")
 
 
-func test_weight_keys_do_nothing_while_the_swap_popup_is_open() -> void:
+func test_weight_keys_do_nothing_while_the_office_popup_is_open() -> void:
 	await choose_ship()
 	await dock_in_spot()
 	var before := dry_mass()
 	await press(&"weight_up")
 	await press(&"weight_down")
 	await press(&"weight_down")
-	check_near(dry_mass(), before, 0.01, "dry mass while the swap popup is open")
-	check(office().popup == Office.PopupKind.SWAP, "the swap popup should still be open")
+	check_near(dry_mass(), before, 0.01, "dry mass while the Enter-the-Office popup is open")
+	check(office().popup == Office.PopupKind.ENTER_OFFICE, "the Enter-the-Office popup should still be open")
 
 
-func test_r_in_the_swap_popup_returns_to_the_office() -> void:
+func test_r_in_the_office_popup_returns_to_the_office() -> void:
 	await choose_ship()
 	await dock_in_spot()
 	await restart()
 	check(office().showing, "R should return to the Office")
-	check(office().popup == Office.PopupKind.NONE, "the Office should open on the Offer screen after R")
-	check(not office().in_service_shown(), "a new run should not tag an Offer IN SERVICE")
+	check(office().popup == Office.PopupKind.NONE and office().screen == Office.Screen.MAIN,
+		"the Office should open on the main screen after R")
 
 
-func test_no_closes_the_swap_popup_and_refuels_after_the_delay() -> void:
+func test_no_closes_the_office_popup_and_refuels_after_the_delay() -> void:
 	await declining_refuels_after_the_delay(&"ui_accept")
 
 
-func test_escape_closes_the_swap_popup_and_refuels_after_the_delay() -> void:
+func test_escape_closes_the_office_popup_and_refuels_after_the_delay() -> void:
 	await declining_refuels_after_the_delay(&"ui_cancel")
 
 
@@ -75,7 +76,7 @@ func declining_refuels_after_the_delay(action: StringName) -> void:
 	var ship := lander()
 	ship.fuel = 1000.0
 	await press(action)
-	check(office().popup == Office.PopupKind.NONE, "%s should close the swap popup" % action)
+	check(office().popup == Office.PopupKind.NONE, "%s should close the Enter-the-Office popup" % action)
 	check(not office().showing, "%s should not open the Office" % action)
 	check(ship.state == Lander.State.DOCKED, "the ship should stay Docked")
 	await seconds(Lander.REFUEL_DELAY - 0.3)
@@ -86,24 +87,26 @@ func declining_refuels_after_the_delay(action: StringName) -> void:
 	hold(&"ui_up")
 	await seconds(0.4)
 	release(&"ui_up")
-	check(ship.state != Lander.State.DOCKED, "Up should undock once the swap popup is closed")
+	check(ship.state != Lander.State.DOCKED, "Up should undock once the Enter-the-Office popup is closed")
 
 
-func test_landing_on_the_pad_shows_no_swap_popup() -> void:
+func test_landing_on_the_pad_shows_no_office_popup() -> void:
 	await choose_ship()
 	place(Vector2(Lander.PAD_CENTER_X, 580), Vector2(0, 20))
 	await seconds(4.0)
 	check(lander().state == Lander.State.LANDED, "the ship should be Landed on the pad")
-	check(office().popup == Office.PopupKind.NONE, "landing on the pad should not open the swap popup")
+	check(office().popup == Office.PopupKind.NONE, "landing on the pad should not open the Enter-the-Office popup")
 	check(not office().showing, "landing on the pad should not open the Office")
 
 
-func test_yes_opens_the_office_with_the_current_ship_in_service() -> void:
+func test_yes_opens_the_office_main_screen_with_the_current_ship_in_service() -> void:
 	await choose_ship(ShipType.HALO)
 	await dock_in_spot()
 	await answer_swap_yes()
 	check(office().showing, "Yes should open the Office")
-	check(office().popup == Office.PopupKind.NONE, "the Office should open on the Offer screen")
+	check(office().popup == Office.PopupKind.NONE and office().screen == Office.Screen.MAIN,
+		"the Office should open on the main screen")
+	await open_ship_selection()
 	check(office().selected_offer() == ShipType.HALO, "the current ship type should be selected, got %s"
 		% office().selected_offer().name)
 	check(office().in_service_shown(), "the current ship type should be tagged IN SERVICE")
@@ -113,7 +116,7 @@ func test_yes_opens_the_office_with_the_current_ship_in_service() -> void:
 
 
 func answer_swap_yes() -> void:
-	check(office().popup == Office.PopupKind.SWAP, "the swap popup should be open")
+	check(office().popup == Office.PopupKind.ENTER_OFFICE, "the Enter-the-Office popup should be open")
 	await press(&"ui_left")
 	check(office().selected_button == Office.Choice.YES, "Left should select Yes")
 	await press(&"ui_accept")
@@ -149,15 +152,15 @@ func test_choosing_another_ship_type_puts_it_in_the_same_parking_spot() -> void:
 	check(ship.state != Lander.State.DOCKED, "Up should undock the Mule")
 
 
-func test_choosing_the_in_service_ship_type_returns_to_the_dock_as_no() -> void:
-	await cancelling_the_swap_returns_to_the_dock(&"ui_accept")
+func test_escape_on_the_main_screen_returns_to_the_dock_as_no() -> void:
+	await leaving_the_office_returns_to_the_dock(false)
 
 
-func test_escape_on_the_offer_screen_returns_to_the_dock_as_no() -> void:
-	await cancelling_the_swap_returns_to_the_dock(&"ui_cancel")
+func test_choosing_the_in_service_ship_type_then_leaving_returns_to_the_dock_as_no() -> void:
+	await leaving_the_office_returns_to_the_dock(true)
 
 
-func cancelling_the_swap_returns_to_the_dock(action: StringName) -> void:
+func leaving_the_office_returns_to_the_dock(choose_in_service: bool) -> void:
 	await choose_ship(ShipType.HALO)
 	await press(&"weight_up")
 	var ship := lander()
@@ -165,11 +168,15 @@ func cancelling_the_swap_returns_to_the_dock(action: StringName) -> void:
 	var spot := ship.position
 	ship.fuel = 1000.0
 	await answer_swap_yes()
-	check(office().in_service_shown(), "the Office should show the IN SERVICE Halo")
-	await press(action)
+	if choose_in_service:
+		await open_ship_selection()
+		check(office().in_service_shown(), "the Office should show the IN SERVICE Halo")
+		await press(&"ui_accept")
+		check(office().screen == Office.Screen.MAIN, "Return on the IN SERVICE Offer should return to the main screen")
+	await press(&"ui_cancel")
 	await wait_for_terminal()
-	check(not office().showing, "%s on the IN SERVICE Offer should close the Office" % action)
-	check(office().popup == Office.PopupKind.NONE, "%s should not leave a popup open" % action)
+	check(not office().showing, "Escape on the main screen should close the Office")
+	check(office().popup == Office.PopupKind.NONE, "leaving the Office should not leave a popup open")
 	check(not tree.paused, "the world should run again")
 	check(ship.ship_type == ShipType.HALO, "the ship should still be the Halo, got %s" % ship.ship_type.name)
 	check(ship.state == Lander.State.DOCKED and ship.position == spot, "the ship should stay Docked where it was")

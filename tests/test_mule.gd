@@ -14,15 +14,19 @@ const NOSE_RADIUS := 4.0
 
 
 func test_mule_offer_is_reachable_with_left_and_right() -> void:
+	await open_ship_selection()
 	await browse_to(ShipType.MULE, &"ui_right")
 	check(office().selected_offer() == ShipType.MULE, "Right should reach the Mule Offer")
+	await press(&"ui_cancel")
 	await choose_ship()
 	await restart()
+	await open_ship_selection()
 	await browse_to(ShipType.MULE, &"ui_left")
 	check(office().selected_offer() == ShipType.MULE, "Left should reach the Mule Offer")
 
 
 func test_mule_offer_shows_its_numbers_ratings_and_wireframe() -> void:
+	await open_ship_selection()
 	await browse_to(ShipType.MULE, &"ui_right")
 	var lines := office().offer_lines()
 	for expected: String in ["MULE", "LONG, HEAVY AND SLOW. HAULS THE BIG LOADS.",
