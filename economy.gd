@@ -2,13 +2,29 @@ class_name Economy
 extends Node
 # The run's economy: the pilot's Bank account balance, the Transport offer pool and the
 # Contracts. It lives in the scene, so a restart (a scene reload) wipes it, and it keeps
-# running while the Office pauses the world.
+# running while the Office pauses the world. It also runs the delivery: loading, the
+# delivery clock and (later) unloading.
 
 # An offer left the pool without being accepted: it expired or was replaced.
 signal offer_withdrawn(offer: TransportOffer)
 
+const Hud := preload("res://hud.gd")
+
 const PILOT := "PILOT"
 const MAX_OFFERS := 5
+
+# Loading takes LOADING_TIME + LOADING_TIME_PER_PASSENGER per passenger + LOADING_TIME_PER_TONNE
+# per 1 000 kg of cargo, in seconds.
+const LOADING_TIME := 3.0
+const LOADING_TIME_PER_PASSENGER := 1.0
+const LOADING_TIME_PER_TONNE := 1.0
+
+const LOADING_TEXT := "Loading… %ds"
+const LOADED_TEXT := "Loaded! Deliver within %s"
+const FUEL_LIMITED_TEXT := "Fuel limited to %s"
+
+# Each change of phase happens in one place, which checks the phase it leaves.
+enum Phase { NONE, LOADING, DELIVERING, UNLOADING }
 
 # In whole euros. It may go negative.
 var balance := 0
@@ -18,6 +34,11 @@ var offers: Array[TransportOffer] = []
 var contracts: Array[TransportOffer] = []
 var rng := RandomNumberGenerator.new()
 var last_offer_number := 0
+var phase := Phase.NONE
+# Seconds of loading left.
+var loading_left := 0.0
+# Seconds since loading finished.
+var delivery_time := 0.0
 
 @onready var lander: Lander = $"../Lander"
 
@@ -34,6 +55,55 @@ func _physics_process(delta: float) -> void:
 		if offer.time_left <= 0.0:
 			withdraw(offer)
 	refill()
+	match phase:
+		Phase.LOADING:
+			loading_left -= delta
+			if loading_left <= 0.0:
+				finish_loading()
+			else:
+				lander.show_status(LOADING_TEXT % ceili(loading_left))
+		Phase.DELIVERING:
+			delivery_time += delta
+
+
+# NONE → LOADING: holds the ship Docked while the Contracts' Load goes aboard.
+func start_loading() -> void:
+	if phase != Phase.NONE or contracts.is_empty():
+		return
+	phase = Phase.LOADING
+	loading_left = LOADING_TIME + contract_passengers() * LOADING_TIME_PER_PASSENGER \
+		+ contract_cargo() / 1000.0 * LOADING_TIME_PER_TONNE
+	lander.hold()
+	lander.show_status(LOADING_TEXT % ceili(loading_left))
+
+
+# LOADING → DELIVERING: the Load goes on, fuel above the cap is pumped out, and the
+# delivery clock starts.
+func finish_loading() -> void:
+	if phase != Phase.LOADING:
+		return
+	phase = Phase.DELIVERING
+	delivery_time = 0.0
+	lander.load_mass = contract_load_mass()
+	lander.fuel = minf(lander.fuel, lander.fuel_cap())
+	lander.release()
+	var status := LOADED_TEXT % TransportOffersScreen.countdown(deadline())
+	if lander.fuel_cap() < lander.ship_type.tank:
+		status += "\n" + FUEL_LIMITED_TEXT % Hud.format_kg(lander.fuel_cap())
+	lander.show_status(status)
+
+
+# The shortest deadline among the Contracts: they're all delivered in one flight.
+func deadline() -> float:
+	var shortest := INF
+	for contract in contracts:
+		shortest = minf(shortest, contract.deadline)
+	return shortest
+
+
+# Seconds left to deliver; negative once overdue.
+func delivery_left() -> float:
+	return deadline() - delivery_time
 
 
 # Starts the offer pool over from this seed, numbered from #001. For tests.

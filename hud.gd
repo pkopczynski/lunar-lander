@@ -15,6 +15,13 @@ const EMPTY_FLASH_HZ := 2.0
 const FUEL_SURFACE_COLOR := Color(0.64, 0.42, 0.2)
 const FUEL_BOTTOM_COLOR := Color("7a4a1e")
 const TEXT_COLOR := Color(0.9, 0.9, 0.95)
+const OVERDUE_COLOR := Color(1.0, 0.3, 0.3)
+
+# The delivery timer in the upper right.
+const TIMER_FONT_SIZE := 24
+const TIMER_MARGIN := Vector2(24, 40)
+const DELIVERY_PREFIX := "DELIVERY "
+const OVERDUE_PREFIX := "OVERDUE +"
 
 const LEVEL_EASE_SPEED := 6.0
 const WAVE_HEIGHT := 2.0
@@ -27,6 +34,7 @@ var time := 0.0
 var frame_style := StyleBoxFlat.new()
 
 @onready var lander: Lander = $"../../Lander"
+@onready var economy: Economy = $"../../Economy"
 
 
 func _ready() -> void:
@@ -56,6 +64,27 @@ func _draw() -> void:
 		HORIZONTAL_ALIGNMENT_CENTER, text_width, FONT_SIZE, TEXT_COLOR)
 	draw_string(font, Vector2(text_x, bar.end.y + TEXT_GAP + FONT_SIZE), format_kg(lander.total_mass()),
 		HORIZONTAL_ALIGNMENT_CENTER, text_width, FONT_SIZE, TEXT_COLOR)
+
+	var timer := delivery_text()
+	if timer != "":
+		draw_string(font, Vector2(0.0, TIMER_MARGIN.y), timer, HORIZONTAL_ALIGNMENT_RIGHT,
+			size.x - TIMER_MARGIN.x, TIMER_FONT_SIZE, OVERDUE_COLOR if delivery_overdue() else TEXT_COLOR)
+
+
+# DELIVERY 1:23 while delivering, OVERDUE +0:12 once late, "" otherwise.
+func delivery_text() -> String:
+	if economy.phase != Economy.Phase.DELIVERING:
+		return ""
+	var left := economy.delivery_left()
+	if left >= 0.0:
+		return DELIVERY_PREFIX + TransportOffersScreen.countdown(left)
+	# Whole overdue seconds, rounded down like the penalty.
+	var overdue := floori(-left)
+	return OVERDUE_PREFIX + "%d:%02d" % [overdue / 60, overdue % 60]
+
+
+func delivery_overdue() -> bool:
+	return economy.phase == Economy.Phase.DELIVERING and economy.delivery_left() < 0.0
 
 
 func draw_fuel(inner: Rect2) -> void:

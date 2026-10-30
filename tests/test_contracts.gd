@@ -126,11 +126,7 @@ func test_right_and_left_move_focus_between_the_offers_and_start_loading() -> vo
 	await press(&"ui_left")
 	check(offers().focus == TransportOffersScreen.Column.OFFERS, "Left should move focus back to the offers")
 	check(offers().selected_index == 2, "the offer list should keep its row, got %d" % offers().selected_index)
-	await accept(offer)
 	await press(&"ui_right")
-	await press(&"ui_accept")
-	check(office().showing and lander().state == Lander.State.DOCKED and economy().contracts.size() == 1,
-		"START LOADING should not start loading yet")
 	await press(&"ui_cancel")
 	check(office().screen == Office.Screen.MAIN, "Escape from the Contracts column should return to the main screen")
 
@@ -191,18 +187,3 @@ func test_after_accepting_at_least_one_offer_fits_what_is_left_over_several_seed
 		for i in range(1, others.size()):
 			check(others[i] in economy().offers, "seed %d should keep the offers further from expiring, lists %s" % [seed_value, offers().rows()])
 
-
-# Selects the offer's row and opens its details.
-func open_details(offer: TransportOffer) -> void:
-	await select_row(economy().offers.find(offer))
-	await press(&"ui_accept")
-	check(offers().expanded_row() == economy().offers.find(offer), "Return should open offer #%03d's details" % offer.number)
-
-
-# Accepts the offer the way a player does: its details, ACCEPT, then Yes.
-func accept(offer: TransportOffer) -> void:
-	await open_details(offer)
-	await press(&"ui_accept")
-	check(office().popup == Office.PopupKind.ACCEPT_OFFER, "ACCEPT on offer #%03d should ask ARE YOU SURE?" % offer.number)
-	await press(&"ui_accept")
-	check(offer in economy().contracts, "Yes should make offer #%03d a Contract" % offer.number)

@@ -70,7 +70,9 @@ func handle_input(event: InputEvent) -> bool:
 	elif event.is_action_pressed("ui_left"):
 		focus = Column.OFFERS
 	elif focus == Column.CONTRACTS:
-		# START LOADING is the only button here; it does nothing yet. Escape is left to the Office.
+		# START LOADING is the only button here. Escape is left to the Office.
+		if event.is_action_pressed("ui_accept") and start_loading_enabled():
+			office.start_loading()
 		return event.is_action_pressed("ui_accept") or event.is_action_pressed("ui_up") \
 			or event.is_action_pressed("ui_down")
 	elif event.is_action_pressed("ui_up"):

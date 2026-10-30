@@ -65,6 +65,9 @@ var in_deep_space := false
 var bouncing := false
 var steering_after_crossing := false
 var can_dock := true
+# A line the resting message adds under Docked!/Landed!, such as the loading countdown.
+# Set it through show_status(): the message is rewritten every frame while resting.
+var status := ""
 
 @onready var body: Polygon2D = $Body
 @onready var flame: Polygon2D = $Flame
@@ -135,6 +138,7 @@ func enter(new_state: State) -> void:
 	rest_time = 0.0
 	since_liftoff = INF
 	can_dock = true
+	status = ""
 	if level_tween:
 		level_tween.kill()
 	match new_state:
@@ -376,8 +380,24 @@ func rest(delta: float) -> void:
 	var refueling := rest_time >= REFUEL_DELAY and fuel < fuel_cap()
 	if refueling:
 		fuel = minf(fuel + ship_type.tank * REFUEL_TANK_SHARE * delta, fuel_cap())
-	var title := "Docked!" if state == State.DOCKED else "Landed!"
-	message.text = title + "\nRefueling…" if refueling else title
+	show_rest_message(refueling)
+
+
+func show_status(text: String) -> void:
+	status = text
+	# A held ship doesn't rest, so show it now.
+	show_rest_message(false)
+
+
+func show_rest_message(refueling: bool) -> void:
+	if state != State.DOCKED and state != State.LANDED:
+		return
+	var lines := PackedStringArray(["Docked!" if state == State.DOCKED else "Landed!"])
+	if status != "":
+		lines.append(status)
+	if refueling:
+		lines.append("Refueling…")
+	message.text = "\n".join(lines)
 
 
 func lift_off() -> void:

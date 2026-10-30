@@ -148,6 +148,38 @@ func offers() -> TransportOffersScreen:
 	return office().transport_offers
 
 
+# Selects the offer's row and opens its details.
+func open_details(offer: TransportOffer) -> void:
+	await select_row(economy().offers.find(offer))
+	await press(&"ui_accept")
+	check(offers().expanded_row() == economy().offers.find(offer), "Return should open offer #%03d's details" % offer.number)
+
+
+# Accepts the offer the way a player does: its details, ACCEPT, then Yes.
+func accept(offer: TransportOffer) -> void:
+	await open_details(offer)
+	await press(&"ui_accept")
+	check(office().popup == Office.PopupKind.ACCEPT_OFFER, "ACCEPT on offer #%03d should ask ARE YOU SURE?" % offer.number)
+	await press(&"ui_accept")
+	check(offer in economy().contracts, "Yes should make offer #%03d a Contract" % offer.number)
+
+
+# Accepts the offers, then presses START LOADING and waits for the Terminal to power off.
+func start_loading(contracts: Array[TransportOffer]) -> void:
+	for offer in contracts:
+		economy().put_offer(offer)
+	await open_transport_offers()
+	for offer in contracts:
+		await accept(offer)
+	await press(&"ui_right")
+	await press(&"ui_accept")
+	await wait_for_terminal()
+
+
+func hud() -> Control:
+	return main().get_node("UI/Hud")
+
+
 # An offer with these passengers, cargo and seconds left, long-lived unless time_left is given.
 func known_offer(passengers: int, cargo_mass: float, time_left := 1000.0) -> TransportOffer:
 	var offer := TransportOffer.new()

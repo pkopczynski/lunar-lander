@@ -218,6 +218,11 @@ func power_off(after_closing: Callable) -> void:
 		after_closing.call())
 
 
+# Loading starts over the flight view once the Terminal is off.
+func start_loading() -> void:
+	power_off(economy.start_loading)
+
+
 func power_to(target: float, done := Callable()) -> void:
 	powering = true
 	var tween := create_tween().set_process_mode(Tween.TWEEN_PROCESS_PHYSICS)
@@ -241,8 +246,11 @@ func close() -> void:
 
 
 # Docking asks whether to enter the Office, over the flight view. The ship is held
-# until the ship is released: by No here, or by leaving the Office.
+# until the ship is released: by No here, or by leaving the Office. A loaded ship gets
+# no popup: all Contracts go in one flight.
 func ask_to_enter() -> void:
+	if economy.phase != Economy.Phase.NONE:
+		return
 	lander.hold()
 	visible = true
 	show_popup(PopupKind.ENTER_OFFICE, Choice.NO)
