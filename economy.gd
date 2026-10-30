@@ -5,8 +5,8 @@ extends Node
 # running while the Office pauses the world. It also runs the delivery: loading, the
 # delivery clock and unloading, which settles the Contracts.
 
-# An offer left the pool without being accepted: it expired or was replaced.
-signal offer_withdrawn(offer: TransportOffer)
+# An offer left the pool without being accepted: it expired, or was replaced when it didn't.
+signal offer_withdrawn(offer: TransportOffer, expired: bool)
 # Unloading finished and the Contracts paid this much in total.
 signal paid_out(total: int)
 
@@ -67,7 +67,7 @@ func _physics_process(delta: float) -> void:
 	for offer in offers.duplicate():
 		offer.time_left -= delta
 		if offer.time_left <= 0.0:
-			withdraw(offer)
+			withdraw(offer, true)
 	refill()
 	match phase:
 		Phase.LOADING:
@@ -201,9 +201,9 @@ func accept(offer: TransportOffer) -> bool:
 	return true
 
 
-func withdraw(offer: TransportOffer) -> void:
+func withdraw(offer: TransportOffer, expired := false) -> void:
 	offers.erase(offer)
-	offer_withdrawn.emit(offer)
+	offer_withdrawn.emit(offer, expired)
 
 
 func next_offer(max_passengers: int, max_cargo: float) -> TransportOffer:

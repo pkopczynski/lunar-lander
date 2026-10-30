@@ -47,6 +47,27 @@ func test_an_offer_that_expires_with_its_details_open_closes_them_and_shows_offe
 	check(offers().notice() == "OFFER EXPIRED", "OFFER EXPIRED should show, got %s" % offers().notice())
 
 
+func test_an_open_offer_replaced_because_nothing_fits_closes_quietly_without_offer_expired() -> void:
+	economy().reseed(1)
+	# Takes every seat and leaves 600 kg of cargo: only the 500 kg offer still fits.
+	var big := known_offer(4, 7400.0)
+	var too_heavy := known_offer(0, 1000.0)
+	var last_fit := known_offer(0, 500.0)
+	for offer in [big, too_heavy, last_fit]:
+		economy().put_offer(offer)
+	# Closest to expiring after the last fit, so it's the one replaced once nothing fits.
+	too_heavy.time_left = 60.0
+	last_fit.time_left = 5.0
+	await open_transport_offers()
+	await accept(big)
+	await open_details(too_heavy)
+	await seconds(5.0)
+	check(not listed("#%03d " % last_fit.number), "the last offer that fits should have expired, lists %s" % offers().rows())
+	check(not listed("#%03d " % too_heavy.number), "the open offer should be replaced, lists %s" % offers().rows())
+	check(offers().details().is_empty(), "the replaced offer's details should close")
+	check(offers().notice() == "", "a replaced offer didn't expire: no OFFER EXPIRED, got %s" % offers().notice())
+
+
 func test_confirming_an_offer_that_is_already_gone_accepts_nothing() -> void:
 	var offer := known_offer(1, 0.0)
 	economy().put_offer(offer)

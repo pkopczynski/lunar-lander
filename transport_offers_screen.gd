@@ -45,14 +45,16 @@ func tick(delta: float) -> void:
 	notice_left = maxf(notice_left - delta, 0.0)
 
 
-# An offer going while its details or its ARE YOU SURE? are open closes them.
-func on_offer_withdrawn(offer: TransportOffer) -> void:
+# An offer going while its details or its ARE YOU SURE? are open closes them; only one
+# that expired says so.
+func on_offer_withdrawn(offer: TransportOffer, expired: bool) -> void:
 	if offer != expanded:
 		return
 	expanded = null
 	if office.popup == Office.PopupKind.ACCEPT_OFFER:
 		office.popup = Office.PopupKind.NONE
-	show_notice(OFFER_EXPIRED_TEXT)
+	if expired:
+		show_notice(OFFER_EXPIRED_TEXT)
 
 
 func show_notice(text: String) -> void:
