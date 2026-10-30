@@ -228,7 +228,11 @@ func total_mass() -> float:
 # The most fuel refuelling may fill: a full Tank, or less if the Load would push
 # the ship past its Maximum weight.
 func fuel_cap() -> float:
-	return clampf(ship_type.maximum_weight - dry_mass - load_mass, 0.0, ship_type.tank)
+	return fuel_cap_for(load_mass)
+
+
+func fuel_cap_for(with_load: float) -> float:
+	return clampf(ship_type.maximum_weight - dry_mass - with_load, 0.0, ship_type.tank)
 
 
 func tank_level() -> float:

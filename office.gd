@@ -5,7 +5,7 @@ extends CanvasLayer
 # the world while showing, and puts the chosen ship type in the parking spot.
 
 enum Screen { MAIN, SHIP_SELECTION, TRANSPORT_OFFERS, BANK_ACCOUNT }
-enum PopupKind { NONE, ARE_YOU_SURE, ENTER_OFFICE }
+enum PopupKind { NONE, ARE_YOU_SURE, ENTER_OFFICE, ACCEPT_OFFER }
 enum Choice { YES, NO }
 
 const HEADER := "ORBITAL FREIGHT CO. // "
@@ -13,13 +13,14 @@ const HEADER := "ORBITAL FREIGHT CO. // "
 const KEY_HINTS := {
 	Screen.MAIN: "← → MOVE   RETURN OPEN   ESC LEAVE",
 	Screen.SHIP_SELECTION: "← → BROWSE   RETURN SELECT   ESC BACK",
-	Screen.TRANSPORT_OFFERS: "UP DOWN MOVE   RETURN DETAILS   ESC BACK",
+	Screen.TRANSPORT_OFFERS: "← → COLUMNS   UP DOWN MOVE   RETURN SELECT   ESC BACK",
 	Screen.BANK_ACCOUNT: "ESC BACK",
 }
 const ARROWS := "← →"
 const ARE_YOU_SURE_TEXT := "ARE YOU SURE?"
 const ENTER_OFFICE_TEXT := "ENTER THE OFFICE?"
 const IN_SERVICE_TEXT := "IN SERVICE"
+const SHIP_LOCKED_TEXT := "SHIP LOCKED: CONTRACTS ACCEPTED"
 const VERSION_PREFIX := "V"
 # The main screen's tiles, in order: each opens the screen it names.
 const TILES: Array[Screen] = [Screen.SHIP_SELECTION, Screen.TRANSPORT_OFFERS, Screen.BANK_ACCOUNT]
@@ -111,7 +112,8 @@ func _ready() -> void:
 
 
 # The Transport offers' countdowns tick every second.
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	transport_offers.tick(delta)
 	if showing and screen == Screen.TRANSPORT_OFFERS:
 		terminal.queue_redraw()
 
@@ -158,7 +160,7 @@ func handle_ship_offer_input(event: InputEvent) -> void:
 		if in_service_shown():
 			# The ship in service is already in the parking spot: nothing to choose.
 			screen = Screen.MAIN
-		else:
+		elif not ship_locked_shown():
 			show_popup(PopupKind.ARE_YOU_SURE, Choice.YES)
 	else:
 		return
@@ -170,11 +172,13 @@ func handled() -> void:
 	terminal.queue_redraw()
 
 
-# Ship selection opens on the ship type in service.
+# Ship selection opens on the ship type in service, Transport offers on the offer list.
 func open_screen(which: Screen) -> void:
 	screen = which
 	if which == Screen.SHIP_SELECTION:
 		ship_offer_index = ShipType.ALL.find(lander.ship_type)
+	elif which == Screen.TRANSPORT_OFFERS:
+		transport_offers.focus = TransportOffersScreen.Column.OFFERS
 
 
 func handle_popup_input(event: InputEvent) -> void:
@@ -262,8 +266,11 @@ func answer(choice: Choice) -> void:
 			lander.start_docked(selected_ship_offer())
 			popup = PopupKind.NONE
 			screen = Screen.MAIN
-		[PopupKind.ARE_YOU_SURE, Choice.NO]:
+		[PopupKind.ARE_YOU_SURE, Choice.NO], [PopupKind.ACCEPT_OFFER, Choice.NO]:
 			popup = PopupKind.NONE
+		[PopupKind.ACCEPT_OFFER, Choice.YES]:
+			popup = PopupKind.NONE
+			transport_offers.confirm_accept()
 
 
 # Observable state
@@ -292,6 +299,12 @@ func in_service_shown() -> bool:
 	return showing and screen == Screen.SHIP_SELECTION and selected_ship_offer() == lander.ship_type
 
 
+# Ship swapping is locked while there are Contracts: the Load is for the ship in service.
+func ship_locked_shown() -> bool:
+	return showing and screen == Screen.SHIP_SELECTION and not in_service_shown() \
+		and not economy.contracts.is_empty()
+
+
 func ship_offer_indicator() -> String:
 	return "< %d/%d >" % [ship_offer_index + 1, ShipType.ALL.size()]
 
@@ -307,6 +320,8 @@ func ship_offer_lines() -> PackedStringArray:
 	lines.append(ship_offer_indicator())
 	if in_service_shown():
 		lines.append(IN_SERVICE_TEXT)
+	if ship_locked_shown():
+		lines.append(SHIP_LOCKED_TEXT)
 	return lines
 
 
@@ -434,6 +449,9 @@ func draw_bank_account(area: Rect2) -> void:
 
 func draw_ship_offer(area: Rect2) -> void:
 	var type := selected_ship_offer()
+	if ship_locked_shown():
+		# Top left, on the < n/N > indicator's line.
+		draw_text(SHIP_LOCKED_TEXT, Vector2(area.position.x, area.position.y + TEXT_SIZE), TEXT_SIZE)
 	var half := area.size.x / 2.0
 	var picture_box := Rect2(area.position, Vector2(half, area.size.y))
 	draw_wireframe(ship_offer_picture(), picture_box)

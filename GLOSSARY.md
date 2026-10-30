@@ -83,7 +83,7 @@ One ship type shown on the terminal, with its picture and characteristics. Takin
 _Avoid_: Offer (on its own), listing, card, product
 
 **Ship swap**:
-Entering the office from the parking spot and choosing another ship type in ship selection. The new ship takes the old one's place in the parking spot with a full tank.
+Entering the office from the parking spot and choosing another ship type in ship selection. The new ship takes the old one's place in the parking spot with a full tank. Not possible while the player has contracts.
 _Avoid_: Respawn, change ship
 
 ## Transport
@@ -93,7 +93,7 @@ A job on the terminal, not yet accepted: carry passengers, cargo or both from th
 _Avoid_: Offer (on its own), job, mission
 
 **Contract**:
-A transport offer the player has accepted. All contracts accepted together are delivered in one flight.
+A transport offer the player has accepted. All contracts accepted together are delivered in one flight. A contract stays accepted when transport offers expire or the player leaves the office.
 _Avoid_: Order, accepted offer
 
 **Deadline**:

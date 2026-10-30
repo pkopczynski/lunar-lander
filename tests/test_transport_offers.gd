@@ -38,8 +38,6 @@ func test_return_expands_one_offers_details_at_a_time_and_escape_collapses_them(
 	await press(&"ui_up")
 	await press(&"ui_accept")
 	check(offers().expanded_row() == 3, "Return on another row should open its details instead, got %d" % offers().expanded_row())
-	await press(&"ui_accept")
-	check(offers().expanded_row() == 3, "ACCEPT should do nothing yet, got %d" % offers().expanded_row())
 	await press(&"ui_cancel")
 	check(offers().details().is_empty(), "Escape should close the details")
 	check(office().screen == Office.Screen.TRANSPORT_OFFERS, "closing the details should stay on Transport offers")
@@ -113,49 +111,5 @@ func test_offer_numbers_start_again_from_001_on_a_new_run() -> void:
 	await restart()
 	await open_transport_offers()
 	check(offers().rows()[0].begins_with("#001 "), "a new run should number offers from #001, lists %s" % offers().rows())
-	check(not listed("#006 "), "the last run's offers should be gone, lists %s" % offers().rows())
-
-
-func open_transport_offers() -> void:
-	for i in Office.TILES.size():
-		await press(&"ui_left")
-	await press(&"ui_right")
-	await press(&"ui_accept")
-	check(office().screen == Office.Screen.TRANSPORT_OFFERS, "Return should open Transport offers")
-
-
-func select_row(index: int) -> void:
-	while offers().selected_index < index:
-		await press(&"ui_down")
-	check(offers().selected_index == index, "Down should reach row %d" % index)
-
-
-func listed(prefix: String) -> bool:
-	for row in offers().rows():
-		if row.begins_with(prefix):
-			return true
-	return false
-
-
-func reason_for(offer: TransportOffer) -> String:
-	var row := economy().offers.find(offer)
-	check(row != -1, "offer #%03d should be listed" % offer.number)
-	return offers().reasons()[row] if row != -1 else "(not listed)"
-
-
-func offers() -> TransportOffersScreen:
-	return office().transport_offers
-
-
-# An offer with these passengers, cargo and seconds left, long-lived unless time_left is given.
-func known_offer(passengers: int, cargo_mass: float, time_left := 1000.0) -> TransportOffer:
-	var offer := TransportOffer.new()
-	offer.title = "Test run"
-	offer.trader = "Test Trader"
-	offer.passengers = passengers
-	offer.cargo_mass = cargo_mass
-	offer.deadline = 90.0
-	offer.time_left = time_left
-	offer.passenger_reward = 300
-	offer.cargo_reward = 120
-	return offer
+	# Not "#006 is gone": a new pool with nothing the Sparrow fits replaces one at once, taking #006.
+	check(not " TEST RUN " in " ".join(offers().rows()), "the last run's known offer should be gone, lists %s" % offers().rows())

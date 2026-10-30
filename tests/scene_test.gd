@@ -113,6 +113,55 @@ func dock_in_spot() -> void:
 	check(lander().state == Lander.State.DOCKED, "the ship should dock in the parking spot")
 
 
+# Transport offers
+
+func open_transport_offers() -> void:
+	for i in Office.TILES.size():
+		await press(&"ui_left")
+	await press(&"ui_right")
+	await press(&"ui_accept")
+	check(office().screen == Office.Screen.TRANSPORT_OFFERS, "Return should open Transport offers")
+
+
+func select_row(index: int) -> void:
+	while offers().selected_index < index:
+		await press(&"ui_down")
+	while offers().selected_index > index:
+		await press(&"ui_up")
+	check(offers().selected_index == index, "Down should reach row %d" % index)
+
+
+func listed(prefix: String) -> bool:
+	for row in offers().rows():
+		if row.begins_with(prefix):
+			return true
+	return false
+
+
+func reason_for(offer: TransportOffer) -> String:
+	var row := economy().offers.find(offer)
+	check(row != -1, "offer #%03d should be listed" % offer.number)
+	return offers().reasons()[row] if row != -1 else "(not listed)"
+
+
+func offers() -> TransportOffersScreen:
+	return office().transport_offers
+
+
+# An offer with these passengers, cargo and seconds left, long-lived unless time_left is given.
+func known_offer(passengers: int, cargo_mass: float, time_left := 1000.0) -> TransportOffer:
+	var offer := TransportOffer.new()
+	offer.title = "Test run"
+	offer.trader = "Test Trader"
+	offer.passengers = passengers
+	offer.cargo_mass = cargo_mass
+	offer.deadline = 90.0
+	offer.time_left = time_left
+	offer.passenger_reward = 300
+	offer.cargo_reward = 120
+	return offer
+
+
 # Per-ship-type measurements, for whichever ship type is chosen. Each one puts
 # the ship in free flight, so choose a ship first.
 
