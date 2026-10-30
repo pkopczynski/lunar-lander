@@ -2,10 +2,10 @@ extends "res://tests/scene_test.gd"
 
 # Tuning targets from the ship type table in issue #1, relative to the Sparrow.
 # ~60% of the Sparrow's climb at default dry mass with a full tank. The table's
-# 35 000 kg Maximum weight can't hover at that thrust, so Maximum weight is the
-# highest round value at which the Mule still hovers and reaches the crossing speed.
+# 35 000 kg Maximum weight can't hover at that thrust, so Maximum weight (a total)
+# is the highest round value at which the Mule still hovers and reaches the crossing speed.
 const CLIMB_RATIO := 0.6
-const MAXIMUM_WEIGHT := 29000.0
+const MAXIMUM_WEIGHT := 41000.0
 const TURN_RATE := 1.5
 # ~28 s against the Sparrow's ~20 s.
 const THRUST_TIME_RATIO := 28.0 / 20.0
@@ -13,23 +13,24 @@ const THRUST_TIME_RATIO := 28.0 / 20.0
 const NOSE_RADIUS := 4.0
 
 
-func test_mule_offer_is_reachable_with_left_and_right() -> void:
+func test_mule_ship_offer_is_reachable_with_left_and_right() -> void:
 	await browse_to(ShipType.MULE, &"ui_right")
-	check(office().selected_offer() == ShipType.MULE, "Right should reach the Mule Offer")
+	check(office().selected_ship_offer() == ShipType.MULE, "Right should reach the Mule Ship offer")
 	await choose_ship()
 	await restart()
 	await browse_to(ShipType.MULE, &"ui_left")
-	check(office().selected_offer() == ShipType.MULE, "Left should reach the Mule Offer")
+	check(office().selected_ship_offer() == ShipType.MULE, "Left should reach the Mule Ship offer")
 
 
-func test_mule_offer_shows_its_numbers_ratings_and_wireframe() -> void:
+func test_mule_ship_offer_shows_its_numbers_ratings_and_wireframe() -> void:
 	await browse_to(ShipType.MULE, &"ui_right")
-	var lines := office().offer_lines()
+	var lines := office().ship_offer_lines()
 	for expected: String in ["MULE", "LONG, HEAVY AND SLOW. HAULS THE BIG LOADS.",
-			"TANK 12 000 KG", "DRY MASS 20 000 KG", "MAX WEIGHT 29 000 KG",
+			"TANK 12 000 KG", "DRY MASS 20 000 KG", "MAX WEIGHT 41 000 KG",
+			"SEATS 4", "CARGO 16 000 KG",
 			"THRUST ■■□□□", "HANDLING ■■□□□"]:
-		check(expected in lines, "the Mule Offer should show %s, shows %s" % [expected, lines])
-	check(office().offer_picture() == ShipType.MULE.hull, "the Offer picture should be the Mule's hull")
+		check(expected in lines, "the Mule Ship offer should show %s, shows %s" % [expected, lines])
+	check(office().ship_offer_picture() == ShipType.MULE.hull, "the Ship offer picture should be the Mule's hull")
 
 
 func test_choosing_the_mule_docks_it_with_a_full_tank_inside_the_spot() -> void:
@@ -66,17 +67,6 @@ func hull_has_near(hull: PackedVector2Array, point: Vector2) -> bool:
 	return false
 
 
-func test_weight_keys_stay_within_the_mule_range() -> void:
-	await choose_ship(ShipType.MULE)
-	for i in 30:
-		await press(&"weight_up")
-	check_near(dry_mass(), MAXIMUM_WEIGHT, 0.01, "dry mass after many weight_up")
-	check(dry_mass() > ShipType.HALO.maximum_weight, "the Mule should carry more than the Halo")
-	for i in 40:
-		await press(&"weight_down")
-	check_near(dry_mass(), 5000.0, 0.01, "dry mass after many weight_down")
-
-
 func test_mule_lands_on_the_pad_with_the_sparrows_limits() -> void:
 	await choose_ship(ShipType.MULE)
 	var ship := lander()
@@ -102,7 +92,7 @@ func test_mule_docks_in_the_parking_spot() -> void:
 func test_mule_hovers_at_maximum_weight() -> void:
 	await choose_ship(ShipType.MULE)
 	await raise_to_maximum_weight()
-	check_near(dry_mass(), MAXIMUM_WEIGHT, 0.01, "dry mass at Maximum weight")
+	check_near(lander().total_mass(), MAXIMUM_WEIGHT, 0.01, "total mass at Maximum weight")
 	check(await climbs_under_full_thrust(), "the Mule should climb at Maximum weight")
 
 

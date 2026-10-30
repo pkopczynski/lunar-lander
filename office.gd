@@ -1,6 +1,6 @@
 class_name Office
 extends CanvasLayer
-# The player's Office: a full-window Terminal showing one Offer per ship type.
+# The player's Office: a full-window Terminal showing one Ship offer per ship type.
 # It pauses the world while showing, and puts the chosen ship type in the parking spot.
 
 enum PopupKind { NONE, ARE_YOU_SURE, SWAP }
@@ -39,13 +39,13 @@ const BLOCK_SIZE := Vector2(22, 22)
 const BLOCK_GAP := 6.0
 const RATING_LABEL_WIDTH := 200.0
 const HINT_ARROW_SIZE := 12.0
-# The Offer's text block (name, flavour, stats, ratings) is centred on the picture by
-# starting this far above the Offer area's middle.
-const OFFER_TEXT_LIFT := 4.0 * STAT_SIZE + 2.0 * LINE_GAP
+# The Ship offer's text block (name, flavour, stats, ratings) is centred on the picture by
+# starting this far above the Ship offer area's middle.
+const SHIP_OFFER_TEXT_LIFT := 5.0 * STAT_SIZE + 3.0 * LINE_GAP
 # Padding around the IN SERVICE tag's text, and how far the tag sits above the name's middle.
 const TAG_PADDING := Vector2(8, 4)
 const TAG_RAISE := 4.0
-# Share of the Offer area's width and height the wireframe picture may fill.
+# Share of the Ship offer area's width and height the wireframe picture may fill.
 const PICTURE_SHARE := 0.4
 
 # The CRT power-on/off effect: the picture collapses to a bright line, then a dot
@@ -69,11 +69,11 @@ const POPUP_BUTTON_GAP := 48.0
 var showing := false
 var popup := PopupKind.NONE
 var selected_button := Choice.YES
-var offer_index := 0
-# The ship type the player is flying, tagged IN SERVICE on its Offer. None at run start.
+var ship_offer_index := 0
+# The ship type the player is flying, tagged IN SERVICE on its Ship offer. None at run start.
 var in_service: ShipType = null
 # Whether the Office opened for a Ship swap (rather than at run start), which lets
-# Escape and picking the IN SERVICE Offer cancel it.
+# Escape and picking the IN SERVICE Ship offer cancel it.
 var swapping := false
 # Whether the Terminal is powering on or off. Office input is ignored meanwhile.
 var powering := false
@@ -96,10 +96,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	if popup != PopupKind.NONE:
 		handle_popup_input(event)
 	elif showing:
-		handle_offer_input(event)
+		handle_ship_offer_input(event)
 
 
-func handle_offer_input(event: InputEvent) -> void:
+func handle_ship_offer_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_left"):
 		browse(-1)
 	elif event.is_action_pressed("ui_right"):
@@ -113,7 +113,7 @@ func handle_offer_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("ui_cancel") and swapping:
 		decline_swap()
 	else:
-		# Escape on the Offer screen at run start does nothing: a run needs a ship.
+		# Escape on the Ship offer screen at run start does nothing: a run needs a ship.
 		return
 	get_viewport().set_input_as_handled()
 	terminal.queue_redraw()
@@ -136,7 +136,7 @@ func handle_popup_input(event: InputEvent) -> void:
 
 # Browsing wraps around at both ends.
 func browse(step: int) -> void:
-	offer_index = posmod(offer_index + step, ShipType.ALL.size())
+	ship_offer_index = posmod(ship_offer_index + step, ShipType.ALL.size())
 
 
 func open() -> void:
@@ -201,7 +201,7 @@ func answer(choice: Choice) -> void:
 		[PopupKind.SWAP, Choice.NO]:
 			decline_swap()
 		[PopupKind.ARE_YOU_SURE, Choice.YES]:
-			var type := selected_offer()
+			var type := selected_ship_offer()
 			power_off(lander.start_docked.bind(type))
 		[PopupKind.ARE_YOU_SURE, Choice.NO]:
 			popup = PopupKind.NONE
@@ -211,12 +211,12 @@ func answer(choice: Choice) -> void:
 func open_for_swap() -> void:
 	swapping = true
 	in_service = lander.ship_type
-	offer_index = ShipType.ALL.find(in_service)
+	ship_offer_index = ShipType.ALL.find(in_service)
 	open()
 
 
 # Back to the parking spot, Docked as before: the ship stays as it is and refuels after the usual delay.
-# From the Offer screen the Terminal powers off first; the swap popup just closes.
+# From the Ship offer screen the Terminal powers off first; the swap popup just closes.
 func decline_swap() -> void:
 	if showing:
 		power_off(lander.release)
@@ -227,48 +227,49 @@ func decline_swap() -> void:
 
 # Observable state
 
-func selected_offer() -> ShipType:
-	return ShipType.ALL[offer_index]
+func selected_ship_offer() -> ShipType:
+	return ShipType.ALL[ship_offer_index]
 
 
 func in_service_shown() -> bool:
-	return showing and selected_offer() == in_service
+	return showing and selected_ship_offer() == in_service
 
 
-func offer_indicator() -> String:
-	return "< %d/%d >" % [offer_index + 1, ShipType.ALL.size()]
+func ship_offer_indicator() -> String:
+	return "< %d/%d >" % [ship_offer_index + 1, ShipType.ALL.size()]
 
 
-# The text the selected Offer shows, with ratings written as blocks.
-func offer_lines() -> PackedStringArray:
-	var type := selected_offer()
+# The text the selected Ship offer shows, with ratings written as blocks.
+func ship_offer_lines() -> PackedStringArray:
+	var type := selected_ship_offer()
 	var lines := PackedStringArray([type.name.to_upper(), type.flavour.to_upper()])
-	for stat: Array in offer_stats():
+	for stat: Array in ship_offer_stats():
 		lines.append("%s %s" % stat)
-	for rating: Array in offer_ratings():
+	for rating: Array in ship_offer_ratings():
 		lines.append("%s %s" % [rating[0], blocks(rating[1])])
-	lines.append(offer_indicator())
+	lines.append(ship_offer_indicator())
 	if in_service_shown():
 		lines.append(IN_SERVICE_TEXT)
 	return lines
 
 
-# The selected Offer's masses as [label, text in kg] pairs.
-func offer_stats() -> Array[Array]:
-	var type := selected_offer()
+# The selected Ship offer's numbers as [label, text] pairs.
+func ship_offer_stats() -> Array[Array]:
+	var type := selected_ship_offer()
 	return [["TANK", kg(type.tank)], ["DRY MASS", kg(type.default_dry_mass)],
-		["MAX WEIGHT", kg(type.maximum_weight)]]
+		["MAX WEIGHT", kg(type.maximum_weight)], ["SEATS", str(type.passenger_seats)],
+		["CARGO", kg(type.cargo_capacity)]]
 
 
-# The selected Offer's ratings as [label, blocks out of RATING_BLOCKS] pairs.
-func offer_ratings() -> Array[Array]:
-	var type := selected_offer()
+# The selected Ship offer's ratings as [label, blocks out of RATING_BLOCKS] pairs.
+func ship_offer_ratings() -> Array[Array]:
+	var type := selected_ship_offer()
 	return [["THRUST", type.thrust_rating], ["HANDLING", type.handling_rating]]
 
 
 # The wireframe picture's outline: the ship type's hull.
-func offer_picture() -> PackedVector2Array:
-	return selected_offer().hull
+func ship_offer_picture() -> PackedVector2Array:
+	return selected_ship_offer().hull
 
 
 static func kg(value: float) -> String:
@@ -315,7 +316,7 @@ func draw_power_line(screen: Rect2, stretch: float) -> void:
 		terminal.draw_line(centre - Vector2(half_width, 0.0), centre + Vector2(half_width, 0.0), GLOW, GLOW_WIDTH)
 
 
-# The Terminal's picture: frame, header, Offer, key hint and any popup.
+# The Terminal's picture: frame, header, Ship offer, key hint and any popup.
 func draw_screen(screen: Rect2) -> void:
 	var frame := screen.grow(-MARGIN)
 	terminal.draw_rect(frame, GREEN, false, BORDER_WIDTH)
@@ -324,7 +325,7 @@ func draw_screen(screen: Rect2) -> void:
 	draw_text(HEADER, Vector2(inner.position.x, inner.position.y + HEADER_SIZE), HEADER_SIZE)
 	var rule_y := inner.position.y + HEADER_SIZE + LINE_GAP
 	terminal.draw_line(Vector2(frame.position.x, rule_y), Vector2(frame.end.x, rule_y), GREEN, LINE_WIDTH)
-	draw_text(offer_indicator(), Vector2(inner.position.x, rule_y + LINE_GAP + TEXT_SIZE), TEXT_SIZE,
+	draw_text(ship_offer_indicator(), Vector2(inner.position.x, rule_y + LINE_GAP + TEXT_SIZE), TEXT_SIZE,
 		inner.size.x, HORIZONTAL_ALIGNMENT_RIGHT)
 
 	var hint_y := inner.end.y
@@ -334,21 +335,21 @@ func draw_screen(screen: Rect2) -> void:
 	draw_text(version_text(), Vector2(inner.position.x, hint_y), HINT_SIZE, inner.size.x,
 		HORIZONTAL_ALIGNMENT_RIGHT, DIM_GREEN)
 
-	var offer_area := Rect2(inner.position.x, rule_y + LINE_GAP, inner.size.x, hint_rule_y - rule_y - 2.0 * LINE_GAP)
-	draw_offer(offer_area)
+	var ship_offer_area := Rect2(inner.position.x, rule_y + LINE_GAP, inner.size.x, hint_rule_y - rule_y - 2.0 * LINE_GAP)
+	draw_ship_offer(ship_offer_area)
 	if popup != PopupKind.NONE:
 		draw_popup(screen)
 
 
-func draw_offer(area: Rect2) -> void:
-	var type := selected_offer()
+func draw_ship_offer(area: Rect2) -> void:
+	var type := selected_ship_offer()
 	var half := area.size.x / 2.0
 	var picture_box := Rect2(area.position, Vector2(half, area.size.y))
-	draw_wireframe(offer_picture(), picture_box)
+	draw_wireframe(ship_offer_picture(), picture_box)
 
 	var x := area.position.x + half
 	var width := half
-	var y := area.get_center().y - OFFER_TEXT_LIFT + NAME_SIZE
+	var y := area.get_center().y - SHIP_OFFER_TEXT_LIFT + NAME_SIZE
 	var title := type.name.to_upper()
 	draw_text(title, Vector2(x, y), NAME_SIZE, width)
 	if in_service_shown():
@@ -357,12 +358,12 @@ func draw_offer(area: Rect2) -> void:
 	y += LINE_GAP + TEXT_SIZE
 	draw_text(type.flavour.to_upper(), Vector2(x, y), TEXT_SIZE, width)
 	y += 2.0 * LINE_GAP
-	for stat: Array in offer_stats():
+	for stat: Array in ship_offer_stats():
 		y += STAT_SIZE + LINE_GAP
 		draw_text(stat[0], Vector2(x, y), STAT_SIZE, RATING_LABEL_WIDTH)
 		draw_text(stat[1], Vector2(x + RATING_LABEL_WIDTH, y), STAT_SIZE, width - RATING_LABEL_WIDTH)
 	y += LINE_GAP
-	for rating: Array in offer_ratings():
+	for rating: Array in ship_offer_ratings():
 		y += STAT_SIZE + LINE_GAP
 		draw_text(rating[0], Vector2(x, y), STAT_SIZE, RATING_LABEL_WIDTH)
 		draw_rating(rating[1], Vector2(x + RATING_LABEL_WIDTH, y - BLOCK_SIZE.y))

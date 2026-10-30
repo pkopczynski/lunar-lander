@@ -10,9 +10,9 @@ func test_r_on_the_surface_teleports_to_the_pad_landed() -> void:
 	place(Vector2(300, 100), Vector2(80, -40))
 	ship.rotation = 1.0
 	await seconds(0.5)
-	await press(&"weight_up")
+	ship.load_mass = 2000.0
 	var fuel := ship.fuel
-	var mass := dry_mass()
+	var mass := ship.total_mass()
 	await press(&"restart")
 	await frames(2)
 	check(main() == scene, "R on the Surface should not reload the scene")
@@ -24,8 +24,8 @@ func test_r_on_the_surface_teleports_to_the_pad_landed() -> void:
 	check(ship.velocity == Vector2.ZERO, "velocity should be zero, got %s" % ship.velocity)
 	check(message().begins_with("Landed!"), "the message should say Landed!, got %s" % message())
 	check(ship.ship_type == ShipType.SPARROW, "the ship type should be kept")
-	check_near(dry_mass(), mass, 0.01, "dry mass should be kept")
 	check_near(ship.fuel, fuel, 1.0, "fuel should be kept")
+	check_near(ship.total_mass(), mass, 1.0, "dry mass, fuel and Load should be kept")
 
 
 func test_the_teleported_ship_rests_on_the_pad_and_can_lift_off() -> void:

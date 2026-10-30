@@ -27,7 +27,7 @@ func test_return_during_power_on_does_nothing() -> void:
 
 func test_confirming_a_ship_powers_off_before_the_flight_view_shows() -> void:
 	await press(&"ui_right")
-	check(office().selected_offer() == ShipType.MULE, "Right should browse to the Mule")
+	check(office().selected_ship_offer() == ShipType.MULE, "Right should browse to the Mule")
 	await press(&"ui_accept")
 	await press(&"ui_accept")
 	check(office().popup == Office.PopupKind.NONE, "Yes should close ARE YOU SURE?")
@@ -73,9 +73,9 @@ func test_yes_in_the_swap_popup_powers_the_terminal_on() -> void:
 	check(office().powering, "Yes should power the Terminal on")
 	await press(&"ui_accept")
 	check(office().showing and office().popup == Office.PopupKind.NONE,
-		"Return during power-on should not pick the IN SERVICE Offer")
+		"Return during power-on should not pick the IN SERVICE Ship offer")
 	await wait_for_terminal()
-	check(office().in_service_shown(), "the IN SERVICE Offer should show after power-on")
+	check(office().in_service_shown(), "the IN SERVICE Ship offer should show after power-on")
 
 
 func test_cancelling_a_swap_powers_off_before_the_flight_view_shows() -> void:
