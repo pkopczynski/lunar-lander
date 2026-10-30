@@ -6,23 +6,27 @@ extends RefCounted
 
 enum Column { OFFERS, CONTRACTS }
 
-# Share of the screen's width the offer list takes; the rest is left for the Contracts.
+# Layout. LIST_SHARE is the share of the screen's width the offer list takes; the rest is
+# left for the Contracts.
 const LIST_SHARE := 0.6
+const COLUMN_GAP := 32.0
 const ROW_HEIGHT := 28.0
 const ROW_PADDING := 6.0
-const ACCEPT_TEXT := "ACCEPT"
 const DETAIL_COLUMNS := 2
 const ACCEPT_SIZE := Vector2(120, 32)
+const START_LOADING_SIZE := Vector2(200, 32)
+const NOTICE_PADDING := Vector2(8, 4)
+
+# Text
+const ACCEPT_TEXT := "ACCEPT"
 const CONTRACTS_TEXT := "CONTRACTS"
 const FUEL_LIMITED_PREFIX := "FUEL LIMITED: "
 const START_LOADING_TEXT := "START LOADING"
 const KG_SUFFIX := " KG"
 const OFFER_EXPIRED_TEXT := "OFFER EXPIRED"
+
 # Seconds a notice such as OFFER EXPIRED shows.
 const NOTICE_TIME := 2.0
-const COLUMN_GAP := 32.0
-const START_LOADING_SIZE := Vector2(200, 32)
-const NOTICE_PADDING := Vector2(8, 4)
 
 var office: Office
 var economy: Economy

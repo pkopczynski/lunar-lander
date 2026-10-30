@@ -57,13 +57,11 @@ var number: int
 var title: String
 var trader: String
 var passengers: int
-# In kg.
 var cargo_mass: float
 # Seconds to deliver, counted from when loading finishes.
 var deadline: float
 # Seconds left to accept it.
 var time_left: float
-# In whole euros.
 var passenger_reward: int
 var cargo_reward: int
 

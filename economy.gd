@@ -35,22 +35,19 @@ const UNLOADING_TEXT := "Unloading… %ds"
 # Each change of phase happens in one place, which checks the phase it leaves.
 enum Phase { NONE, LOADING, DELIVERING, UNLOADING }
 
-# In whole euros. It may go negative.
+# May go negative.
 var balance := 0
 # One per delivered Contract, newest first.
 var transactions: Array[TransportOffer.Transaction] = []
 # The Transport offers on the Terminal, oldest first.
 var offers: Array[TransportOffer] = []
-# Accepted Transport offers.
 var contracts: Array[TransportOffer] = []
 var rng := RandomNumberGenerator.new()
 var last_offer_number := 0
 var phase := Phase.NONE
-# Seconds of loading left.
 var loading_left := 0.0
 # Seconds since loading finished; stops when the ship lands on the pad.
 var delivery_time := 0.0
-# Seconds of unloading left.
 var unloading_left := 0.0
 
 @onready var lander: Lander = $"../Lander"
