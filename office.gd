@@ -58,11 +58,11 @@ const HINT_SIZE := 16
 const LINE_GAP := 14.0
 const BLOCK_SIZE := Vector2(22, 22)
 const BLOCK_GAP := 6.0
-const RATING_LABEL_WIDTH := 200.0
+const RATING_LABEL_WIDTH := 230.0
 const HINT_ARROW_SIZE := 12.0
 # The Ship offer's text block (name, flavour, stats, ratings) is centred on the picture by
 # starting this far above the Ship offer area's middle.
-const SHIP_OFFER_TEXT_LIFT := 5.0 * STAT_SIZE + 3.0 * LINE_GAP
+const SHIP_OFFER_TEXT_LIFT := 4.5 * STAT_SIZE + 2.5 * LINE_GAP
 # Padding around the IN SERVICE tag's text, and how far the tag sits above the name's middle.
 const TAG_PADDING := Vector2(8, 4)
 const TAG_RAISE := 4.0
@@ -350,9 +350,8 @@ func ship_offer_lines() -> PackedStringArray:
 # The selected Ship offer's numbers as [label, text] pairs.
 func ship_offer_stats() -> Array[Array]:
 	var type := selected_ship_offer()
-	return [["TANK", kg(type.tank)], ["DRY MASS", kg(type.default_dry_mass)],
-		["MAX WEIGHT", kg(type.maximum_weight)], ["SEATS", str(type.passenger_seats)],
-		["CARGO", kg(type.cargo_capacity)]]
+	return [["TANK", kg(type.tank)], ["SEATS", str(type.passenger_seats)],
+		["CARGO", kg(type.full_tank_cargo())], ["MAX CAPACITY", kg(type.cargo_capacity)]]
 
 
 # The selected Ship offer's ratings as [label, blocks out of RATING_BLOCKS] pairs.

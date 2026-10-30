@@ -22,9 +22,12 @@ func test_halo_ship_offer_shows_its_numbers_ratings_and_wireframe() -> void:
 	await open_ship_selection()
 	await browse_to(ShipType.HALO, &"ui_right")
 	var lines := office().ship_offer_lines()
-	for expected: String in ["HALO", "TANK 8 000 KG", "DRY MASS 14 000 KG", "MAX WEIGHT 32 000 KG",
-			"SEATS 10", "CARGO 11 000 KG", "THRUST ■■■■□", "HANDLING ■■■■□"]:
+	for expected: String in ["HALO", "TANK 8 000 KG", "SEATS 10", "CARGO 10 000 KG",
+			"MAX CAPACITY 11 000 KG", "THRUST ■■■■□", "HANDLING ■■■■□"]:
 		check(expected in lines, "the Halo Ship offer should show %s, shows %s" % [expected, lines])
+	for removed: String in ["DRY MASS", "MAX WEIGHT"]:
+		check(not Array(lines).any(func(line: String) -> bool: return line.begins_with(removed)),
+			"the Ship offer should not show %s, shows %s" % [removed, lines])
 	check(office().ship_offer_picture() == office().selected_ship_offer().hull, "the Ship offer picture should be the Halo's hull")
 
 
