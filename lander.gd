@@ -369,8 +369,10 @@ func hold() -> void:
 	held = true
 
 
+# A released ship rests afresh, so refuelling waits the usual delay again.
 func release() -> void:
 	held = false
+	rest_time = 0.0
 
 
 # Stops the ship where it touched down and levels it.

@@ -45,10 +45,15 @@ func test_loading_adds_the_load_and_pumps_out_fuel_above_the_cap() -> void:
 func test_after_loading_refuelling_resumes_up_to_the_cap() -> void:
 	await start_loading([known_offer(1, 0.0)])
 	lander().fuel = 1000.0
+	# As if the ship had already rested long enough: the delay must still start over.
+	lander().rest_time = Lander.REFUEL_DELAY
+	# 3 s + 1 passenger.
 	await seconds(4.5)
 	check(message() == "Docked!\nLoaded! Deliver within 1:30",
 		"a light Load gives no fuel warning, got %s" % message())
-	await seconds(Lander.REFUEL_DELAY + 1.0)
+	await seconds(Lander.REFUEL_DELAY - 0.8)
+	check(lander().fuel == 1000.0, "refuelling should wait the usual delay after loading, has %s kg" % lander().fuel)
+	await seconds(0.6)
 	check(lander().fuel > 1000.0, "refuelling should resume after the usual delay, has %s kg" % lander().fuel)
 	check(message().ends_with("Loaded! Deliver within 1:30\nRefueling…"),
 		"the loaded message should stay while refuelling, got %s" % message())
