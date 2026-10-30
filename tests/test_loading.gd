@@ -85,9 +85,8 @@ func test_docking_while_loaded_shows_no_popup_and_leaves_the_ship_free() -> void
 	await seconds(4.5)
 	await dock_in_spot()
 	check(office().popup == Office.PopupKind.NONE, "docking while loaded should not ask to enter the Office")
-	check(not lander().held, "docking while loaded should not hold the ship")
 	hold(&"ui_up")
 	await seconds(0.3)
 	release(&"ui_up")
-	check(lander().state == Lander.State.FLYING, "Up should undock right away")
+	check(lander().state == Lander.State.FLYING, "Up should undock right away: docking while loaded doesn't hold the ship")
 

@@ -11,16 +11,21 @@ func test_landing_on_the_pad_while_delivering_starts_unloading_which_blocks_lift
 	# 2 s + 0.5 s × 4 passengers + 0.5 s × 8 tonnes = 8 s.
 	check(message() == "Landed!\nUnloading… 8s", "the message should count down from 8 s, got %s" % message())
 	lander().fuel = 3000.0
+	var landed_at := lander().position
 	hold(&"ui_up")
 	await seconds(1.0)
 	check(lander().state == Lander.State.LANDED, "Up should not lift off while unloading")
-	check(not lander().flame.visible, "the engine should not fire while unloading")
+	check_near(lander().position.distance_to(landed_at), 0.0, 0.5, "how far the ship moved while unloading")
+	check(lander().fuel == 3000.0, "the engine should not burn fuel while unloading, has %s kg" % lander().fuel)
 	release(&"ui_up")
 	await seconds(1.5)
 	check(message() == "Landed!\nUnloading… 6s\nRefueling…", "refuelling should start after the usual delay, got %s" % message())
 	await seconds(3.0)
 	check(lander().fuel == 3680.0, "refuelling should stop at the cap while the Load is aboard, has %s kg" % lander().fuel)
 	check(message() == "Landed!\nUnloading… 3s", "the countdown should go on, got %s" % message())
+	await seconds(3.0)
+	check(economy().phase == Economy.Phase.NONE, "unloading should be over")
+	check(lander().fuel > 3680.0, "with the Load off, refuelling should go past the old cap, has %s kg" % lander().fuel)
 
 
 func test_a_mixed_contract_delivered_late_loses_2_percent_of_passengers_and_1_percent_of_cargo_per_whole_second() -> void:
@@ -82,8 +87,8 @@ func test_several_contracts_each_get_a_transaction_newest_first_then_the_ship_is
 		"one transaction per Contract, newest first, shows %s" % office().transaction_lines())
 	check(hud().payout == "+€420", "the total payout should float above the ship, shows %s" % hud().payout)
 	check(economy().contracts.is_empty(), "the Contracts should be cleared")
-	check(lander().total_mass() == lander().dry_mass + lander().fuel, "the Load should be off, total %s" % lander().total_mass())
-	check(lander().fuel_cap() == ShipType.SPARROW.tank, "the fuel cap should be a full Tank again")
+	check(lander().total_mass() == ShipType.SPARROW.default_dry_mass + lander().fuel,
+		"the Load should be off, total %s" % lander().total_mass())
 	check(message() == "Landed!", "the unloading line should go, got %s" % message())
 	await seconds(3.0)
 	check(hud().payout == "", "the payout should fade away, shows %s" % hud().payout)
@@ -107,7 +112,7 @@ func test_landing_again_neither_restarts_unloading_nor_pays_twice() -> void:
 	await deliver_by_shortcut()
 	await seconds(4.0)
 	check(economy().balance == 420, "the Contract should be paid once, balance is %s" % economy().balance)
-	check(economy().transactions.size() == 1, "one transaction only, got %d" % economy().transactions.size())
+	check(office().transaction_lines().size() == 1, "one transaction only, shows %s" % office().transaction_lines())
 	check(message() == "Landed!", "landing empty shows no unloading, got %s" % message())
 
 
@@ -120,7 +125,7 @@ func test_landing_on_the_pad_without_a_load_works_as_before() -> void:
 	await seconds(0.3)
 	release(&"ui_up")
 	check(lander().state == Lander.State.FLYING, "Up should lift off right away")
-	check(economy().balance == 0 and economy().transactions.is_empty(), "nothing should be paid")
+	check(economy().balance == 0 and office().transaction_lines().is_empty(), "nothing should be paid")
 
 
 func test_the_debug_pad_shortcut_delivers_even_after_a_crash_on_the_surface() -> void:
@@ -155,7 +160,8 @@ func test_a_crash_then_r_starts_a_new_run_with_the_economy_wiped() -> void:
 	check(office().transaction_lines().is_empty(), "no transactions should remain, shows %s" % office().transaction_lines())
 	check(economy().contracts.is_empty(), "no Contracts should remain")
 	check(economy().phase == Economy.Phase.NONE, "no delivery should be under way")
-	check(lander().load_mass == 0.0, "no Load should remain")
+	check(lander().total_mass() == ShipType.SPARROW.default_dry_mass + lander().fuel,
+		"no Load should remain, total %s" % lander().total_mass())
 
 
 # Docks and accepts one more Contract, so the run being wiped has one too.
