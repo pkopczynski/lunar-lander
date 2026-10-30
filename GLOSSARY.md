@@ -62,12 +62,28 @@ _Avoid_: Menu, shop, hangar
 The retro green-on-black screen in the office that shows ship offers, transport offers and the bank account.
 _Avoid_: Monitor, display, console
 
+**Main screen**:
+The terminal's home screen, with one tile each for ship selection, transport offers and the bank account. Every visit to the office starts here, and the player leaves the office from here.
+_Avoid_: Menu, home, dashboard
+
+**Ship selection**:
+The terminal screen for browsing ship offers and choosing a ship type.
+_Avoid_: Shop, hangar, fleet screen
+
+**In service**:
+The ship type currently in the parking spot: the one the player flies when leaving the office.
+_Avoid_: Current ship, active ship
+
+**Bank account**:
+The pilot's money, in euros. It starts at €0 every run.
+_Avoid_: Wallet, credits, score
+
 **Ship offer**:
 One ship type shown on the terminal, with its picture and characteristics. Taking a ship offer costs nothing.
 _Avoid_: Offer (on its own), listing, card, product
 
 **Ship swap**:
-Going back to the office from the parking spot to trade the current ship for another ship type. The new ship takes the old one's place in the parking spot with a full tank.
+Entering the office from the parking spot and choosing another ship type in ship selection. The new ship takes the old one's place in the parking spot with a full tank.
 _Avoid_: Respawn, change ship
 
 ## Transport
@@ -131,7 +147,7 @@ The ship is resting on the pad after a safe touchdown.
 _Avoid_: Touched down, parked
 
 **Docked**:
-The ship is resting inside the parking spot. This is the deep-space counterpart of Landed. While the swap popup is open a Docked ship is held: it ignores the controls and doesn't refuel.
+The ship is resting inside the parking spot. This is the deep-space counterpart of Landed. From docking until the player declines to enter the office or leaves it, a Docked ship is held: it ignores the controls and doesn't refuel.
 _Avoid_: Parked, landed (in deep space)
 
 **Crashed**:
