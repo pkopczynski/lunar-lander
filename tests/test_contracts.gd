@@ -102,7 +102,8 @@ func test_the_summary_shows_passengers_cargo_and_start_loading() -> void:
 		"an empty Sparrow's summary, got %s" % offers().summary())
 	check(not offers().start_loading_enabled(), "START LOADING should be disabled with no Contracts")
 	await accept(offer)
-	check(offers().summary() == PackedStringArray(["PASSENGERS 3/4", "CARGO 2 500/6 760 KG"]),
+	check(offers().summary() == PackedStringArray(["PASSENGERS 3/4", "CARGO 2 500/6 760 KG",
+		"DELIVER WITHIN 1:30", "TOTAL VALUE €420"]),
 		"the summary should count the Contract, got %s" % offers().summary())
 	check(offers().start_loading_enabled(), "START LOADING should be enabled with a Contract")
 
@@ -122,7 +123,28 @@ func test_no_fuel_warning_while_a_full_tank_still_fits() -> void:
 	economy().put_offer(light)
 	await open_transport_offers()
 	await accept(light)
-	check(offers().summary().size() == 2, "7 000 kg of Load leaves room for a full Tank, got %s" % offers().summary())
+	check(not offers().summary()[2].begins_with("FUEL LIMITED"),
+		"7 000 kg of Load leaves room for a full Tank, got %s" % offers().summary())
+
+
+func test_the_summary_shows_the_shortest_deadline_and_the_total_value_of_the_contracts() -> void:
+	var quick := known_offer(1, 0.0)
+	quick.deadline = 90.0
+	var slow := known_offer(0, 1000.0)
+	slow.deadline = 160.0
+	slow.passenger_reward = 0
+	slow.cargo_reward = 820
+	for offer in [slow, quick]:
+		economy().put_offer(offer)
+	await open_transport_offers()
+	check(offers().summary() == PackedStringArray(["PASSENGERS 0/4", "CARGO 0/7 000 KG"]),
+		"DELIVER WITHIN and TOTAL VALUE should be hidden with no Contracts, got %s" % offers().summary())
+	await accept(slow)
+	await accept(quick)
+	var summary := offers().summary()
+	check("DELIVER WITHIN 1:30" in summary, "the shortest deadline of 1:30 and 2:40 should show, got %s" % summary)
+	check("TOTAL VALUE €1240" in summary, "€820 and €420 should add up to €1240, got %s" % summary)
+	check(offers().red_summary_lines().is_empty(), "neither line should be red, got %s" % offers().red_summary_lines())
 
 
 func test_right_and_left_move_focus_between_the_offers_and_start_loading() -> void:
