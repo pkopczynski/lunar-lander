@@ -23,6 +23,14 @@ const TIMER_MARGIN := Vector2(24, 40)
 const DELIVERY_PREFIX := "DELIVERY "
 const OVERDUE_PREFIX := "OVERDUE +"
 
+# The payout that rises above the ship and fades.
+const PAYOUT_COLOR := Color(0.3, 1.0, 0.4)
+const PAYOUT_FONT_SIZE := 20
+const PAYOUT_WIDTH := 200.0
+const PAYOUT_START_HEIGHT := 40.0
+const PAYOUT_RISE := 60.0
+const PAYOUT_TIME := 2.0
+
 const LEVEL_EASE_SPEED := 6.0
 const WAVE_HEIGHT := 2.0
 const WAVE_LENGTH := 14.0
@@ -32,6 +40,10 @@ const WAVE_SEGMENTS := 12
 var shown_level := 1.0
 var time := 0.0
 var frame_style := StyleBoxFlat.new()
+# The floating +€X, "" when none; payout_progress goes 0 → 1 as it rises and fades.
+var payout := ""
+var payout_progress := 0.0
+var payout_tween: Tween
 
 @onready var lander: Lander = $"../../Lander"
 @onready var economy: Economy = $"../../Economy"
@@ -41,6 +53,7 @@ func _ready() -> void:
 	frame_style.bg_color = FRAME_BG_COLOR
 	frame_style.set_border_width_all(BORDER_WIDTH)
 	frame_style.set_corner_radius_all(CORNER_RADIUS)
+	economy.paid_out.connect(show_payout)
 
 
 func _process(delta: float) -> void:
@@ -69,6 +82,22 @@ func _draw() -> void:
 	if timer != "":
 		draw_string(font, Vector2(0.0, TIMER_MARGIN.y), timer, HORIZONTAL_ALIGNMENT_RIGHT,
 			size.x - TIMER_MARGIN.x, TIMER_FONT_SIZE, OVERDUE_COLOR if delivery_overdue() else TEXT_COLOR)
+
+	if payout != "":
+		var above := lander.get_global_transform_with_canvas().origin \
+			- Vector2(PAYOUT_WIDTH / 2.0, PAYOUT_START_HEIGHT + PAYOUT_RISE * payout_progress)
+		draw_string(font, above, payout, HORIZONTAL_ALIGNMENT_CENTER, PAYOUT_WIDTH, PAYOUT_FONT_SIZE,
+			Color(PAYOUT_COLOR, 1.0 - payout_progress))
+
+
+func show_payout(total: int) -> void:
+	payout = "+" + Economy.eur(total)
+	payout_progress = 0.0
+	if payout_tween:
+		payout_tween.kill()
+	payout_tween = create_tween()
+	payout_tween.tween_property(self, "payout_progress", 1.0, PAYOUT_TIME)
+	payout_tween.tween_callback(func() -> void: payout = "")
 
 
 # DELIVERY 1:23 while delivering, OVERDUE +0:12 once late, "" otherwise.

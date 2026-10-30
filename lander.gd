@@ -43,6 +43,8 @@ const SOFT_WALL_DAMPING := 8.0
 const SOFT_WALL_PUSH := 300.0
 
 signal docked_at_station
+# Landed on the pad, by a real landing or the debug pad shortcut.
+signal landed_on_pad
 
 enum State { FLYING, LANDED, DOCKED, CRASHED }
 
@@ -58,6 +60,9 @@ var load_mass := 0.0
 var state := State.FLYING
 # Set from outside through hold() and release(): a held ship ignores the controls and stays put.
 var held := false
+# Set from outside: the ship rests where it is (refuelling included) but can't lift off.
+# Unlike held, entering a state doesn't clear it, so a ship that settles back keeps it.
+var lift_off_blocked := false
 var rest_time := 0.0
 var since_liftoff := INF
 var level_tween: Tween
@@ -68,6 +73,8 @@ var can_dock := true
 # A line the resting message adds under Docked!/Landed!, such as the loading countdown.
 # Set it through show_status(): the message is rewritten every frame while resting.
 var status := ""
+# Whether the last rest refuelled, so a new status keeps the Refueling… line.
+var refueling := false
 
 @onready var body: Polygon2D = $Body
 @onready var flame: Polygon2D = $Flame
@@ -122,6 +129,7 @@ func reset_to_pad() -> void:
 		hull_bottom = maxf(hull_bottom, point.y)
 	enter(State.LANDED)
 	move_to(Vector2(PAD_CENTER_X, ground_top() - hull_bottom))
+	landed_on_pad.emit()
 
 
 # Puts the ship Flying at a position, upright, keeping its ship type, dry mass and fuel.
@@ -139,6 +147,7 @@ func enter(new_state: State) -> void:
 	since_liftoff = INF
 	can_dock = true
 	status = ""
+	refueling = false
 	if level_tween:
 		level_tween.kill()
 	match new_state:
@@ -177,7 +186,8 @@ func ground_top() -> float:
 
 
 func _physics_process(delta: float) -> void:
-	var thrusting := Input.is_action_pressed("ui_up") and fuel > 0.0
+	var thrusting := Input.is_action_pressed("ui_up") and fuel > 0.0 \
+		and not (lift_off_blocked and state != State.FLYING)
 	if held or state == State.CRASHED:
 		flame.visible = false
 		return
@@ -345,6 +355,7 @@ func land() -> void:
 	settle()
 	# Leveling lifts the corner that touched down, so drop back onto the ground.
 	level_tween.tween_callback(move_and_collide.bind(Vector2.DOWN * PAD_HEIGHT * 4.0))
+	landed_on_pad.emit()
 
 
 func dock() -> void:
@@ -377,19 +388,19 @@ func rest(delta: float) -> void:
 	if state == State.DOCKED and not (level_tween and level_tween.is_running()):
 		rotation += Input.get_axis("ui_left", "ui_right") * ship_type.turn_rate * delta
 	rest_time += delta
-	var refueling := rest_time >= REFUEL_DELAY and fuel < fuel_cap()
+	refueling = rest_time >= REFUEL_DELAY and fuel < fuel_cap()
 	if refueling:
 		fuel = minf(fuel + ship_type.tank * REFUEL_TANK_SHARE * delta, fuel_cap())
-	show_rest_message(refueling)
+	show_rest_message()
 
 
 func show_status(text: String) -> void:
 	status = text
 	# A held ship doesn't rest, so show it now.
-	show_rest_message(false)
+	show_rest_message()
 
 
-func show_rest_message(refueling: bool) -> void:
+func show_rest_message() -> void:
 	if state != State.DOCKED and state != State.LANDED:
 		return
 	var lines := PackedStringArray(["Docked!" if state == State.DOCKED else "Landed!"])

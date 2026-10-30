@@ -298,6 +298,17 @@ func bank_lines() -> PackedStringArray:
 	return PackedStringArray([Economy.PILOT, "BALANCE " + Economy.eur(economy.balance)])
 
 
+# Newest first, e.g. #004 MINING SUPPLIES  CARGO  €640 - €96 = €544.
+func transaction_lines() -> PackedStringArray:
+	var lines := PackedStringArray()
+	for transaction in economy.transactions:
+		var contract: TransportOffer = transaction.contract
+		lines.append("#%03d %s  %s  %s - %s = %s" % [contract.number, contract.title.to_upper(),
+			TransportOffer.KIND_LABELS[contract.kind()], Economy.eur(transaction.base),
+			Economy.eur(transaction.penalty), Economy.eur(transaction.payout)])
+	return lines
+
+
 func selected_ship_offer() -> ShipType:
 	return ShipType.ALL[ship_offer_index]
 
@@ -453,6 +464,13 @@ func draw_bank_account(area: Rect2) -> void:
 	draw_text(lines[0], Vector2(area.position.x, y), NAME_SIZE)
 	y += 2.0 * LINE_GAP + STAT_SIZE
 	draw_text(lines[1], Vector2(area.position.x, y), STAT_SIZE)
+	y += LINE_GAP
+	# As many as fit, newest first; no scrolling.
+	for line in transaction_lines():
+		y += LINE_GAP + TEXT_SIZE
+		if y > area.end.y:
+			break
+		draw_text(line, Vector2(area.position.x, y), TEXT_SIZE)
 
 
 func draw_ship_offer(area: Rect2) -> void:

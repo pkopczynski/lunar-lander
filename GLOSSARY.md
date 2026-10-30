@@ -75,7 +75,7 @@ The ship type currently in the parking spot: the one the player flies when leavi
 _Avoid_: Current ship, active ship
 
 **Bank account**:
-The pilot's money, in euros. It starts at €0 every run.
+The pilot's money, in euros, and the transactions that made it. It starts at €0 every run.
 _Avoid_: Wallet, credits, score
 
 **Ship offer**:
@@ -107,6 +107,18 @@ _Avoid_: Late (on its own), expired
 **Loading**:
 Putting the load aboard at the parking spot, after the player accepts their contracts. The ship stays docked and held until it finishes, and the deadline starts counting then.
 _Avoid_: Boarding, embarking
+
+**Unloading**:
+Taking the load off on the pad, which starts by itself when the ship lands there with contracts aboard. The ship can refuel meanwhile but can't lift off until it finishes.
+_Avoid_: Delivery (the whole flight), disembarking
+
+**Payout**:
+What a contract pays into the bank account once unloaded: its reward less a penalty for each whole second overdue, never below €0. Each contract is settled on its own.
+_Avoid_: Reward (that's before the penalty), income, score
+
+**Transaction**:
+One line in the bank account per delivered contract: its reward, penalty and payout.
+_Avoid_: Receipt, entry, log
 
 **Load**:
 Everything carried for the contracts: passengers and cargo together.

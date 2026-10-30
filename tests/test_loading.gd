@@ -86,14 +86,3 @@ func test_docking_while_loaded_shows_no_popup_and_leaves_the_ship_free() -> void
 	release(&"ui_up")
 	check(lander().state == Lander.State.FLYING, "Up should undock right away")
 
-
-func test_landing_on_the_pad_while_loaded_doesnt_deliver_yet() -> void:
-	var offer := known_offer(1, 0.0)
-	await start_loading([offer])
-	await seconds(4.5)
-	place(Vector2(Lander.PAD_CENTER_X, 580.0), Vector2(0, 20))
-	await seconds(4.0)
-	check(lander().state == Lander.State.LANDED, "the ship should land on the pad")
-	check(economy().phase == Economy.Phase.DELIVERING, "landing should not deliver yet")
-	check(economy().contracts == [offer], "the Contract should stay")
-	check(hud().delivery_text().begins_with("DELIVERY "), "the delivery timer should keep running, got %s" % hud().delivery_text())
