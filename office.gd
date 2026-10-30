@@ -13,7 +13,7 @@ const HEADER := "ORBITAL FREIGHT CO. // "
 const KEY_HINTS := {
 	Screen.MAIN: "← → MOVE   RETURN OPEN   ESC LEAVE",
 	Screen.SHIP_SELECTION: "← → BROWSE   RETURN SELECT   ESC BACK",
-	Screen.TRANSPORT_OFFERS: "ESC BACK",
+	Screen.TRANSPORT_OFFERS: "UP DOWN MOVE   RETURN DETAILS   ESC BACK",
 	Screen.BANK_ACCOUNT: "ESC BACK",
 }
 const ARROWS := "← →"
@@ -96,6 +96,7 @@ var ship_offer_index := 0
 var powering := false
 # How far the Terminal's picture is powered on: 0 is off, 1 fully on.
 var power := 1.0
+var transport_offers: TransportOffersScreen
 
 @onready var lander: Lander = $"../Lander"
 @onready var economy: Economy = $"../Economy"
@@ -103,9 +104,16 @@ var power := 1.0
 
 
 func _ready() -> void:
+	transport_offers = TransportOffersScreen.new(self, economy)
 	terminal.draw.connect(draw_terminal)
 	lander.docked_at_station.connect(ask_to_enter)
 	open()
+
+
+# The Transport offers' countdowns tick every second.
+func _process(_delta: float) -> void:
+	if showing and screen == Screen.TRANSPORT_OFFERS:
+		terminal.queue_redraw()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -117,6 +125,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	elif screen == Screen.MAIN:
 		handle_main_input(event)
+	elif screen == Screen.TRANSPORT_OFFERS and transport_offers.handle_input(event):
+		handled()
 	elif event.is_action_pressed("ui_cancel"):
 		screen = Screen.MAIN
 		handled()
@@ -389,6 +399,8 @@ func draw_screen(view: Rect2) -> void:
 			draw_tiles(body)
 		Screen.SHIP_SELECTION:
 			draw_ship_offer(body)
+		Screen.TRANSPORT_OFFERS:
+			transport_offers.draw(body)
 		Screen.BANK_ACCOUNT:
 			draw_bank_account(body)
 	if popup != PopupKind.NONE:

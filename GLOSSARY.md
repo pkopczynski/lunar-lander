@@ -96,6 +96,10 @@ _Avoid_: Offer (on its own), job, mission
 A transport offer the player has accepted. All contracts accepted together are delivered in one flight.
 _Avoid_: Order, accepted offer
 
+**Deadline**:
+How long the player has to deliver a contract, counted from when loading finishes.
+_Avoid_: Time limit, expiry (that's how long a transport offer stays available)
+
 **Load**:
 Everything carried for the contracts: passengers and cargo together.
 _Avoid_: Cargo (for the whole load), payload, freight
