@@ -7,6 +7,8 @@ const GRAVITY := 60.0
 # Mass at which thrust, gravity and burn rate are unscaled: a default Sparrow with a full tank.
 const REFERENCE_MASS := 15000.0
 const GRAVITY_MASS_SCALE := 0.5
+# Share of the Load's mass that counts toward fuel burn, so loaded ships burn more gently.
+const LOAD_BURN_SHARE := 0.5
 
 const LIFTOFF_BURN_MULTIPLIER := 2.0
 const LIFTOFF_BURN_TIME := 1.0
@@ -208,7 +210,8 @@ func _physics_process(delta: float) -> void:
 
 	if thrusting:
 		var thrust_dir := Vector2.UP.rotated(rotation)
-		fuel = maxf(fuel - ship_type.burn_rate * mass_factor * burn_multiplier(thrust_dir) * delta, 0.0)
+		var burn_factor := (dry_mass + fuel + LOAD_BURN_SHARE * load_mass) / REFERENCE_MASS
+		fuel = maxf(fuel - ship_type.burn_rate * burn_factor * burn_multiplier(thrust_dir) * delta, 0.0)
 		velocity += thrust_dir * ship_type.thrust / mass_factor * delta
 	since_liftoff += delta
 
