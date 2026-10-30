@@ -63,6 +63,11 @@ var held := false
 # Set from outside: the ship rests where it is (refuelling included) but can't lift off.
 # Unlike held, entering a state doesn't clear it, so a ship that settles back keeps it.
 var lift_off_blocked := false
+# Set through start_loading() and finish_loading(): while a Load goes aboard the ship rests
+# and refuels up to the cap for it, but can't lift off or turn. It counts toward the mass
+# only once loading finishes.
+var loading := false
+var incoming_load := 0.0
 var rest_time := 0.0
 var since_liftoff := INF
 var level_tween: Tween
@@ -187,7 +192,7 @@ func ground_top() -> float:
 
 func _physics_process(delta: float) -> void:
 	var thrusting := Input.is_action_pressed("ui_up") and fuel > 0.0 \
-		and not (lift_off_blocked and state != State.FLYING)
+		and not ((lift_off_blocked or loading) and state != State.FLYING)
 	if held or state == State.CRASHED:
 		flame.visible = false
 		return
@@ -242,7 +247,7 @@ func total_mass() -> float:
 # The most fuel refuelling may fill: a full Tank, or less if the Load would push
 # the ship past its Maximum weight.
 func fuel_cap() -> float:
-	return fuel_cap_for(load_mass)
+	return fuel_cap_for(load_mass + incoming_load)
 
 
 func fuel_cap_for(with_load: float) -> float:
@@ -375,6 +380,21 @@ func release() -> void:
 	rest_time = 0.0
 
 
+# Fuel above the cap for the incoming Load is pumped out, and refuelling runs from the first frame.
+func start_loading(with_load: float) -> void:
+	held = false
+	loading = true
+	incoming_load = with_load
+	fuel = minf(fuel, fuel_cap())
+	rest_time = maxf(rest_time, REFUEL_DELAY)
+
+
+func finish_loading() -> void:
+	loading = false
+	load_mass += incoming_load
+	incoming_load = 0.0
+
+
 # Stops the ship where it touched down and levels it.
 func settle() -> void:
 	velocity = Vector2.ZERO
@@ -387,7 +407,7 @@ func settle() -> void:
 
 func rest(delta: float) -> void:
 	# A docked ship may turn in place to face the way out.
-	if state == State.DOCKED and not (level_tween and level_tween.is_running()):
+	if state == State.DOCKED and not loading and not (level_tween and level_tween.is_running()):
 		rotation += Input.get_axis("ui_left", "ui_right") * ship_type.turn_rate * delta
 	rest_time += delta
 	refueling = rest_time >= REFUEL_DELAY and fuel < fuel_cap()
