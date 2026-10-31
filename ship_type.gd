@@ -4,7 +4,7 @@ extends RefCounted
 # for per-ship values; rules shared by all ship types stay in lander.gd.
 
 var name: String
-# One line on the Offer saying what the ship type is for.
+# One line on the Ship offer saying what the ship type is for.
 var flavour: String
 # Outline used for drawing, collision and the docking check. Nose points up (-y).
 var hull: PackedVector2Array
@@ -12,13 +12,16 @@ var flame: PackedVector2Array
 var default_dry_mass: float
 var maximum_weight: float
 var tank: float
+var passenger_seats: int
+# The most cargo it can carry, in kg.
+var cargo_capacity: float
 # Thrust acceleration in px/s² at the reference mass.
 var thrust: float
 # Fuel burn in kg/s at the reference mass.
 var burn_rate: float
 # Rad/s.
 var turn_rate: float
-# Offer ratings out of 5 blocks, for comparing ship types at a glance.
+# Ship offer ratings out of 5 blocks, for comparing ship types at a glance.
 var thrust_rating: int
 var handling_rating: int
 
@@ -36,8 +39,10 @@ static func sparrow() -> ShipType:
 	type.hull = PackedVector2Array([Vector2(0, -20), Vector2(14, 14), Vector2(-14, 14)])
 	type.flame = PackedVector2Array([Vector2(-7, 14), Vector2(7, 14), Vector2(0, 30)])
 	type.default_dry_mass = 10000.0
-	type.maximum_weight = 17000.0
+	type.maximum_weight = 22000.0
 	type.tank = 5000.0
+	type.passenger_seats = 4
+	type.cargo_capacity = 8000.0
 	type.thrust = 150.0
 	# Nominally 20 s of thrust on a full tank (Tank / burn); it measures ~24 s in play,
 	# as burn falls with the ship's weight. Other ship types' thrust times are tuned as
@@ -57,8 +62,10 @@ static func mule() -> ShipType:
 	type.hull = rounded_nose_box(42.0, 68.0, 4.0, 3)
 	type.flame = PackedVector2Array([Vector2(-10, 34), Vector2(10, 34), Vector2(0, 54)])
 	type.default_dry_mass = 20000.0
-	type.maximum_weight = 29000.0
+	type.maximum_weight = 41000.0
 	type.tank = 12000.0
+	type.passenger_seats = 4
+	type.cargo_capacity = 16000.0
 	type.thrust = 316.0
 	type.burn_rate = 207.0
 	type.turn_rate = 1.5
@@ -76,8 +83,10 @@ static func halo() -> ShipType:
 	type.hull = ring(20.0, 8.0, deg_to_rad(30.0), 10)
 	type.flame = PackedVector2Array([Vector2(-6, 18), Vector2(6, 18), Vector2(0, 33)])
 	type.default_dry_mass = 14000.0
-	type.maximum_weight = 24000.0
+	type.maximum_weight = 32000.0
 	type.tank = 8000.0
+	type.passenger_seats = 10
+	type.cargo_capacity = 11000.0
 	# Tuned against the Sparrow in tests/test_halo.gd: climbs off the pad at ~80%,
 	# lasts ~1.2x as long on a full tank of continuous thrust.
 	type.thrust = 214.0

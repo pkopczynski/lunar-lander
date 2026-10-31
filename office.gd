@@ -1,17 +1,35 @@
 class_name Office
 extends CanvasLayer
-# The player's Office: a full-window Terminal showing one Offer per ship type.
-# It pauses the world while showing, and puts the chosen ship type in the parking spot.
+# The player's Office: a full-window Terminal with a main screen of tiles opening Ship
+# selection (one Ship offer per ship type), Transport offers and the Bank account. It pauses
+# the world while showing, and puts the chosen ship type in the parking spot.
 
-enum PopupKind { NONE, ARE_YOU_SURE, SWAP }
+enum Screen { MAIN, SHIP_SELECTION, TRANSPORT_OFFERS, BANK_ACCOUNT }
+enum PopupKind { NONE, ARE_YOU_SURE, ENTER_OFFICE, ACCEPT_OFFER }
 enum Choice { YES, NO }
 
-const HEADER := "ORBITAL FREIGHT CO. // FLEET OFFERS"
-const KEY_HINT := "← → BROWSE   RETURN SELECT"
+const HEADER := "ORBITAL FREIGHT CO. // "
+# A hint starting with ← → gets its arrows drawn: Silkscreen has no arrow glyphs.
+const KEY_HINTS := {
+	Screen.MAIN: "← → MOVE   RETURN OPEN   ESC LEAVE",
+	Screen.SHIP_SELECTION: "← → BROWSE   RETURN SELECT   ESC BACK",
+	Screen.TRANSPORT_OFFERS: "← → COLUMNS   UP DOWN MOVE   RETURN SELECT   ESC BACK",
+	Screen.BANK_ACCOUNT: "ESC BACK",
+}
+const ARROWS := "← →"
 const ARE_YOU_SURE_TEXT := "ARE YOU SURE?"
-const SWAP_TEXT := "WOULD YOU LIKE TO CHOOSE A DIFFERENT SHIP?"
+const ENTER_OFFICE_TEXT := "ENTER THE OFFICE?"
 const IN_SERVICE_TEXT := "IN SERVICE"
+const SHIP_LOCKED_TEXT := "SHIP LOCKED: CONTRACTS ACCEPTED"
 const VERSION_PREFIX := "V"
+# The main screen's tiles, in order: each opens the screen it names.
+const TILES: Array[Screen] = [Screen.SHIP_SELECTION, Screen.TRANSPORT_OFFERS, Screen.BANK_ACCOUNT]
+const SCREEN_TITLES := {
+	Screen.MAIN: "OFFICE",
+	Screen.SHIP_SELECTION: "SHIP SELECTION",
+	Screen.TRANSPORT_OFFERS: "TRANSPORT OFFERS",
+	Screen.BANK_ACCOUNT: "BANK ACCOUNT",
+}
 const RATING_BLOCKS := 5
 const FULL_BLOCK := "■"
 const EMPTY_BLOCK := "□"
@@ -39,13 +57,13 @@ const BLOCK_SIZE := Vector2(22, 22)
 const BLOCK_GAP := 6.0
 const RATING_LABEL_WIDTH := 200.0
 const HINT_ARROW_SIZE := 12.0
-# The Offer's text block (name, flavour, stats, ratings) is centred on the picture by
-# starting this far above the Offer area's middle.
-const OFFER_TEXT_LIFT := 4.0 * STAT_SIZE + 2.0 * LINE_GAP
+# The Ship offer's text block (name, flavour, stats, ratings) is centred on the picture by
+# starting this far above the Ship offer area's middle.
+const SHIP_OFFER_TEXT_LIFT := 5.0 * STAT_SIZE + 3.0 * LINE_GAP
 # Padding around the IN SERVICE tag's text, and how far the tag sits above the name's middle.
 const TAG_PADDING := Vector2(8, 4)
 const TAG_RAISE := 4.0
-# Share of the Offer area's width and height the wireframe picture may fill.
+# Share of the Ship offer area's width and height the wireframe picture may fill.
 const PICTURE_SHARE := 0.4
 
 # The CRT power-on/off effect: the picture collapses to a bright line, then a dot
@@ -62,32 +80,42 @@ const GLOW_ALPHA := 0.8
 # ease() curve for the line's stretch and the picture's opening: slow start, fast finish.
 const POWER_EASE := 2.0
 
+const TILE_SIZE := Vector2(300, 180)
+const TILE_GAP := 40.0
+
 const POPUP_SIZE := Vector2(440, 200)
 const POPUP_BUTTON_SIZE := Vector2(120, 44)
 const POPUP_BUTTON_GAP := 48.0
 
 var showing := false
+var screen := Screen.MAIN
+var tile_index := 0
 var popup := PopupKind.NONE
 var selected_button := Choice.YES
-var offer_index := 0
-# The ship type the player is flying, tagged IN SERVICE on its Offer. None at run start.
-var in_service: ShipType = null
-# Whether the Office opened for a Ship swap (rather than at run start), which lets
-# Escape and picking the IN SERVICE Offer cancel it.
-var swapping := false
+var ship_offer_index := 0
 # Whether the Terminal is powering on or off. Office input is ignored meanwhile.
 var powering := false
 # How far the Terminal's picture is powered on: 0 is off, 1 fully on.
 var power := 1.0
+var transport_offers: TransportOffersScreen
 
 @onready var lander: Lander = $"../Lander"
+@onready var economy: Economy = $"../Economy"
 @onready var terminal: Control = $Terminal
 
 
 func _ready() -> void:
+	transport_offers = TransportOffersScreen.new(self, economy)
 	terminal.draw.connect(draw_terminal)
-	lander.docked_at_station.connect(offer_swap)
+	lander.docked_at_station.connect(ask_to_enter)
 	open()
+
+
+# The Transport offers' countdowns tick every second.
+func _process(delta: float) -> void:
+	transport_offers.tick(delta)
+	if showing and screen == Screen.TRANSPORT_OFFERS:
+		terminal.queue_redraw()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -95,28 +123,62 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if popup != PopupKind.NONE:
 		handle_popup_input(event)
-	elif showing:
-		handle_offer_input(event)
+	elif not showing:
+		return
+	elif screen == Screen.MAIN:
+		handle_main_input(event)
+	elif screen == Screen.TRANSPORT_OFFERS and transport_offers.handle_input(event):
+		handled()
+	elif event.is_action_pressed("ui_cancel"):
+		screen = Screen.MAIN
+		handled()
+	elif screen == Screen.SHIP_SELECTION:
+		handle_ship_offer_input(event)
 
 
-func handle_offer_input(event: InputEvent) -> void:
+func handle_main_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_left") or event.is_action_pressed("ui_up"):
+		tile_index = maxi(tile_index - 1, 0)
+	elif event.is_action_pressed("ui_right") or event.is_action_pressed("ui_down"):
+		tile_index = mini(tile_index + 1, TILES.size() - 1)
+	elif event.is_action_pressed("ui_accept"):
+		open_screen(TILES[tile_index])
+	elif event.is_action_pressed("ui_cancel"):
+		# Leaves the ship Docked as it is; one held since docking refuels after the usual delay.
+		power_off(lander.release)
+	else:
+		return
+	handled()
+
+
+func handle_ship_offer_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_left"):
 		browse(-1)
 	elif event.is_action_pressed("ui_right"):
 		browse(1)
 	elif event.is_action_pressed("ui_accept"):
 		if in_service_shown():
-			# Picking the ship already in service declines the swap.
-			decline_swap()
-		else:
+			# The ship in service is already in the parking spot: nothing to choose.
+			screen = Screen.MAIN
+		elif not ship_locked_shown():
 			show_popup(PopupKind.ARE_YOU_SURE, Choice.YES)
-	elif event.is_action_pressed("ui_cancel") and swapping:
-		decline_swap()
 	else:
-		# Escape on the Offer screen at run start does nothing: a run needs a ship.
 		return
+	handled()
+
+
+func handled() -> void:
 	get_viewport().set_input_as_handled()
 	terminal.queue_redraw()
+
+
+# Ship selection opens on the ship type in service, Transport offers on the offer list.
+func open_screen(which: Screen) -> void:
+	screen = which
+	if which == Screen.SHIP_SELECTION:
+		ship_offer_index = ShipType.ALL.find(lander.ship_type)
+	elif which == Screen.TRANSPORT_OFFERS:
+		transport_offers.focus = TransportOffersScreen.Column.OFFERS
 
 
 func handle_popup_input(event: InputEvent) -> void:
@@ -130,18 +192,18 @@ func handle_popup_input(event: InputEvent) -> void:
 		answer(Choice.NO)
 	else:
 		return
-	get_viewport().set_input_as_handled()
-	terminal.queue_redraw()
+	handled()
 
 
 # Browsing wraps around at both ends.
 func browse(step: int) -> void:
-	offer_index = posmod(offer_index + step, ShipType.ALL.size())
+	ship_offer_index = posmod(ship_offer_index + step, ShipType.ALL.size())
 
 
 func open() -> void:
 	showing = true
 	visible = true
+	screen = Screen.MAIN
 	popup = PopupKind.NONE
 	get_tree().paused = true
 	power_to(1.0)
@@ -154,6 +216,11 @@ func power_off(after_closing: Callable) -> void:
 	power_to(0.0, func() -> void:
 		close()
 		after_closing.call())
+
+
+# Loading starts over the flight view once the Terminal is off.
+func start_loading() -> void:
+	power_off(economy.start_loading)
 
 
 func power_to(target: float, done := Callable()) -> void:
@@ -173,19 +240,20 @@ func set_power(value: float) -> void:
 
 func close() -> void:
 	showing = false
-	swapping = false
-	in_service = null
 	visible = false
 	popup = PopupKind.NONE
 	get_tree().paused = false
 
 
-# Docking asks whether to swap ships, over the flight view. The ship is held until
-# the answer: No releases it, a new ship type replaces it.
-func offer_swap() -> void:
+# Docking asks whether to enter the Office, over the flight view. The ship is held
+# until the ship is released: by No here, or by leaving the Office. A loaded ship gets
+# no popup: all Contracts go in one flight.
+func ask_to_enter() -> void:
+	if economy.phase != Economy.Phase.NONE:
+		return
 	lander.hold()
 	visible = true
-	show_popup(PopupKind.SWAP, Choice.NO)
+	show_popup(PopupKind.ENTER_OFFICE, Choice.NO)
 	terminal.queue_redraw()
 
 
@@ -196,79 +264,103 @@ func show_popup(kind: PopupKind, default_button: Choice) -> void:
 
 func answer(choice: Choice) -> void:
 	match [popup, choice]:
-		[PopupKind.SWAP, Choice.YES]:
-			open_for_swap()
-		[PopupKind.SWAP, Choice.NO]:
-			decline_swap()
+		[PopupKind.ENTER_OFFICE, Choice.YES]:
+			open()
+		[PopupKind.ENTER_OFFICE, Choice.NO]:
+			# Docked as before: the ship refuels after the usual delay.
+			close()
+			lander.release()
 		[PopupKind.ARE_YOU_SURE, Choice.YES]:
-			var type := selected_offer()
-			power_off(lander.start_docked.bind(type))
-		[PopupKind.ARE_YOU_SURE, Choice.NO]:
+			lander.start_docked(selected_ship_offer())
 			popup = PopupKind.NONE
-
-
-# The Terminal powers on with the ship type being flown selected and tagged IN SERVICE.
-func open_for_swap() -> void:
-	swapping = true
-	in_service = lander.ship_type
-	offer_index = ShipType.ALL.find(in_service)
-	open()
-
-
-# Back to the parking spot, Docked as before: the ship stays as it is and refuels after the usual delay.
-# From the Offer screen the Terminal powers off first; the swap popup just closes.
-func decline_swap() -> void:
-	if showing:
-		power_off(lander.release)
-	else:
-		close()
-		lander.release()
+			screen = Screen.MAIN
+		[PopupKind.ARE_YOU_SURE, Choice.NO], [PopupKind.ACCEPT_OFFER, Choice.NO]:
+			popup = PopupKind.NONE
+		[PopupKind.ACCEPT_OFFER, Choice.YES]:
+			popup = PopupKind.NONE
+			transport_offers.confirm_accept()
 
 
 # Observable state
 
-func selected_offer() -> ShipType:
-	return ShipType.ALL[offer_index]
+func tile_labels() -> PackedStringArray:
+	var labels := PackedStringArray()
+	for tile: Screen in TILES:
+		labels.append(SCREEN_TITLES[tile])
+	return labels
 
 
-func in_service_shown() -> bool:
-	return showing and selected_offer() == in_service
+func selected_tile() -> String:
+	return SCREEN_TITLES[TILES[tile_index]]
 
 
-func offer_indicator() -> String:
-	return "< %d/%d >" % [offer_index + 1, ShipType.ALL.size()]
+func bank_lines() -> PackedStringArray:
+	return PackedStringArray([Economy.PILOT, "BALANCE " + Economy.eur(economy.balance)])
 
 
-# The text the selected Offer shows, with ratings written as blocks.
-func offer_lines() -> PackedStringArray:
-	var type := selected_offer()
-	var lines := PackedStringArray([type.name.to_upper(), type.flavour.to_upper()])
-	for stat: Array in offer_stats():
-		lines.append("%s %s" % stat)
-	for rating: Array in offer_ratings():
-		lines.append("%s %s" % [rating[0], blocks(rating[1])])
-	lines.append(offer_indicator())
-	if in_service_shown():
-		lines.append(IN_SERVICE_TEXT)
+# Newest first, e.g. #004 MINING SUPPLIES  CARGO  €640 - €96 = €544.
+func transaction_lines() -> PackedStringArray:
+	var lines := PackedStringArray()
+	for transaction in economy.transactions:
+		var contract := transaction.contract
+		lines.append("%s  %s  %s - %s = %s" % [contract.label(),
+			TransportOffer.KIND_LABELS[contract.kind()], Economy.eur(transaction.reward),
+			Economy.eur(transaction.penalty), Economy.eur(transaction.payout)])
 	return lines
 
 
-# The selected Offer's masses as [label, text in kg] pairs.
-func offer_stats() -> Array[Array]:
-	var type := selected_offer()
+func selected_ship_offer() -> ShipType:
+	return ShipType.ALL[ship_offer_index]
+
+
+# The ship type in the parking spot is the one in service.
+func in_service_shown() -> bool:
+	return showing and screen == Screen.SHIP_SELECTION and selected_ship_offer() == lander.ship_type
+
+
+# Ship swapping is locked while there are Contracts: the Load is for the ship in service.
+func ship_locked_shown() -> bool:
+	return showing and screen == Screen.SHIP_SELECTION and not in_service_shown() \
+		and not economy.contracts.is_empty()
+
+
+func ship_offer_indicator() -> String:
+	return "< %d/%d >" % [ship_offer_index + 1, ShipType.ALL.size()]
+
+
+# The text the selected Ship offer shows, with ratings written as blocks.
+func ship_offer_lines() -> PackedStringArray:
+	var type := selected_ship_offer()
+	var lines := PackedStringArray([type.name.to_upper(), type.flavour.to_upper()])
+	for stat: Array in ship_offer_stats():
+		lines.append("%s %s" % stat)
+	for rating: Array in ship_offer_ratings():
+		lines.append("%s %s" % [rating[0], blocks(rating[1])])
+	lines.append(ship_offer_indicator())
+	if in_service_shown():
+		lines.append(IN_SERVICE_TEXT)
+	if ship_locked_shown():
+		lines.append(SHIP_LOCKED_TEXT)
+	return lines
+
+
+# The selected Ship offer's numbers as [label, text] pairs.
+func ship_offer_stats() -> Array[Array]:
+	var type := selected_ship_offer()
 	return [["TANK", kg(type.tank)], ["DRY MASS", kg(type.default_dry_mass)],
-		["MAX WEIGHT", kg(type.maximum_weight)]]
+		["MAX WEIGHT", kg(type.maximum_weight)], ["SEATS", str(type.passenger_seats)],
+		["CARGO", kg(type.cargo_capacity)]]
 
 
-# The selected Offer's ratings as [label, blocks out of RATING_BLOCKS] pairs.
-func offer_ratings() -> Array[Array]:
-	var type := selected_offer()
+# The selected Ship offer's ratings as [label, blocks out of RATING_BLOCKS] pairs.
+func ship_offer_ratings() -> Array[Array]:
+	var type := selected_ship_offer()
 	return [["THRUST", type.thrust_rating], ["HANDLING", type.handling_rating]]
 
 
 # The wireframe picture's outline: the ship type's hull.
-func offer_picture() -> PackedVector2Array:
-	return selected_offer().hull
+func ship_offer_picture() -> PackedVector2Array:
+	return selected_ship_offer().hull
 
 
 static func kg(value: float) -> String:
@@ -282,50 +374,51 @@ static func blocks(rating: int) -> String:
 # Drawing
 
 func draw_terminal() -> void:
-	var screen := Rect2(Vector2.ZERO, terminal.size)
+	var view := Rect2(Vector2.ZERO, terminal.size)
 	if not showing:
-		# The swap popup sits over the flight view, without the Terminal behind it.
+		# The Enter-the-Office popup sits over the flight view, without the Terminal behind it.
 		if popup != PopupKind.NONE:
-			draw_popup(screen)
+			draw_popup(view)
 		return
-	terminal.draw_rect(screen, BLACK)
+	terminal.draw_rect(view, BLACK)
 	if power <= LINE_SHARE:
-		draw_power_line(screen, power / LINE_SHARE)
+		draw_power_line(view, power / LINE_SHARE)
 		return
 	# The picture grows from (or shrinks to) the bright line across the middle.
 	var picture_scale := maxf(ease((power - LINE_SHARE) / (1.0 - LINE_SHARE), POWER_EASE), MIN_PICTURE_SCALE)
-	var centre := screen.get_center()
+	var centre := view.get_center()
 	var scale := Vector2(1.0, picture_scale)
 	terminal.draw_set_transform(centre - centre * scale, 0.0, scale)
-	draw_screen(screen)
+	draw_screen(view)
 	if picture_scale < 1.0:
-		terminal.draw_rect(screen, Color(GLOW, GLOW_ALPHA * (1.0 - picture_scale)))
+		terminal.draw_rect(view, Color(GLOW, GLOW_ALPHA * (1.0 - picture_scale)))
 	terminal.draw_set_transform(Vector2.ZERO)
-	draw_scanlines(screen)
+	draw_scanlines(view)
 
 
 # The first or last moment of the effect: a dot that stretches into a line across
 # the screen as `stretch` goes from 0 to 1.
-func draw_power_line(screen: Rect2, stretch: float) -> void:
-	var centre := screen.get_center()
-	var half_width := screen.size.x / 2.0 * ease(stretch, POWER_EASE)
+func draw_power_line(view: Rect2, stretch: float) -> void:
+	var centre := view.get_center()
+	var half_width := view.size.x / 2.0 * ease(stretch, POWER_EASE)
 	if half_width < DOT_RADIUS:
 		terminal.draw_circle(centre, DOT_RADIUS, GLOW)
 	else:
 		terminal.draw_line(centre - Vector2(half_width, 0.0), centre + Vector2(half_width, 0.0), GLOW, GLOW_WIDTH)
 
 
-# The Terminal's picture: frame, header, Offer, key hint and any popup.
-func draw_screen(screen: Rect2) -> void:
-	var frame := screen.grow(-MARGIN)
+# The Terminal's picture: frame, header, the current screen, key hint and any popup.
+func draw_screen(view: Rect2) -> void:
+	var frame := view.grow(-MARGIN)
 	terminal.draw_rect(frame, GREEN, false, BORDER_WIDTH)
 	var inner := frame.grow(-PADDING)
 
-	draw_text(HEADER, Vector2(inner.position.x, inner.position.y + HEADER_SIZE), HEADER_SIZE)
+	draw_text(HEADER + SCREEN_TITLES[screen], Vector2(inner.position.x, inner.position.y + HEADER_SIZE), HEADER_SIZE)
 	var rule_y := inner.position.y + HEADER_SIZE + LINE_GAP
 	terminal.draw_line(Vector2(frame.position.x, rule_y), Vector2(frame.end.x, rule_y), GREEN, LINE_WIDTH)
-	draw_text(offer_indicator(), Vector2(inner.position.x, rule_y + LINE_GAP + TEXT_SIZE), TEXT_SIZE,
-		inner.size.x, HORIZONTAL_ALIGNMENT_RIGHT)
+	if screen == Screen.SHIP_SELECTION:
+		draw_text(ship_offer_indicator(), Vector2(inner.position.x, rule_y + LINE_GAP + TEXT_SIZE), TEXT_SIZE,
+			inner.size.x, HORIZONTAL_ALIGNMENT_RIGHT)
 
 	var hint_y := inner.end.y
 	var hint_rule_y := hint_y - HINT_SIZE - LINE_GAP
@@ -334,21 +427,64 @@ func draw_screen(screen: Rect2) -> void:
 	draw_text(version_text(), Vector2(inner.position.x, hint_y), HINT_SIZE, inner.size.x,
 		HORIZONTAL_ALIGNMENT_RIGHT, DIM_GREEN)
 
-	var offer_area := Rect2(inner.position.x, rule_y + LINE_GAP, inner.size.x, hint_rule_y - rule_y - 2.0 * LINE_GAP)
-	draw_offer(offer_area)
+	var body := Rect2(inner.position.x, rule_y + LINE_GAP, inner.size.x, hint_rule_y - rule_y - 2.0 * LINE_GAP)
+	match screen:
+		Screen.MAIN:
+			draw_tiles(body)
+		Screen.SHIP_SELECTION:
+			draw_ship_offer(body)
+		Screen.TRANSPORT_OFFERS:
+			transport_offers.draw(body)
+		Screen.BANK_ACCOUNT:
+			draw_bank_account(body)
 	if popup != PopupKind.NONE:
-		draw_popup(screen)
+		draw_popup(view)
 
 
-func draw_offer(area: Rect2) -> void:
-	var type := selected_offer()
+# The main screen's tiles in a row across the middle; the selected one is inverted.
+func draw_tiles(area: Rect2) -> void:
+	var row_width := TILES.size() * TILE_SIZE.x + (TILES.size() - 1) * TILE_GAP
+	var x := area.get_center().x - row_width / 2.0
+	var labels := tile_labels()
+	for i in TILES.size():
+		var tile := Rect2(Vector2(x, area.get_center().y - TILE_SIZE.y / 2.0), TILE_SIZE)
+		var selected := i == tile_index
+		if selected:
+			terminal.draw_rect(tile, GREEN)
+		else:
+			terminal.draw_rect(tile, GREEN, false, BORDER_WIDTH)
+		draw_text(labels[i], Vector2(tile.position.x, tile.get_center().y + STAT_SIZE / 2.0), STAT_SIZE,
+			tile.size.x, HORIZONTAL_ALIGNMENT_CENTER, BLACK if selected else GREEN)
+		x += TILE_SIZE.x + TILE_GAP
+
+
+func draw_bank_account(area: Rect2) -> void:
+	var lines := bank_lines()
+	var y := area.position.y + LINE_GAP + NAME_SIZE
+	draw_text(lines[0], Vector2(area.position.x, y), NAME_SIZE)
+	y += 2.0 * LINE_GAP + STAT_SIZE
+	draw_text(lines[1], Vector2(area.position.x, y), STAT_SIZE)
+	y += LINE_GAP
+	# As many as fit, newest first; no scrolling.
+	for line in transaction_lines():
+		y += LINE_GAP + TEXT_SIZE
+		if y > area.end.y:
+			break
+		draw_text(line, Vector2(area.position.x, y), TEXT_SIZE)
+
+
+func draw_ship_offer(area: Rect2) -> void:
+	var type := selected_ship_offer()
+	if ship_locked_shown():
+		# Top left, on the < n/N > indicator's line.
+		draw_text(SHIP_LOCKED_TEXT, Vector2(area.position.x, area.position.y + TEXT_SIZE), TEXT_SIZE)
 	var half := area.size.x / 2.0
 	var picture_box := Rect2(area.position, Vector2(half, area.size.y))
-	draw_wireframe(offer_picture(), picture_box)
+	draw_wireframe(ship_offer_picture(), picture_box)
 
 	var x := area.position.x + half
 	var width := half
-	var y := area.get_center().y - OFFER_TEXT_LIFT + NAME_SIZE
+	var y := area.get_center().y - SHIP_OFFER_TEXT_LIFT + NAME_SIZE
 	var title := type.name.to_upper()
 	draw_text(title, Vector2(x, y), NAME_SIZE, width)
 	if in_service_shown():
@@ -357,12 +493,12 @@ func draw_offer(area: Rect2) -> void:
 	y += LINE_GAP + TEXT_SIZE
 	draw_text(type.flavour.to_upper(), Vector2(x, y), TEXT_SIZE, width)
 	y += 2.0 * LINE_GAP
-	for stat: Array in offer_stats():
+	for stat: Array in ship_offer_stats():
 		y += STAT_SIZE + LINE_GAP
 		draw_text(stat[0], Vector2(x, y), STAT_SIZE, RATING_LABEL_WIDTH)
 		draw_text(stat[1], Vector2(x + RATING_LABEL_WIDTH, y), STAT_SIZE, width - RATING_LABEL_WIDTH)
 	y += LINE_GAP
-	for rating: Array in offer_ratings():
+	for rating: Array in ship_offer_ratings():
 		y += STAT_SIZE + LINE_GAP
 		draw_text(rating[0], Vector2(x, y), STAT_SIZE, RATING_LABEL_WIDTH)
 		draw_rating(rating[1], Vector2(x + RATING_LABEL_WIDTH, y - BLOCK_SIZE.y))
@@ -406,10 +542,15 @@ func draw_in_service_tag(top_left: Vector2) -> void:
 
 # Silkscreen has no arrow glyphs, so the hint's arrows are drawn as triangles.
 func draw_key_hint(baseline_left: Vector2) -> void:
-	var words := KEY_HINT.replace("←", "").replace("→", "").strip_edges()
-	var arrows_width := HINT_ARROW_SIZE * 3.0 + LINE_GAP
+	var hint: String = KEY_HINTS[screen]
+	var words := hint.trim_prefix(ARROWS).strip_edges()
+	var has_arrows := hint.begins_with(ARROWS)
+	var arrows_width := HINT_ARROW_SIZE * 3.0 + LINE_GAP if has_arrows else 0.0
 	var x := baseline_left.x + (terminal.size.x - 2.0 * (MARGIN + PADDING) - arrows_width
 		- text_width(words, HINT_SIZE)) / 2.0
+	if not has_arrows:
+		draw_text(words, Vector2(x, baseline_left.y), HINT_SIZE)
+		return
 	var mid_y := baseline_left.y - HINT_SIZE / 2.0
 	var h := HINT_ARROW_SIZE / 2.0
 	terminal.draw_colored_polygon(PackedVector2Array([
@@ -426,13 +567,13 @@ func version_text() -> String:
 
 
 func popup_text() -> String:
-	return SWAP_TEXT if popup == PopupKind.SWAP else ARE_YOU_SURE_TEXT
+	return ENTER_OFFICE_TEXT if popup == PopupKind.ENTER_OFFICE else ARE_YOU_SURE_TEXT
 
 
-func draw_popup(screen: Rect2) -> void:
+func draw_popup(view: Rect2) -> void:
 	var text := popup_text()
 	var size := Vector2(maxf(POPUP_SIZE.x, text_width(text, STAT_SIZE) + 2.0 * PADDING), POPUP_SIZE.y)
-	var box := Rect2(screen.get_center() - size / 2.0, size)
+	var box := Rect2(view.get_center() - size / 2.0, size)
 	terminal.draw_rect(box, BLACK)
 	terminal.draw_rect(box, GREEN, false, BORDER_WIDTH)
 	draw_text(text, Vector2(box.position.x, box.position.y + PADDING + STAT_SIZE), STAT_SIZE,
@@ -453,10 +594,10 @@ func draw_popup(screen: Rect2) -> void:
 		x += POPUP_BUTTON_SIZE.x + POPUP_BUTTON_GAP
 
 
-func draw_scanlines(screen: Rect2) -> void:
+func draw_scanlines(view: Rect2) -> void:
 	var y := 0.0
-	while y < screen.size.y:
-		terminal.draw_line(Vector2(0.0, y), Vector2(screen.size.x, y), SCANLINE_COLOR, 1.0)
+	while y < view.size.y:
+		terminal.draw_line(Vector2(0.0, y), Vector2(view.size.x, y), SCANLINE_COLOR, 1.0)
 		y += SCANLINE_SPACING
 
 

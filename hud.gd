@@ -15,6 +15,21 @@ const EMPTY_FLASH_HZ := 2.0
 const FUEL_SURFACE_COLOR := Color(0.64, 0.42, 0.2)
 const FUEL_BOTTOM_COLOR := Color("7a4a1e")
 const TEXT_COLOR := Color(0.9, 0.9, 0.95)
+const OVERDUE_COLOR := Color(1.0, 0.3, 0.3)
+
+# The delivery timer in the upper right.
+const TIMER_FONT_SIZE := 24
+const TIMER_MARGIN := Vector2(24, 40)
+const DELIVERY_PREFIX := "DELIVERY "
+const OVERDUE_PREFIX := "OVERDUE +"
+
+# The payout that rises above the ship and fades.
+const PAYOUT_COLOR := Color(0.3, 1.0, 0.4)
+const PAYOUT_FONT_SIZE := 20
+const PAYOUT_WIDTH := 200.0
+const PAYOUT_START_HEIGHT := 40.0
+const PAYOUT_RISE := 60.0
+const PAYOUT_TIME := 2.0
 
 const LEVEL_EASE_SPEED := 6.0
 const WAVE_HEIGHT := 2.0
@@ -25,14 +40,20 @@ const WAVE_SEGMENTS := 12
 var shown_level := 1.0
 var time := 0.0
 var frame_style := StyleBoxFlat.new()
+# The floating +€X, "" when none; payout_progress goes 0 → 1 as it rises and fades.
+var payout := ""
+var payout_progress := 0.0
+var payout_tween: Tween
 
 @onready var lander: Lander = $"../../Lander"
+@onready var economy: Economy = $"../../Economy"
 
 
 func _ready() -> void:
 	frame_style.bg_color = FRAME_BG_COLOR
 	frame_style.set_border_width_all(BORDER_WIDTH)
 	frame_style.set_corner_radius_all(CORNER_RADIUS)
+	economy.paid_out.connect(show_payout)
 
 
 func _process(delta: float) -> void:
@@ -56,6 +77,42 @@ func _draw() -> void:
 		HORIZONTAL_ALIGNMENT_CENTER, text_width, FONT_SIZE, TEXT_COLOR)
 	draw_string(font, Vector2(text_x, bar.end.y + TEXT_GAP + FONT_SIZE), format_kg(lander.total_mass()),
 		HORIZONTAL_ALIGNMENT_CENTER, text_width, FONT_SIZE, TEXT_COLOR)
+
+	var timer := delivery_text()
+	if timer != "":
+		draw_string(font, Vector2(0.0, TIMER_MARGIN.y), timer, HORIZONTAL_ALIGNMENT_RIGHT,
+			size.x - TIMER_MARGIN.x, TIMER_FONT_SIZE, OVERDUE_COLOR if delivery_overdue() else TEXT_COLOR)
+
+	if payout != "":
+		var above := lander.get_global_transform_with_canvas().origin \
+			- Vector2(PAYOUT_WIDTH / 2.0, PAYOUT_START_HEIGHT + PAYOUT_RISE * payout_progress)
+		draw_string(font, above, payout, HORIZONTAL_ALIGNMENT_CENTER, PAYOUT_WIDTH, PAYOUT_FONT_SIZE,
+			Color(PAYOUT_COLOR, 1.0 - payout_progress))
+
+
+func show_payout(total: int) -> void:
+	payout = "+" + Economy.eur(total)
+	payout_progress = 0.0
+	if payout_tween:
+		payout_tween.kill()
+	payout_tween = create_tween()
+	payout_tween.tween_property(self, "payout_progress", 1.0, PAYOUT_TIME)
+	payout_tween.tween_callback(func() -> void: payout = "")
+
+
+# DELIVERY 1:23 while delivering, OVERDUE +0:12 once late, "" otherwise.
+func delivery_text() -> String:
+	if economy.phase != Economy.Phase.DELIVERING:
+		return ""
+	var left := economy.delivery_left()
+	if left >= 0.0:
+		return DELIVERY_PREFIX + TransportOffer.countdown(left)
+	# Whole overdue seconds, rounded down like the penalty.
+	return OVERDUE_PREFIX + TransportOffer.countdown(floorf(-left))
+
+
+func delivery_overdue() -> bool:
+	return economy.phase == Economy.Phase.DELIVERING and economy.delivery_left() < 0.0
 
 
 func draw_fuel(inner: Rect2) -> void:

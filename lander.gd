@@ -4,8 +4,6 @@ extends CharacterBody2D
 # Per-ship values (thrust, turn rate, masses, tank, burn rate) live in ShipType.
 const GRAVITY := 60.0
 
-const MIN_DRY_MASS := 5000.0
-const DRY_MASS_STEP := 1000.0
 # Mass at which thrust, gravity and burn rate are unscaled: a default Sparrow with a full tank.
 const REFERENCE_MASS := 15000.0
 const GRAVITY_MASS_SCALE := 0.5
@@ -45,6 +43,8 @@ const SOFT_WALL_DAMPING := 8.0
 const SOFT_WALL_PUSH := 300.0
 
 signal docked_at_station
+# Landed on the pad, by a real landing or the debug pad shortcut.
+signal landed_on_pad
 
 enum State { FLYING, LANDED, DOCKED, CRASHED }
 
@@ -54,10 +54,15 @@ const CRASHED_COLOR := Color(1.0, 0.3, 0.3)
 var ship_type: ShipType
 var dry_mass: float
 var fuel: float
+# Passengers and cargo carried for the Contracts.
+var load_mass := 0.0
 # Change only through enter(), which resets what the old state left behind.
 var state := State.FLYING
 # Set from outside through hold() and release(): a held ship ignores the controls and stays put.
 var held := false
+# Set from outside: the ship rests where it is (refuelling included) but can't lift off.
+# Unlike held, entering a state doesn't clear it, so a ship that settles back keeps it.
+var lift_off_blocked := false
 var rest_time := 0.0
 var since_liftoff := INF
 var level_tween: Tween
@@ -65,6 +70,11 @@ var in_deep_space := false
 var bouncing := false
 var steering_after_crossing := false
 var can_dock := true
+# A line the resting message adds under Docked!/Landed!, such as the loading countdown.
+# Set it through show_status(): the message is rewritten every frame while resting.
+var status := ""
+# Whether the last rest refuelled, so a new status keeps the Refueling… line.
+var refueling := false
 
 @onready var body: Polygon2D = $Body
 @onready var flame: Polygon2D = $Flame
@@ -93,13 +103,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			reset_to_pad()
 		else:
 			get_tree().reload_current_scene()
-	elif held:
-		# Nothing but R happens behind the swap popup.
-		return
-	elif event.is_action_pressed("weight_up"):
-		dry_mass = minf(dry_mass + DRY_MASS_STEP, ship_type.maximum_weight)
-	elif event.is_action_pressed("weight_down"):
-		dry_mass = maxf(dry_mass - DRY_MASS_STEP, MIN_DRY_MASS)
 
 
 func become(type: ShipType) -> void:
@@ -126,6 +129,7 @@ func reset_to_pad() -> void:
 		hull_bottom = maxf(hull_bottom, point.y)
 	enter(State.LANDED)
 	move_to(Vector2(PAD_CENTER_X, ground_top() - hull_bottom))
+	landed_on_pad.emit()
 
 
 # Puts the ship Flying at a position, upright, keeping its ship type, dry mass and fuel.
@@ -142,6 +146,8 @@ func enter(new_state: State) -> void:
 	rest_time = 0.0
 	since_liftoff = INF
 	can_dock = true
+	status = ""
+	refueling = false
 	if level_tween:
 		level_tween.kill()
 	match new_state:
@@ -180,7 +186,8 @@ func ground_top() -> float:
 
 
 func _physics_process(delta: float) -> void:
-	var thrusting := Input.is_action_pressed("ui_up") and fuel > 0.0
+	var thrusting := Input.is_action_pressed("ui_up") and fuel > 0.0 \
+		and not (lift_off_blocked and state != State.FLYING)
 	if held or state == State.CRASHED:
 		flame.visible = false
 		return
@@ -229,7 +236,17 @@ func _physics_process(delta: float) -> void:
 
 
 func total_mass() -> float:
-	return dry_mass + fuel
+	return dry_mass + fuel + load_mass
+
+
+# The most fuel refuelling may fill: a full Tank, or less if the Load would push
+# the ship past its Maximum weight.
+func fuel_cap() -> float:
+	return fuel_cap_for(load_mass)
+
+
+func fuel_cap_for(with_load: float) -> float:
+	return clampf(ship_type.maximum_weight - dry_mass - with_load, 0.0, ship_type.tank)
 
 
 func tank_level() -> float:
@@ -338,6 +355,7 @@ func land() -> void:
 	settle()
 	# Leveling lifts the corner that touched down, so drop back onto the ground.
 	level_tween.tween_callback(move_and_collide.bind(Vector2.DOWN * PAD_HEIGHT * 4.0))
+	landed_on_pad.emit()
 
 
 func dock() -> void:
@@ -351,8 +369,10 @@ func hold() -> void:
 	held = true
 
 
+# A released ship rests afresh, so refuelling waits the usual delay again.
 func release() -> void:
 	held = false
+	rest_time = 0.0
 
 
 # Stops the ship where it touched down and levels it.
@@ -370,11 +390,27 @@ func rest(delta: float) -> void:
 	if state == State.DOCKED and not (level_tween and level_tween.is_running()):
 		rotation += Input.get_axis("ui_left", "ui_right") * ship_type.turn_rate * delta
 	rest_time += delta
-	var refueling := rest_time >= REFUEL_DELAY and fuel < ship_type.tank
+	refueling = rest_time >= REFUEL_DELAY and fuel < fuel_cap()
 	if refueling:
-		fuel = minf(fuel + ship_type.tank * REFUEL_TANK_SHARE * delta, ship_type.tank)
-	var title := "Docked!" if state == State.DOCKED else "Landed!"
-	message.text = title + "\nRefueling…" if refueling else title
+		fuel = minf(fuel + ship_type.tank * REFUEL_TANK_SHARE * delta, fuel_cap())
+	show_rest_message()
+
+
+func show_status(text: String) -> void:
+	status = text
+	# A held ship doesn't rest, so show it now.
+	show_rest_message()
+
+
+func show_rest_message() -> void:
+	if state != State.DOCKED and state != State.LANDED:
+		return
+	var lines := PackedStringArray(["Docked!" if state == State.DOCKED else "Landed!"])
+	if status != "":
+		lines.append(status)
+	if refueling:
+		lines.append("Refueling…")
+	message.text = "\n".join(lines)
 
 
 func lift_off() -> void:

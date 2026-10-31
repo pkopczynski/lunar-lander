@@ -55,25 +55,83 @@ _Avoid_: Dock, slot, destination
 ## Office
 
 **Office**:
-The player's transport company office on the station, where every run begins and where the player picks a ship type.
+The player's transport company office on the station, where every run begins. There the player picks a ship type, takes on transport offers and checks the bank account.
 _Avoid_: Menu, shop, hangar
 
 **Terminal**:
-The retro green-on-black screen in the office that shows the offers.
+The retro green-on-black screen in the office that shows ship offers, transport offers and the bank account.
 _Avoid_: Monitor, display, console
 
-**Offer**:
-One ship type shown on the terminal, with its picture and characteristics. Taking an offer costs nothing.
-_Avoid_: Listing, card, product
+**Main screen**:
+The terminal's home screen, with one tile each for ship selection, transport offers and the bank account. Every visit to the office starts here, and the player leaves the office from here.
+_Avoid_: Menu, home, dashboard
+
+**Ship selection**:
+The terminal screen for browsing ship offers and choosing a ship type.
+_Avoid_: Shop, hangar, fleet screen
+
+**In service**:
+The ship type currently in the parking spot: the one the player flies when leaving the office.
+_Avoid_: Current ship, active ship
+
+**Bank account**:
+The pilot's money, in euros, and the transactions that made it. It starts at €0 every run.
+_Avoid_: Wallet, credits, score
+
+**Ship offer**:
+One ship type shown on the terminal, with its picture and characteristics. Taking a ship offer costs nothing.
+_Avoid_: Offer (on its own), listing, card, product
 
 **Ship swap**:
-Going back to the office from the parking spot to trade the current ship for another ship type. The new ship takes the old one's place in the parking spot with a full tank.
+Entering the office from the parking spot and choosing another ship type in ship selection. The new ship takes the old one's place in the parking spot with a full tank. Not possible while the player has contracts.
 _Avoid_: Respawn, change ship
+
+## Transport
+
+**Transport offer**:
+A job on the terminal, not yet accepted: carry passengers, cargo or both from the station to the pad. It is only available for a limited time.
+_Avoid_: Offer (on its own), job, mission
+
+**Contract**:
+A transport offer the player has accepted. All contracts accepted together are delivered in one flight. A contract stays accepted when transport offers expire or the player leaves the office.
+_Avoid_: Order, accepted offer
+
+**Deadline**:
+How long the player has to deliver a contract, counted from when loading finishes.
+_Avoid_: Time limit, expiry (that's how long a transport offer stays available)
+
+**Overdue**:
+A delivery still under way after its deadline has passed.
+_Avoid_: Late (on its own), expired
+
+**Loading**:
+Putting the load aboard at the parking spot, after the player accepts their contracts. The ship stays docked and held until it finishes, and the deadline starts counting then.
+_Avoid_: Boarding, embarking
+
+**Unloading**:
+Taking the load off on the pad, which starts by itself when the ship lands there with contracts aboard. The ship can refuel meanwhile but can't lift off until it finishes.
+_Avoid_: Delivery (the whole flight), disembarking
+
+**Payout**:
+What a contract pays into the bank account once unloaded: its reward less a penalty for each whole second overdue, never below €0. Each contract is settled on its own.
+_Avoid_: Reward (that's before the penalty), income, score
+
+**Transaction**:
+One line in the bank account per delivered contract: its reward, penalty and payout.
+_Avoid_: Receipt, entry, log
+
+**Load**:
+Everything carried for the contracts: passengers and cargo together.
+_Avoid_: Cargo (for the whole load), payload, freight
+
+**Cargo**:
+Goods carried for a contract, measured only by mass.
+_Avoid_: Load (for goods alone), freight
 
 ## Ship
 
 **Ship type**:
-A kind of ship with its own shape, dry mass, tank, thrust and turn rate. The game has three: the Sparrow, the Mule and the Halo.
+A kind of ship with its own shape, dry mass, maximum weight, tank, passenger seats, cargo capacity, thrust and turn rate. The game has three: the Sparrow, the Mule and the Halo.
 _Avoid_: Model, class, variant
 
 **Sparrow**:
@@ -93,7 +151,7 @@ The ship's mass without fuel.
 _Avoid_: Empty weight, base mass
 
 **Maximum weight**:
-The heaviest dry mass a ship type can carry. It stands in for cargo capacity until cargo exists.
+The heaviest a ship type may be in total: dry mass, fuel and load together. Load comes first, so a heavy load leaves less room for fuel.
 _Avoid_: Max load, payload
 
 **Tank**:
@@ -113,7 +171,7 @@ The ship is resting on the pad after a safe touchdown.
 _Avoid_: Touched down, parked
 
 **Docked**:
-The ship is resting inside the parking spot. This is the deep-space counterpart of Landed. While the swap popup is open a Docked ship is held: it ignores the controls and doesn't refuel.
+The ship is resting inside the parking spot. This is the deep-space counterpart of Landed. From docking until the player declines to enter the office or leaves it, and during loading, a Docked ship is held: it ignores the controls and doesn't refuel.
 _Avoid_: Parked, landed (in deep space)
 
 **Crashed**:
