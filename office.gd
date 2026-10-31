@@ -14,7 +14,7 @@ const KEY_HINTS := {
 	Screen.MAIN: "← → MOVE   RETURN OPEN   ESC LEAVE",
 	Screen.SHIP_SELECTION: "← → BROWSE   RETURN SELECT   ESC BACK",
 	Screen.TRANSPORT_OFFERS: "← → COLUMNS   UP DOWN MOVE   RETURN SELECT   ESC BACK",
-	Screen.BANK_ACCOUNT: "ESC BACK",
+	Screen.BANK_ACCOUNT: "UP DOWN MOVE   RETURN OPEN   ESC BACK",
 }
 const ARROWS := "← →"
 const ARE_YOU_SURE_TEXT := "ARE YOU SURE?"
@@ -106,6 +106,7 @@ var powering := false
 # How far the Terminal's picture is powered on: 0 is off, 1 fully on.
 var power := 1.0
 var transport_offers: TransportOffersScreen
+var bank_account: BankAccountScreen
 
 @onready var lander: Lander = $"../Lander"
 @onready var economy: Economy = $"../Economy"
@@ -114,15 +115,17 @@ var transport_offers: TransportOffersScreen
 
 func _ready() -> void:
 	transport_offers = TransportOffersScreen.new(self, economy)
+	bank_account = BankAccountScreen.new(self, economy)
 	terminal.draw.connect(draw_terminal)
 	lander.docked_at_station.connect(ask_to_enter)
 	open()
 
 
-# The Transport offers' countdowns tick every second.
+# The Transport offers' countdowns tick every second; open details grow open.
 func _process(delta: float) -> void:
 	transport_offers.tick(delta)
-	if showing and screen == Screen.TRANSPORT_OFFERS:
+	bank_account.tick(delta)
+	if showing and screen in [Screen.TRANSPORT_OFFERS, Screen.BANK_ACCOUNT]:
 		terminal.queue_redraw()
 
 
@@ -136,6 +139,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif screen == Screen.MAIN:
 		handle_main_input(event)
 	elif screen == Screen.TRANSPORT_OFFERS and transport_offers.handle_input(event):
+		handled()
+	elif screen == Screen.BANK_ACCOUNT and bank_account.handle_input(event):
 		handled()
 	elif event.is_action_pressed("ui_cancel"):
 		screen = Screen.MAIN
@@ -306,21 +311,6 @@ func selected_tile() -> String:
 	return SCREEN_TITLES[TILES[tile_index]]
 
 
-func bank_lines() -> PackedStringArray:
-	return PackedStringArray([Economy.PILOT, "BALANCE " + Economy.eur(economy.balance)])
-
-
-# Newest first, e.g. #004 MINING SUPPLIES  CARGO  €640 - €96 = €544.
-func transaction_lines() -> PackedStringArray:
-	var lines := PackedStringArray()
-	for transaction in economy.transactions:
-		var contract := transaction.contract
-		lines.append("%s  %s  %s - %s = %s" % [contract.label(),
-			TransportOffer.KIND_LABELS[contract.kind()], Economy.eur(transaction.reward),
-			Economy.eur(transaction.penalty), Economy.eur(transaction.payout)])
-	return lines
-
-
 func selected_ship_offer() -> ShipType:
 	return ShipType.ALL[ship_offer_index]
 
@@ -447,7 +437,7 @@ func draw_screen(view: Rect2) -> void:
 		Screen.TRANSPORT_OFFERS:
 			transport_offers.draw(body)
 		Screen.BANK_ACCOUNT:
-			draw_bank_account(body)
+			bank_account.draw(body)
 	if popup != PopupKind.NONE:
 		draw_popup(view)
 
@@ -475,21 +465,6 @@ func draw_tiles(area: Rect2) -> void:
 		draw_text(labels[i], Vector2(tile.position.x, tile.get_center().y + STAT_SIZE / 2.0), STAT_SIZE,
 			tile.size.x, HORIZONTAL_ALIGNMENT_CENTER, BLACK if selected else GREEN)
 		x += TILE_SIZE.x + TILE_GAP
-
-
-func draw_bank_account(area: Rect2) -> void:
-	var lines := bank_lines()
-	var y := area.position.y + LINE_GAP + NAME_SIZE
-	draw_text(lines[0], Vector2(area.position.x, y), NAME_SIZE)
-	y += 2.0 * LINE_GAP + STAT_SIZE
-	draw_text(lines[1], Vector2(area.position.x, y), STAT_SIZE)
-	y += LINE_GAP
-	# As many as fit, newest first; no scrolling.
-	for line in transaction_lines():
-		y += LINE_GAP + TEXT_SIZE
-		if y > area.end.y:
-			break
-		draw_text(line, Vector2(area.position.x, y), TEXT_SIZE)
 
 
 func draw_ship_offer(area: Rect2) -> void:

@@ -45,12 +45,19 @@ const NOT_ENOUGH_SEATS := "Not enough passenger seats"
 const OVERLOADED := "Overloaded"
 
 
-# A delivered Contract's line in the Bank account, in euros.
+# A delivered Contract's line in the Bank account, in euros, with the flight's deadline it was
+# settled against and the delivery time (seconds from the end of loading to landing on the pad).
 class Transaction:
 	var contract: TransportOffer
 	var reward: int
 	var penalty: int
 	var payout: int
+	var deadline: float
+	var delivery_time: float
+
+	# Whole seconds overdue, rounded down like the red counter.
+	func overdue_seconds() -> int:
+		return maxi(floori(delivery_time - deadline), 0)
 
 
 var number: int
@@ -94,12 +101,15 @@ func misfit_reason(seats_left: int, cargo_left: float) -> String:
 	return ""
 
 
-# What it pays when delivered overdue_seconds late. The passenger and cargo parts are
-# penalised separately, each never below €0.
-func settlement(overdue_seconds: float) -> Transaction:
-	var late := maxi(floori(overdue_seconds), 0)
+# What it pays when delivered after delivery_time against the flight's deadline, for each
+# whole second overdue. The passenger and cargo parts are penalised separately, each never
+# below €0.
+func settlement(flight_deadline: float, delivery_time: float) -> Transaction:
 	var transaction := Transaction.new()
 	transaction.contract = self
+	transaction.deadline = flight_deadline
+	transaction.delivery_time = delivery_time
+	var late := transaction.overdue_seconds()
 	transaction.reward = reward()
 	transaction.penalty = mini(roundi(passenger_reward * PASSENGER_PENALTY_SHARE * late), passenger_reward) \
 		+ mini(roundi(cargo_reward * CARGO_PENALTY_SHARE * late), cargo_reward)

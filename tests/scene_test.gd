@@ -113,6 +113,13 @@ func dock_in_spot() -> void:
 	check(lander().state == Lander.State.DOCKED, "the ship should dock in the parking spot")
 
 
+func open_bank_account() -> void:
+	for i in Office.TILES.size():
+		await press(&"ui_right")
+	await press(&"ui_accept")
+	check(office().screen == Office.Screen.BANK_ACCOUNT, "Return should open the Bank account")
+
+
 # Transport offers
 
 func open_transport_offers() -> void:

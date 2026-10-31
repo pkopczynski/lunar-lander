@@ -199,14 +199,14 @@ func test_the_terminal_shows_the_game_version() -> void:
 
 func test_bank_account_shows_the_pilot_and_a_zero_balance_in_eur() -> void:
 	await open_bank_account()
-	check(office().bank_lines() == PackedStringArray(["PILOT", "BALANCE €0"]),
-		"Bank account should show PILOT and €0, shows %s" % office().bank_lines())
+	check(office().bank_account.lines() == PackedStringArray(["PILOT", "BALANCE €0"]),
+		"Bank account should show PILOT and €0, shows %s" % office().bank_account.lines())
 
 
 func test_bank_account_shows_a_negative_balance_with_the_sign_first() -> void:
 	economy().balance = -120
 	await open_bank_account()
-	check(office().bank_lines().has("BALANCE -€120"), "the balance should read -€120, shows %s" % office().bank_lines())
+	check(office().bank_account.lines().has("BALANCE -€120"), "the balance should read -€120, shows %s" % office().bank_account.lines())
 
 
 func test_a_restart_starts_the_balance_at_zero_again() -> void:
@@ -214,16 +214,10 @@ func test_a_restart_starts_the_balance_at_zero_again() -> void:
 	await choose_ship()
 	await restart()
 	await open_bank_account()
-	check(office().bank_lines().has("BALANCE €0"), "a new run should show €0, shows %s" % office().bank_lines())
+	check(office().bank_account.lines().has("BALANCE €0"), "a new run should show €0, shows %s" % office().bank_account.lines())
 
 
 func test_the_economy_keeps_running_while_the_office_pauses_the_world() -> void:
 	check(tree.paused, "the Office should pause the world")
 	check(economy().can_process(), "the Economy should keep processing while the world is paused")
 
-
-func open_bank_account() -> void:
-	for i in Office.TILES.size():
-		await press(&"ui_right")
-	await press(&"ui_accept")
-	check(office().screen == Office.Screen.BANK_ACCOUNT, "Return should open the Bank account")
