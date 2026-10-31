@@ -34,6 +34,19 @@ const BORDER_BAND := 200.0
 const CROSSING_SPEED := 150.0
 const BOUNCE_STIFFNESS := 9.0
 
+# Crossing the border disturbs the ship: while the controls are ignored, its nose wobbles
+# DISTURB_WOBBLES times and settles on a random lasting turn, its path turning with it. The
+# largest turn and the time scale from a crossing at CROSSING_SPEED (slow) to one at
+# DISTURB_FAST_SPEED or faster; a turn is never smaller than DISTURB_MIN_TURN_SHARE of the
+# largest, and each wobble swings up to half the largest either way.
+const DISTURB_FAST_SPEED := 400.0
+const DISTURB_SLOW_TURN_DEG := 12.0
+const DISTURB_FAST_TURN_DEG := 3.0
+const DISTURB_MIN_TURN_SHARE := 1.0 / 3.0
+const DISTURB_SLOW_TIME := 0.6
+const DISTURB_FAST_TIME := 0.3
+const DISTURB_WOBBLES := 4
+
 const STEER_DISTANCE := 150.0
 const STEER_SPEED := 100.0
 const STEER_BRAKING := 600.0
@@ -74,6 +87,15 @@ var level_tween: Tween
 var in_deep_space := false
 var bouncing := false
 var steering_after_crossing := false
+# The border disturbance under way: seconds left of disturb_time, the nose's offsets from its
+# angle at the crossing that it passes through (the last is the lasting turn), and the offset
+# reached so far.
+var disturb_left := 0.0
+var disturb_time := 0.0
+var disturb_offsets := PackedFloat32Array()
+var disturb_offset := 0.0
+# Seedable, for tests.
+var rng := RandomNumberGenerator.new()
 var can_dock := true
 # A line the resting message adds under Docked!/Landed!, such as the loading countdown.
 # Set it through show_status(): the message is rewritten every frame while resting.
@@ -92,6 +114,7 @@ var refueling := false
 
 
 func _ready() -> void:
+	rng.randomize()
 	start_docked(ShipType.SPARROW)
 	var half := PAD_WIDTH / 2.0
 	pad.position.x = PAD_CENTER_X - pad.get_parent().position.x
@@ -182,6 +205,7 @@ func move_to(at: Vector2, at_velocity := Vector2.ZERO) -> void:
 	in_deep_space = at.y < World.BORDER_Y
 	bouncing = false
 	steering_after_crossing = false
+	disturb_left = 0.0
 	camera.reset_smoothing()
 
 
@@ -191,7 +215,7 @@ func ground_top() -> float:
 
 
 func _physics_process(delta: float) -> void:
-	var thrusting := Input.is_action_pressed("ui_up") and fuel > 0.0 \
+	var thrusting := Input.is_action_pressed("ui_up") and fuel > 0.0 and disturb_left <= 0.0 \
 		and not ((lift_off_blocked or loading) and state != State.FLYING)
 	if held or state == State.CRASHED:
 		flame.visible = false
@@ -203,7 +227,10 @@ func _physics_process(delta: float) -> void:
 			return
 		lift_off()
 
-	rotation += Input.get_axis("ui_left", "ui_right") * ship_type.turn_rate * delta
+	if disturb_left > 0.0:
+		disturb(delta)
+	else:
+		rotation += Input.get_axis("ui_left", "ui_right") * ship_type.turn_rate * delta
 
 	var mass_factor := total_mass() / REFERENCE_MASS
 	velocity.y += GRAVITY * (1.0 + GRAVITY_MASS_SCALE * (mass_factor - 1.0)) * gravity_share() * delta
@@ -308,10 +335,39 @@ func cross_border() -> void:
 	if absf(velocity.y) >= CROSSING_SPEED:
 		in_deep_space = not in_deep_space
 		steering_after_crossing = true
+		start_disturbance(velocity.length())
 		camera.shake()
 		camera.punch()
 	else:
 		bouncing = true
+
+
+# Picks the lasting turn and the wobbles on the way to it; slower crossings are disturbed
+# more, and for longer.
+func start_disturbance(speed: float) -> void:
+	var fast := clampf(inverse_lerp(CROSSING_SPEED, DISTURB_FAST_SPEED, speed), 0.0, 1.0)
+	var largest := deg_to_rad(lerpf(DISTURB_SLOW_TURN_DEG, DISTURB_FAST_TURN_DEG, fast))
+	disturb_offsets.clear()
+	for i in DISTURB_WOBBLES:
+		disturb_offsets.append(rng.randf_range(-largest / 2.0, largest / 2.0))
+	var turn := rng.randf_range(DISTURB_MIN_TURN_SHARE * largest, largest)
+	disturb_offsets.append(turn if rng.randf() < 0.5 else -turn)
+	disturb_time = lerpf(DISTURB_SLOW_TIME, DISTURB_FAST_TIME, fast)
+	disturb_left = disturb_time
+	disturb_offset = 0.0
+
+
+# Moves the nose along the wobbles, in equal quick steps from one offset to the next, and turns
+# the velocity by the same angle so the path bends with it.
+func disturb(delta: float) -> void:
+	disturb_left = maxf(disturb_left - delta, 0.0)
+	var progress := (1.0 - disturb_left / disturb_time) * disturb_offsets.size()
+	var step := mini(floori(progress), disturb_offsets.size() - 1)
+	var from := disturb_offsets[step - 1] if step > 0 else 0.0
+	var offset := lerpf(from, disturb_offsets[step], progress - step)
+	rotation += offset - disturb_offset
+	velocity = velocity.rotated(offset - disturb_offset)
+	disturb_offset = offset
 
 
 func try_docking(thrusting: bool) -> void:
