@@ -5,7 +5,7 @@ extends CanvasLayer
 # the world while showing, and puts the chosen ship type in the parking spot.
 
 enum Screen { MAIN, SHIP_SELECTION, TRANSPORT_OFFERS, BANK_ACCOUNT }
-enum PopupKind { NONE, ARE_YOU_SURE, ENTER_OFFICE, ACCEPT_OFFER }
+enum PopupKind { NONE, ARE_YOU_SURE, ENTER_OFFICE, ACCEPT_OFFER, REMOVE_CONTRACT }
 enum Choice { YES, NO }
 
 const HEADER := "ORBITAL FREIGHT CO. // "
@@ -19,6 +19,7 @@ const KEY_HINTS := {
 const ARROWS := "← →"
 const ARE_YOU_SURE_TEXT := "ARE YOU SURE?"
 const ENTER_OFFICE_TEXT := "ENTER THE OFFICE?"
+const REMOVE_CONTRACT_TEXT := "REMOVE CONTRACT?"
 const IN_SERVICE_TEXT := "IN SERVICE"
 const SHIP_LOCKED_TEXT := "SHIP LOCKED: CONTRACTS ACCEPTED"
 const VERSION_PREFIX := "V"
@@ -277,11 +278,15 @@ func answer(choice: Choice) -> void:
 			lander.start_docked(selected_ship_offer())
 			popup = PopupKind.NONE
 			screen = Screen.MAIN
-		[PopupKind.ARE_YOU_SURE, Choice.NO], [PopupKind.ACCEPT_OFFER, Choice.NO]:
+		[PopupKind.ARE_YOU_SURE, Choice.NO], [PopupKind.ACCEPT_OFFER, Choice.NO], \
+				[PopupKind.REMOVE_CONTRACT, Choice.NO]:
 			popup = PopupKind.NONE
 		[PopupKind.ACCEPT_OFFER, Choice.YES]:
 			popup = PopupKind.NONE
 			transport_offers.confirm_accept()
+		[PopupKind.REMOVE_CONTRACT, Choice.YES]:
+			popup = PopupKind.NONE
+			transport_offers.confirm_remove()
 
 
 # Observable state
@@ -569,7 +574,12 @@ func version_text() -> String:
 
 
 func popup_text() -> String:
-	return ENTER_OFFICE_TEXT if popup == PopupKind.ENTER_OFFICE else ARE_YOU_SURE_TEXT
+	match popup:
+		PopupKind.ENTER_OFFICE:
+			return ENTER_OFFICE_TEXT
+		PopupKind.REMOVE_CONTRACT:
+			return REMOVE_CONTRACT_TEXT
+	return ARE_YOU_SURE_TEXT
 
 
 func draw_popup(view: Rect2) -> void:
