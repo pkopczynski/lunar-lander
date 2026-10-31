@@ -201,6 +201,13 @@ func accept(offer: TransportOffer) -> bool:
 	return true
 
 
+# Discards a Contract before loading, for good: no payout, no transaction, and it doesn't
+# return to the pool.
+func remove_contract(contract: TransportOffer) -> void:
+	if phase == Phase.NONE:
+		contracts.erase(contract)
+
+
 # Generated up to the largest ship type, so some won't fit a smaller one.
 func next_offer() -> TransportOffer:
 	last_offer_number += 1

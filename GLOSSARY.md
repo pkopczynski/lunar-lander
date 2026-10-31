@@ -93,7 +93,7 @@ A job on the terminal, not yet accepted: carry passengers, cargo or both from th
 _Avoid_: Offer (on its own), job, mission
 
 **Contract**:
-A transport offer the player has accepted. All contracts accepted together are delivered in one flight. A contract stays accepted when transport offers expire or the player leaves the office.
+A transport offer the player has accepted. All contracts accepted together are delivered in one flight. A contract stays accepted when transport offers expire or the player leaves the office; before loading, the player can remove it for good.
 _Avoid_: Order, accepted offer
 
 **Deadline**:

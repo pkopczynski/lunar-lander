@@ -17,6 +17,7 @@ const ACCEPT_SIZE := Vector2(120, 32)
 # The ACCEPT button with its padding above and below, at the bottom of open details.
 const ACCEPT_SPAN := ACCEPT_SIZE.y + 4.0 * ROW_PADDING
 const START_LOADING_SIZE := Vector2(200, 32)
+const REMOVE_SIZE := Vector2(24, 24)
 const NOTICE_PADDING := Vector2(8, 4)
 
 # Text
@@ -25,6 +26,7 @@ const CONTRACTS_TEXT := "CONTRACTS"
 const FUEL_LIMITED_LABEL := "FUEL LIMITED:"
 const FUEL_LIMITED_NOTE := "FUEL LIMITED"
 const START_LOADING_TEXT := "START LOADING"
+const REMOVE_TEXT := "X"
 const KG_SUFFIX := " KG"
 const OFFER_EXPIRED_TEXT := "OFFER EXPIRED"
 
@@ -43,6 +45,8 @@ var selected_index: int:
 		return list.row
 # The offer whose ARE YOU SURE? is showing, if any.
 var accepting: TransportOffer
+# The Contracts column's cursor: a Contract's index, or the Contracts' count for START LOADING.
+var contract_index := 0
 var notice_text := ""
 var notice_left := 0.0
 
@@ -79,15 +83,13 @@ func show_notice(text: String) -> void:
 func handle_input(event: InputEvent) -> bool:
 	sync()
 	if event.is_action_pressed("ui_right"):
+		if focus != Column.CONTRACTS:
+			contract_index = economy.contracts.size()
 		focus = Column.CONTRACTS
 	elif event.is_action_pressed("ui_left"):
 		focus = Column.OFFERS
 	elif focus == Column.CONTRACTS:
-		# START LOADING is the only button here. Escape is left to the Office.
-		if event.is_action_pressed("ui_accept") and start_loading_enabled():
-			office.start_loading()
-		return event.is_action_pressed("ui_accept") or event.is_action_pressed("ui_up") \
-			or event.is_action_pressed("ui_down")
+		return handle_contracts_input(event)
 	elif event.is_action_pressed("ui_up"):
 		list.move(economy.offers, -1, fits)
 	elif event.is_action_pressed("ui_down"):
@@ -103,11 +105,33 @@ func handle_input(event: InputEvent) -> bool:
 	return true
 
 
+# Up/Down walk the Contracts, then START LOADING. Escape is left to the Office.
+func handle_contracts_input(event: InputEvent) -> bool:
+	if event.is_action_pressed("ui_up"):
+		contract_index = maxi(contract_index - 1, 0)
+	elif event.is_action_pressed("ui_down"):
+		contract_index = mini(contract_index + 1, economy.contracts.size())
+	elif event.is_action_pressed("ui_accept"):
+		if selected_contract() != null:
+			office.show_popup(Office.PopupKind.REMOVE_CONTRACT, Office.Choice.NO)
+		elif start_loading_enabled():
+			office.start_loading()
+	else:
+		return false
+	return true
+
+
 # Yes on ARE YOU SURE?: the Economy checks again that the offer is still there and still fits.
 func confirm_accept() -> void:
 	if not economy.accept(accepting) and not accepting in economy.offers:
 		show_notice(OFFER_EXPIRED_TEXT)
 	accepting = null
+
+
+# Yes on REMOVE CONTRACT?: the cursor stays on a Contract while any are left.
+func confirm_remove() -> void:
+	economy.remove_contract(selected_contract())
+	contract_index = maxi(mini(contract_index, economy.contracts.size() - 1), 0)
 
 
 # Keeps the open offers and the cursor with their offers, and in range, as offers come and go.
@@ -140,6 +164,12 @@ func fits(offer: TransportOffer) -> bool:
 
 
 # Observable state
+
+# The Contract under the Contracts column's cursor, or null on START LOADING.
+func selected_contract() -> TransportOffer:
+	contract_index = mini(contract_index, economy.contracts.size())
+	return economy.contracts[contract_index] if contract_index < economy.contracts.size() else null
+
 
 # The notice showing, such as OFFER EXPIRED, or "".
 func notice() -> String:
@@ -370,16 +400,32 @@ func draw_notice(bottom_left: Vector2) -> void:
 		-1, HORIZONTAL_ALIGNMENT_LEFT, Office.BLACK)
 
 
-# CONTRACTS and its list, the summary, then START LOADING (dimmed while there are no Contracts).
+# A Contract's X, inverted when selected.
+func draw_remove_button(top_left: Vector2, selected: bool) -> void:
+	var button := Rect2(top_left, REMOVE_SIZE)
+	if selected:
+		office.terminal.draw_rect(button, Office.GREEN)
+	else:
+		office.terminal.draw_rect(button, Office.GREEN, false, Office.LINE_WIDTH)
+	office.draw_text(REMOVE_TEXT, Vector2(button.position.x, button.get_center().y + Office.TEXT_SIZE / 2.0),
+		Office.TEXT_SIZE, button.size.x, HORIZONTAL_ALIGNMENT_CENTER, Office.BLACK if selected else Office.GREEN)
+
+
+# CONTRACTS and its list (each with its X), the summary, then START LOADING (dimmed while
+# there are no Contracts); the button under the cursor is inverted.
 func draw_contracts(area: Rect2) -> void:
 	var y := area.position.y
 	var lines := contract_lines()
+	var focused := focus == Column.CONTRACTS
 	for i in lines.size():
 		y += ROW_HEIGHT
-		office.draw_text(lines[i], Vector2(area.position.x, y), Office.TEXT_SIZE, area.size.x)
+		office.draw_text(lines[i], Vector2(area.position.x, y), Office.TEXT_SIZE, area.size.x - REMOVE_SIZE.x)
 		if i == 0:
 			office.terminal.draw_line(Vector2(area.position.x, y + ROW_PADDING),
 				Vector2(area.end.x, y + ROW_PADDING), Office.GREEN, Office.LINE_WIDTH)
+		else:
+			draw_remove_button(Vector2(area.end.x - REMOVE_SIZE.x, y - (REMOVE_SIZE.y + Office.TEXT_SIZE) / 2.0),
+				focused and contract_index == i - 1)
 	y += ROW_HEIGHT
 	for part in summary_parts():
 		y += ROW_HEIGHT
@@ -391,7 +437,7 @@ func draw_contracts(area: Rect2) -> void:
 			area.size.x - label_width, HORIZONTAL_ALIGNMENT_LEFT, part[3])
 	var button := Rect2(Vector2(area.position.x, y + ROW_HEIGHT), START_LOADING_SIZE)
 	var lit := Office.GREEN if start_loading_enabled() else Office.DIM_GREEN
-	var focused := focus == Column.CONTRACTS
+	focused = focused and selected_contract() == null
 	if focused:
 		office.terminal.draw_rect(button, lit)
 	else:
