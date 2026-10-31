@@ -42,8 +42,8 @@ func test_a_mixed_contract_delivered_late_loses_2_percent_of_passengers_and_1_pe
 	check(economy().phase == Economy.Phase.NONE, "unloading should be over")
 	# 12 s: €300 − €72 and €120 − €14.40, rounded.
 	check(economy().balance == 334, "the payout should be €334, balance is %s" % economy().balance)
-	check(office().transaction_lines() == PackedStringArray(["#%03d TEST RUN  PASSENGERS + CARGO  €420 - €86 = €334" % offer.number]),
-		"the Bank account should show the transaction, shows %s" % office().transaction_lines())
+	check(office().bank_account.rows() == PackedStringArray(["#%03d TEST RUN  PASSENGERS + CARGO  €334" % offer.number]),
+		"the Bank account should show the transaction, shows %s" % office().bank_account.rows())
 
 
 func test_each_part_of_a_late_payout_stops_at_0_euros() -> void:
@@ -64,8 +64,8 @@ func test_a_contract_that_pays_nothing_still_gets_a_transaction() -> void:
 	await deliver_by_shortcut()
 	await seconds(3.0)
 	check(economy().balance == 0, "50 s late, €300 for passengers should pay €0, balance is %s" % economy().balance)
-	check(office().transaction_lines() == PackedStringArray(["#%03d TEST RUN  PASSENGERS  €300 - €300 = €0" % offer.number]),
-		"the Bank account should still show the transaction, shows %s" % office().transaction_lines())
+	check(office().bank_account.rows() == PackedStringArray(["#%03d TEST RUN  PASSENGERS  €0" % offer.number]),
+		"the Bank account should still show the transaction, shows %s" % office().bank_account.rows())
 
 
 func test_several_contracts_each_get_a_transaction_newest_first_then_the_ship_is_empty_and_free() -> void:
@@ -81,10 +81,10 @@ func test_several_contracts_each_get_a_transaction_newest_first_then_the_ship_is
 	await seconds(3.5)
 	check(economy().phase == Economy.Phase.NONE, "unloading should be over")
 	check(economy().balance == 420, "the balance should be €300 + €120, is %s" % economy().balance)
-	check(office().transaction_lines() == PackedStringArray([
-			"#%03d TEST RUN  CARGO  €120 - €0 = €120" % parts.number,
-			"#%03d TEST RUN  PASSENGERS  €300 - €0 = €300" % crew.number]),
-		"one transaction per Contract, newest first, shows %s" % office().transaction_lines())
+	check(office().bank_account.rows() == PackedStringArray([
+			"#%03d TEST RUN  CARGO  €120" % parts.number,
+			"#%03d TEST RUN  PASSENGERS  €300" % crew.number]),
+		"one transaction per Contract, newest first, shows %s" % office().bank_account.rows())
 	check(hud().payout == "+€420", "the total payout should float above the ship, shows %s" % hud().payout)
 	check(economy().contracts.is_empty(), "the Contracts should be cleared")
 	check(lander().total_mass() == ShipType.SPARROW.default_dry_mass + lander().fuel,
@@ -112,7 +112,7 @@ func test_landing_again_neither_restarts_unloading_nor_pays_twice() -> void:
 	await deliver_by_shortcut()
 	await seconds(4.0)
 	check(economy().balance == 420, "the Contract should be paid once, balance is %s" % economy().balance)
-	check(office().transaction_lines().size() == 1, "one transaction only, shows %s" % office().transaction_lines())
+	check(office().bank_account.rows().size() == 1, "one transaction only, shows %s" % office().bank_account.rows())
 	check(message() == "Landed!", "landing empty shows no unloading, got %s" % message())
 
 
@@ -125,7 +125,7 @@ func test_landing_on_the_pad_without_a_load_works_as_before() -> void:
 	await seconds(0.3)
 	release(&"ui_up")
 	check(lander().state == Lander.State.FLYING, "Up should lift off right away")
-	check(economy().balance == 0 and office().transaction_lines().is_empty(), "nothing should be paid")
+	check(economy().balance == 0 and office().bank_account.rows().is_empty(), "nothing should be paid")
 
 
 func test_the_debug_pad_shortcut_delivers_even_after_a_crash_on_the_surface() -> void:
@@ -156,8 +156,8 @@ func test_a_crash_then_r_starts_a_new_run_with_the_economy_wiped() -> void:
 	check(office().showing and office().screen == Office.Screen.MAIN, "a new run should open the Office main screen")
 	check(lander().ship_type == ShipType.SPARROW, "a new run should start in the Sparrow")
 	check(economy().balance == 0, "the balance should be €0 again, is %s" % economy().balance)
-	check(office().bank_lines() == PackedStringArray(["PILOT", "BALANCE €0"]), "the Bank account should read €0, shows %s" % office().bank_lines())
-	check(office().transaction_lines().is_empty(), "no transactions should remain, shows %s" % office().transaction_lines())
+	check(office().bank_account.lines() == PackedStringArray(["PILOT", "BALANCE €0"]), "the Bank account should read €0, shows %s" % office().bank_account.lines())
+	check(office().bank_account.rows().is_empty(), "no transactions should remain, shows %s" % office().bank_account.rows())
 	check(economy().contracts.is_empty(), "no Contracts should remain")
 	check(economy().phase == Economy.Phase.NONE, "no delivery should be under way")
 	check(lander().total_mass() == ShipType.SPARROW.default_dry_mass + lander().fuel,

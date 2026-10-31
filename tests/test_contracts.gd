@@ -2,10 +2,12 @@ extends "res://tests/scene_test.gd"
 
 
 func test_accepting_asks_are_you_sure_and_moves_the_offer_to_the_contracts() -> void:
+	economy().reseed(1)
 	var offer := known_offer(2, 1500.0)
 	economy().put_offer(offer)
 	await open_transport_offers()
 	await open_details(offer)
+	await press(&"ui_down")
 	await press(&"ui_accept")
 	check(office().popup == Office.PopupKind.ACCEPT_OFFER, "ACCEPT should ask ARE YOU SURE?")
 	check(office().popup_text() == "ARE YOU SURE?", "the popup should ask ARE YOU SURE?, got %s" % office().popup_text())
@@ -14,10 +16,22 @@ func test_accepting_asks_are_you_sure_and_moves_the_offer_to_the_contracts() -> 
 	check(office().popup == Office.PopupKind.NONE, "Yes should close the popup")
 	check(economy().contracts.size() == 1 and economy().contracts[0] == offer, "Yes should make the offer a Contract")
 	check(not listed("#%03d " % offer.number), "the Contract should leave the offer list, lists %s" % offers().rows())
-	check(offers().details().is_empty(), "the details should close")
+	check(offers().list.expanded_rows().is_empty(), "the details should close")
 	check("#%03d TEST RUN" % offer.number in offers().contract_lines(),
 		"the Contracts column should list it, lists %s" % offers().contract_lines())
-	check(offers().rows().size() == 5, "the list should refill to 5, lists %s" % offers().rows())
+	check(offers().rows().size() == 5, "nothing should take the Contract's place, lists %s" % offers().rows())
+
+
+func test_a_new_offer_arrives_within_90_seconds_of_accepting() -> void:
+	economy().reseed(1)
+	var offer := known_offer(1, 0.0)
+	economy().put_offer(offer)
+	await open_transport_offers()
+	await accept(offer)
+	await seconds(Economy.MIN_OFFER_INTERVAL - 1.0)
+	check(offers().rows().size() == 5, "nothing should arrive straight after accepting, lists %s" % offers().rows())
+	await seconds(Economy.MAX_OFFER_INTERVAL - Economy.MIN_OFFER_INTERVAL + 1.0)
+	check(offers().rows().size() == 6, "a new offer should arrive within 90 s, lists %s" % offers().rows())
 
 
 func test_an_offer_that_expires_during_are_you_sure_cant_be_accepted_and_shows_offer_expired() -> void:
@@ -25,11 +39,12 @@ func test_an_offer_that_expires_during_are_you_sure_cant_be_accepted_and_shows_o
 	economy().put_offer(offer)
 	await open_transport_offers()
 	await open_details(offer)
+	await press(&"ui_down")
 	await press(&"ui_accept")
 	check(office().popup == Office.PopupKind.ACCEPT_OFFER, "ACCEPT should ask ARE YOU SURE?")
 	await seconds(1.0)
 	check(office().popup == Office.PopupKind.NONE, "the offer expiring should close ARE YOU SURE?")
-	check(offers().details().is_empty(), "the offer expiring should close its details")
+	check(offers().list.expanded_rows().is_empty(), "the offer expiring should close its details")
 	check(offers().notice() == "OFFER EXPIRED", "OFFER EXPIRED should show, got %s" % offers().notice())
 	await press(&"ui_accept")
 	check(economy().contracts.is_empty(), "nothing should be accepted, got %d Contracts" % economy().contracts.size())
@@ -37,35 +52,18 @@ func test_an_offer_that_expires_during_are_you_sure_cant_be_accepted_and_shows_o
 	check(offers().notice() == "", "OFFER EXPIRED should only show briefly, got %s" % offers().notice())
 
 
-func test_an_offer_that_expires_with_its_details_open_closes_them_and_shows_offer_expired() -> void:
+func test_an_open_offer_that_expires_just_closes_and_leaves_the_others_open() -> void:
 	var offer := known_offer(1, 0.0, 1.0)
-	economy().put_offer(offer)
+	var other := known_offer(1, 0.0)
+	for each in [offer, other]:
+		economy().put_offer(each)
 	await open_transport_offers()
 	await open_details(offer)
+	await open_details(other)
 	await seconds(1.0)
-	check(offers().details().is_empty(), "the offer expiring should close its details")
-	check(offers().notice() == "OFFER EXPIRED", "OFFER EXPIRED should show, got %s" % offers().notice())
-
-
-func test_an_open_offer_replaced_because_nothing_fits_closes_quietly_without_offer_expired() -> void:
-	economy().reseed(1)
-	# Takes every seat and leaves 600 kg of cargo: only the 500 kg offer still fits.
-	var big := known_offer(4, 7400.0)
-	var too_heavy := known_offer(0, 1000.0)
-	var last_fit := known_offer(0, 500.0)
-	for offer in [big, too_heavy, last_fit]:
-		economy().put_offer(offer)
-	# Closest to expiring after the last fit, so it's the one replaced once nothing fits.
-	too_heavy.time_left = 60.0
-	last_fit.time_left = 5.0
-	await open_transport_offers()
-	await accept(big)
-	await open_details(too_heavy)
-	await seconds(5.0)
-	check(not listed("#%03d " % last_fit.number), "the last offer that fits should have expired, lists %s" % offers().rows())
-	check(not listed("#%03d " % too_heavy.number), "the open offer should be replaced, lists %s" % offers().rows())
-	check(offers().details().is_empty(), "the replaced offer's details should close")
-	check(offers().notice() == "", "a replaced offer didn't expire: no OFFER EXPIRED, got %s" % offers().notice())
+	check(not listed("#%03d " % offer.number), "the offer should have expired")
+	check(offers().list.expanded_rows() == [economy().offers.find(other)], "only the other offer should stay open, open %s" % [offers().list.expanded_rows()])
+	check(offers().notice() == "", "OFFER EXPIRED should show only for an open ARE YOU SURE?, got %s" % offers().notice())
 
 
 func test_confirming_an_offer_that_is_already_gone_accepts_nothing() -> void:
@@ -73,6 +71,7 @@ func test_confirming_an_offer_that_is_already_gone_accepts_nothing() -> void:
 	economy().put_offer(offer)
 	await open_transport_offers()
 	await open_details(offer)
+	await press(&"ui_down")
 	await press(&"ui_accept")
 	# Gone from the pool without the screen hearing of it yet.
 	economy().offers.erase(offer)
@@ -92,12 +91,11 @@ func test_offers_that_would_exceed_the_seats_or_cargo_left_are_disabled_with_the
 	check(reason_for(too_many) == "", "2 passengers should fit an empty Sparrow, got %s" % reason_for(too_many))
 	await accept(first)
 	check(reason_for(too_many) == "NOT ENOUGH PASSENGER SEATS", "2 more passengers than seats left should read NOT ENOUGH PASSENGER SEATS, got %s" % reason_for(too_many))
-	check(reason_for(too_heavy) == "CARGO CAPACITY EXCEEDED", "3 500 kg on 3 000 kg left should read CARGO CAPACITY EXCEEDED, got %s" % reason_for(too_heavy))
+	check(reason_for(too_heavy) == "OVERLOADED", "3 500 kg on 3 000 kg left should read OVERLOADED, got %s" % reason_for(too_heavy))
 	check(reason_for(fits) == "", "what's left should still take 1 passenger and 3 000 kg, got %s" % reason_for(fits))
 	await open_details(too_many)
-	await press(&"ui_accept")
-	check(office().popup == Office.PopupKind.NONE, "ACCEPT on an offer that doesn't fit should do nothing")
-	await press(&"ui_cancel")
+	await press(&"ui_down")
+	check(not offers().on_accept(), "Down should skip the dimmed ACCEPT of an offer that doesn't fit")
 	await accept(fits)
 	check(economy().contracts.size() == 2, "the ship should take both offers, has %d Contracts" % economy().contracts.size())
 
@@ -106,11 +104,12 @@ func test_the_summary_shows_passengers_cargo_and_start_loading() -> void:
 	var offer := known_offer(3, 2500.0)
 	economy().put_offer(offer)
 	await open_transport_offers()
-	check(offers().summary() == PackedStringArray(["PASSENGERS 0/4", "CARGO 0/8 000 KG"]),
+	check(offers().summary() == PackedStringArray(["PASSENGERS 0/4", "CARGO 0/7 000 KG"]),
 		"an empty Sparrow's summary, got %s" % offers().summary())
 	check(not offers().start_loading_enabled(), "START LOADING should be disabled with no Contracts")
 	await accept(offer)
-	check(offers().summary() == PackedStringArray(["PASSENGERS 3/4", "CARGO 2 500/8 000 KG"]),
+	check(offers().summary() == PackedStringArray(["PASSENGERS 3/4", "CARGO 2 500/6 760 KG",
+		"DELIVER WITHIN 1:30", "TOTAL VALUE €420"]),
 		"the summary should count the Contract, got %s" % offers().summary())
 	check(offers().start_loading_enabled(), "START LOADING should be enabled with a Contract")
 
@@ -130,7 +129,28 @@ func test_no_fuel_warning_while_a_full_tank_still_fits() -> void:
 	economy().put_offer(light)
 	await open_transport_offers()
 	await accept(light)
-	check(offers().summary().size() == 2, "7 000 kg of Load leaves room for a full Tank, got %s" % offers().summary())
+	check(not offers().summary()[2].begins_with("FUEL LIMITED"),
+		"7 000 kg of Load leaves room for a full Tank, got %s" % offers().summary())
+
+
+func test_the_summary_shows_the_shortest_deadline_and_the_total_value_of_the_contracts() -> void:
+	var quick := known_offer(1, 0.0)
+	quick.deadline = 90.0
+	var slow := known_offer(0, 1000.0)
+	slow.deadline = 160.0
+	slow.passenger_reward = 0
+	slow.cargo_reward = 820
+	for offer in [slow, quick]:
+		economy().put_offer(offer)
+	await open_transport_offers()
+	check(offers().summary() == PackedStringArray(["PASSENGERS 0/4", "CARGO 0/7 000 KG"]),
+		"DELIVER WITHIN and TOTAL VALUE should be hidden with no Contracts, got %s" % offers().summary())
+	await accept(slow)
+	await accept(quick)
+	var summary := offers().summary()
+	check("DELIVER WITHIN 1:30" in summary, "the shortest deadline of 1:30 and 2:40 should show, got %s" % summary)
+	check("TOTAL VALUE €1240" in summary, "€820 and €420 should add up to €1240, got %s" % summary)
+	check(offers().red_summary_lines().is_empty(), "neither line should be red, got %s" % offers().red_summary_lines())
 
 
 func test_right_and_left_move_focus_between_the_offers_and_start_loading() -> void:
@@ -146,7 +166,7 @@ func test_right_and_left_move_focus_between_the_offers_and_start_loading() -> vo
 	await press(&"ui_down")
 	await press(&"ui_left")
 	check(offers().focus == TransportOffersScreen.Column.OFFERS, "Left should move focus back to the offers")
-	check(offers().selected_index == 2, "the offer list should keep its row, got %d" % offers().selected_index)
+	check(offers().list.selected_index() == 2, "the offer list should keep its row, got %d" % offers().list.selected_index())
 	await press(&"ui_right")
 	await press(&"ui_cancel")
 	check(office().screen == Office.Screen.MAIN, "Escape from the Contracts column should return to the main screen")
@@ -186,25 +206,3 @@ func test_ship_swapping_is_locked_while_contracts_exist() -> void:
 	check(office().popup == Office.PopupKind.NONE, "Return on a locked Ship offer should do nothing")
 	check(office().screen == Office.Screen.SHIP_SELECTION, "Return on a locked Ship offer should stay on Ship selection")
 	check(lander().ship_type == ShipType.SPARROW, "the Sparrow should stay in service")
-
-
-func test_after_accepting_at_least_one_offer_fits_what_is_left_over_several_seeds() -> void:
-	await open_transport_offers()
-	for seed_value in [1, 2, 3, 4, 5]:
-		economy().contracts.clear()
-		economy().reseed(seed_value)
-		# A pool of passenger offers, one of which fills every seat: once it's accepted,
-		# only the one generated in its place could fit.
-		var full := known_offer(4, 0.0, 2000.0)
-		var others: Array[TransportOffer] = []
-		for i in Economy.MAX_OFFERS - 1:
-			others.append(known_offer(1, 0.0, 1000.0 + i))
-			economy().put_offer(others[i])
-		economy().put_offer(full)
-		await frames(1)
-		await accept(full)
-		check(offers().rows().size() == 5, "seed %d should keep 5 offers, gives %s" % [seed_value, offers().rows()])
-		check("" in offers().reasons(), "seed %d should leave an offer the full Sparrow can take, reasons %s" % [seed_value, offers().reasons()])
-		for i in range(1, others.size()):
-			check(others[i] in economy().offers, "seed %d should keep the offers further from expiring, lists %s" % [seed_value, offers().rows()])
-

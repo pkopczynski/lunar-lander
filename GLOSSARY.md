@@ -33,7 +33,7 @@ A world edge that steers the ship back inside instead of crashing it.
 _Avoid_: Bumper, invisible wall
 
 **Steering**:
-The world briefly taking over: it damps the ship's speed and turns its nose up or down. This happens at soft walls and just after crossing the border.
+The world briefly slowing the ship down: it damps the ship's speed and pushes it back, but never turns its nose, so the player keeps Left/Right control. This happens at soft walls and just after crossing the border.
 _Avoid_: Autopilot, assist
 
 **Zoom punch**:
@@ -93,7 +93,7 @@ A job on the terminal, not yet accepted: carry passengers, cargo or both from th
 _Avoid_: Offer (on its own), job, mission
 
 **Contract**:
-A transport offer the player has accepted. All contracts accepted together are delivered in one flight. A contract stays accepted when transport offers expire or the player leaves the office.
+A transport offer the player has accepted. All contracts accepted together are delivered in one flight. A contract stays accepted when transport offers expire or the player leaves the office; before loading, the player can remove it for good.
 _Avoid_: Order, accepted offer
 
 **Deadline**:
@@ -105,7 +105,7 @@ A delivery still under way after its deadline has passed.
 _Avoid_: Late (on its own), expired
 
 **Loading**:
-Putting the load aboard at the parking spot, after the player accepts their contracts. The ship stays docked and held until it finishes, and the deadline starts counting then.
+Putting the load aboard at the parking spot, after the player accepts their contracts. The ship stays docked and held until it finishes, refuelling meanwhile, and the deadline starts counting then.
 _Avoid_: Boarding, embarking
 
 **Unloading**:
@@ -117,7 +117,7 @@ What a contract pays into the bank account once unloaded: its reward less a pena
 _Avoid_: Reward (that's before the penalty), income, score
 
 **Transaction**:
-One line in the bank account per delivered contract: its reward, penalty and payout.
+One line in the bank account per delivered contract: its payout, opening to show its reward, penalty, the flight's deadline it was settled against and the delivery time.
 _Avoid_: Receipt, entry, log
 
 **Load**:
@@ -131,7 +131,7 @@ _Avoid_: Load (for goods alone), freight
 ## Ship
 
 **Ship type**:
-A kind of ship with its own shape, dry mass, maximum weight, tank, passenger seats, cargo capacity, thrust and turn rate. The game has three: the Sparrow, the Mule and the Halo.
+A kind of ship with its own shape, dry mass, maximum weight, tank, passenger seats, maximum capacity, thrust and turn rate. The game has three: the Sparrow, the Mule and the Halo.
 _Avoid_: Model, class, variant
 
 **Sparrow**:
@@ -158,6 +158,14 @@ _Avoid_: Max load, payload
 How much fuel a ship type holds when full.
 _Avoid_: Capacity (on its own), fuel max
 
+**Maximum capacity**:
+The most cargo a ship type can take at all. A transport offer that would go past it is overloaded and can't be accepted.
+_Avoid_: Cargo capacity (on its own), max load
+
+**Full-Tank cargo**:
+The most cargo a ship can carry and still have room for a full tank under its maximum weight, given the passengers aboard. It shrinks with each passenger and is never above the maximum capacity. Cargo past it is allowed, but limits the fuel.
+_Avoid_: Cargo limit, comfortable load, safe cargo
+
 ## Ship states
 
 A ship is always in exactly one of these four states.
@@ -171,7 +179,7 @@ The ship is resting on the pad after a safe touchdown.
 _Avoid_: Touched down, parked
 
 **Docked**:
-The ship is resting inside the parking spot. This is the deep-space counterpart of Landed. From docking until the player declines to enter the office or leaves it, and during loading, a Docked ship is held: it ignores the controls and doesn't refuel.
+The ship is resting inside the parking spot. This is the deep-space counterpart of Landed. From docking until the player declines to enter the office or leaves it, a Docked ship is held: it ignores the controls and doesn't refuel. During loading it also ignores the controls, but refuels.
 _Avoid_: Parked, landed (in deep space)
 
 **Crashed**:

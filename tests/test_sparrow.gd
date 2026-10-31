@@ -103,3 +103,55 @@ func test_crosses_the_border_at_maximum_weight() -> void:
 	var top_speed: float = await top_climb_speed_to_the_border()
 	check(lander().in_deep_space, "should have crossed into deep space")
 	check(top_speed >= Lander.CROSSING_SPEED, "should reach the crossing speed, top speed %s" % top_speed)
+
+
+# Sparrow with a full Tank: 10 000 kg dry mass + 5 000 kg fuel = the 15 000 kg reference
+# mass. A 6 000 kg Load still leaves room for a full Tank, and burn counts it at half:
+# (15 000 + 3 000) / 15 000 × 250 kg/s = 300 kg/s, against 350 kg/s at full weight.
+const BURN_TEST_LOAD := 6000.0
+
+
+func test_a_load_burns_fuel_at_half_its_weight() -> void:
+	await choose_ship()
+	var ship := lander()
+	var unloaded := await fuel_burned_in_a_second_of_thrust()
+	ship.fuel = ship.ship_type.tank
+	ship.load_mass = BURN_TEST_LOAD
+	var loaded := await fuel_burned_in_a_second_of_thrust()
+	check_near(unloaded, 250.0, 10.0, "fuel burned in 1 s of thrust without a Load")
+	check_near(loaded, 300.0, 10.0, "fuel burned in 1 s of thrust with a 6 000 kg Load")
+	check(loaded < 350.0, "a Load should burn less than full-weight scaling would, burned %s" % loaded)
+	check(loaded > unloaded, "a Load should burn more than no Load, burned %s against %s" % [loaded, unloaded])
+
+
+func test_a_load_still_weighs_fully_on_thrust_and_gravity() -> void:
+	await choose_ship()
+	var ship := lander()
+	ship.load_mass = BURN_TEST_LOAD
+	# Total 21 000 kg, factor 1.4: thrust 150 / 1.4 ≈ 107 px/s², gravity 60 × 1.2 = 72 px/s².
+	var spot := Vector2(World.WORLD_WIDTH / 4.0, World.BORDER_Y - 600.0)
+	place(spot)
+	hold(&"ui_up")
+	await seconds(1.0)
+	release(&"ui_up")
+	check_near(-ship.velocity.y, 107.1, 2.0, "speed after 1 s of thrust in deep space with a Load")
+	ship.fuel = ship.ship_type.tank
+	place(Vector2(Lander.PAD_CENTER_X, 400.0))
+	await seconds(1.0)
+	check_near(ship.velocity.y, 72.0, 2.5, "falling speed after 1 s at pad altitude with a Load")
+
+
+# Fuel burned in 1 s of thrust, with the ship held still in deep space (no gravity, no braking
+# burn). A little under the nominal rate: the burn eases as fuel drops.
+func fuel_burned_in_a_second_of_thrust() -> float:
+	var ship := lander()
+	var spot := Vector2(World.WORLD_WIDTH / 4.0, World.BORDER_Y - 600.0)
+	place(spot)
+	var before := ship.fuel
+	hold(&"ui_up")
+	for i in roundi(PHYSICS_FPS):
+		await frames(1)
+		ship.position = spot
+		ship.velocity = Vector2.ZERO
+	release(&"ui_up")
+	return before - ship.fuel

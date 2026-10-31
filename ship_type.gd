@@ -13,7 +13,7 @@ var default_dry_mass: float
 var maximum_weight: float
 var tank: float
 var passenger_seats: int
-# The most cargo it can carry, in kg.
+# The maximum capacity: the most cargo it can carry at all, in kg.
 var cargo_capacity: float
 # Thrust acceleration in px/s² at the reference mass.
 var thrust: float
@@ -30,6 +30,13 @@ static var SPARROW := sparrow()
 static var MULE := mule()
 static var HALO := halo()
 static var ALL: Array[ShipType] = [SPARROW, MULE, HALO]
+
+
+# The full-Tank cargo: the cargo that, with these passengers aboard, still leaves room for a
+# full Tank under the Maximum weight, never above the maximum capacity.
+func full_tank_cargo(passengers := 0) -> float:
+	return clampf(maximum_weight - default_dry_mass - tank - passengers * TransportOffer.PASSENGER_MASS,
+		0.0, cargo_capacity)
 
 
 static func sparrow() -> ShipType:

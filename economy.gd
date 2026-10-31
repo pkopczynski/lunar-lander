@@ -5,15 +5,20 @@ extends Node
 # running while the Office pauses the world. It also runs the delivery: loading, the
 # delivery clock and unloading, which settles the Contracts.
 
-# An offer left the pool without being accepted: it expired, or was replaced when it didn't.
-signal offer_withdrawn(offer: TransportOffer, expired: bool)
+# An offer ran out of time and left the pool without being accepted.
+signal offer_expired(offer: TransportOffer)
 # Unloading finished and the Contracts paid this much in total.
 signal paid_out(total: int)
 
 const Hud := preload("res://hud.gd")
 
 const PILOT := "PILOT"
-const MAX_OFFERS := 5
+# Each run starts with START_OFFERS. While fewer than MAX_OFFERS are listed, one more arrives
+# every MIN_OFFER_INTERVAL to MAX_OFFER_INTERVAL seconds.
+const START_OFFERS := 5
+const MAX_OFFERS := 7
+const MIN_OFFER_INTERVAL := 30.0
+const MAX_OFFER_INTERVAL := 90.0
 
 # Loading takes LOADING_TIME + LOADING_TIME_PER_PASSENGER per passenger + LOADING_TIME_PER_TONNE
 # per 1 000 kg of cargo, in seconds.
@@ -44,6 +49,8 @@ var offers: Array[TransportOffer] = []
 var contracts: Array[TransportOffer] = []
 var rng := RandomNumberGenerator.new()
 var last_offer_number := 0
+# Seconds until the next offer arrives; drawn afresh when it next runs after the pool was full.
+var next_offer_left := 0.0
 var phase := Phase.NONE
 var loading_left := 0.0
 # Seconds since loading finished; stops when the ship lands on the pad.
@@ -55,7 +62,7 @@ var unloading_left := 0.0
 
 func _ready() -> void:
 	rng.randomize()
-	refill()
+	start_pool()
 	lander.landed_on_pad.connect(start_unloading)
 
 
@@ -64,8 +71,16 @@ func _physics_process(delta: float) -> void:
 	for offer in offers.duplicate():
 		offer.time_left -= delta
 		if offer.time_left <= 0.0:
-			withdraw(offer, true)
-	refill()
+			offers.erase(offer)
+			offer_expired.emit(offer)
+	if offers.size() >= MAX_OFFERS:
+		next_offer_left = 0.0
+	else:
+		if next_offer_left <= 0.0:
+			next_offer_left = rng.randf_range(MIN_OFFER_INTERVAL, MAX_OFFER_INTERVAL)
+		next_offer_left -= delta
+		if next_offer_left <= 0.0:
+			offers.append(next_offer())
 	match phase:
 		Phase.LOADING:
 			loading_left -= delta
@@ -83,27 +98,25 @@ func _physics_process(delta: float) -> void:
 				lander.show_status(UNLOADING_TEXT % ceili(unloading_left))
 
 
-# NONE → LOADING: holds the ship Docked while the Contracts' Load goes aboard.
+# NONE → LOADING: keeps the ship Docked, refuelling up to the cap for the Contracts' Load,
+# while that Load goes aboard.
 func start_loading() -> void:
 	if phase != Phase.NONE or contracts.is_empty():
 		return
 	phase = Phase.LOADING
 	loading_left = LOADING_TIME + contract_passengers() * LOADING_TIME_PER_PASSENGER \
 		+ contract_cargo() / 1000.0 * LOADING_TIME_PER_TONNE
-	lander.hold()
+	lander.start_loading(contract_load_mass())
 	lander.show_status(LOADING_TEXT % ceili(loading_left))
 
 
-# LOADING → DELIVERING: the Load goes on, fuel above the cap is pumped out, and the
-# delivery clock starts.
+# LOADING → DELIVERING: the Load joins the ship's mass and the delivery clock starts.
 func finish_loading() -> void:
 	if phase != Phase.LOADING:
 		return
 	phase = Phase.DELIVERING
 	delivery_time = 0.0
-	lander.load_mass = contract_load_mass()
-	lander.fuel = minf(lander.fuel, lander.fuel_cap())
-	lander.release()
+	lander.finish_loading()
 	var status := LOADED_TEXT % TransportOffer.countdown(deadline())
 	if lander.fuel_cap() < lander.ship_type.tank:
 		status += "\n" + FUEL_LIMITED_TEXT % Hud.format_kg(lander.fuel_cap())
@@ -130,7 +143,7 @@ func finish_unloading() -> void:
 	phase = Phase.NONE
 	var total := 0
 	for contract in contracts:
-		var transaction := contract.settlement(-delivery_left())
+		var transaction := contract.settlement(deadline(), delivery_time)
 		transactions.push_front(transaction)
 		total += transaction.payout
 	balance += total
@@ -157,34 +170,26 @@ func delivery_left() -> float:
 # Starts the offer pool over from this seed, numbered from #001. For tests.
 func reseed(value: int) -> void:
 	rng.seed = value
+	start_pool()
+
+
+# A new pool of START_OFFERS, numbered from #001, with a fresh wait for the next one.
+func start_pool() -> void:
 	offers.clear()
 	last_offer_number = 0
-	refill()
+	next_offer_left = 0.0
+	for i in START_OFFERS:
+		offers.append(next_offer())
 
 
-# Puts a known offer in the pool, in place of the one closest to expiring, with the next number.
+# Puts a known offer in the pool with the next number, in place of the one closest to
+# expiring when the pool is full. For tests.
 func put_offer(offer: TransportOffer) -> void:
 	if offers.size() >= MAX_OFFERS:
-		withdraw(closest_to_expiring())
+		offers.erase(closest_to_expiring())
 	last_offer_number += 1
 	offer.number = last_offer_number
 	offers.append(offer)
-
-
-# Tops the pool up to MAX_OFFERS. If none fits what the ship has left while something could,
-# the offer closest to expiring is replaced right away by one that fits.
-func refill() -> void:
-	while offers.size() < MAX_OFFERS:
-		offers.append(next_offer(largest_seats(), largest_cargo()))
-	var seats := seats_left()
-	var cargo := cargo_left()
-	if not TransportOffer.could_fit(seats, cargo):
-		return
-	for offer in offers:
-		if offer.misfit_reason(seats, cargo) == "":
-			return
-	withdraw(closest_to_expiring())
-	offers.append(next_offer(seats, cargo))
 
 
 # Makes the offer a Contract, if it's still in the pool and still fits; returns whether it did.
@@ -193,18 +198,20 @@ func accept(offer: TransportOffer) -> bool:
 		return false
 	offers.erase(offer)
 	contracts.append(offer)
-	refill()
 	return true
 
 
-func withdraw(offer: TransportOffer, expired := false) -> void:
-	offers.erase(offer)
-	offer_withdrawn.emit(offer, expired)
+# Discards a Contract before loading, for good: no payout, no transaction, and it doesn't
+# return to the pool.
+func remove_contract(contract: TransportOffer) -> void:
+	if phase == Phase.NONE:
+		contracts.erase(contract)
 
 
-func next_offer(max_passengers: int, max_cargo: float) -> TransportOffer:
+# Generated up to the largest ship type, so some won't fit a smaller one.
+func next_offer() -> TransportOffer:
 	last_offer_number += 1
-	return TransportOffer.generate(rng, last_offer_number, max_passengers, max_cargo)
+	return TransportOffer.generate(rng, last_offer_number, largest_seats(), largest_cargo())
 
 
 func closest_to_expiring() -> TransportOffer:
@@ -250,7 +257,6 @@ func contract_load_mass() -> float:
 	return total
 
 
-# Generated offers may be too big for the smaller ship types on purpose.
 static func largest_seats() -> int:
 	var most := 0
 	for type in ShipType.ALL:

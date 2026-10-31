@@ -15,14 +15,42 @@ func test_start_loading_closes_the_office_and_counts_down_3_s_plus_1_s_per_passe
 	check(economy().phase == Economy.Phase.DELIVERING, "loading should finish after 12 s")
 
 
-func test_up_doesnt_undock_and_nothing_refuels_while_loading() -> void:
+func test_starting_loading_pumps_out_fuel_above_the_cap_for_the_contracts_load() -> void:
+	# A Sparrow has 12 000 kg for fuel and Load; 7 160 kg of Load leaves 4 840 kg for fuel.
+	await start_loading([known_offer(2, 7000.0)])
+	check(economy().phase == Economy.Phase.LOADING, "loading should be under way")
+	check(lander().fuel == 4840.0, "fuel above the cap should be pumped out as loading starts, has %s kg" % lander().fuel)
+	check(lander().total_mass() == 14840.0, "the Load shouldn't count before loading ends, got %s" % lander().total_mass())
+
+
+func test_up_doesnt_undock_and_left_right_dont_turn_while_loading() -> void:
 	await start_loading([known_offer(1, 3000.0)])
-	lander().fuel = 1000.0
 	hold(&"ui_up")
+	hold(&"ui_left")
 	await seconds(4.0)
 	release(&"ui_up")
+	release(&"ui_left")
 	check(lander().state == Lander.State.DOCKED, "Up should not undock while loading")
-	check(lander().fuel == 1000.0, "a loading ship should neither burn nor refuel, has %s kg" % lander().fuel)
+	check(lander().rotation == 0.0, "Left should not turn a loading ship, rotation is %s" % lander().rotation)
+	check(economy().phase == Economy.Phase.LOADING, "loading should still run")
+
+
+func test_a_ship_refuels_while_loading_up_to_the_cap_from_the_first_frame() -> void:
+	# 3 s + 2 passengers + 7 000 kg = 12 s; the cap for that Load is 4 840 kg.
+	await start_loading([known_offer(2, 7000.0)])
+	lander().fuel = 4000.0
+	await frames(1)
+	check(lander().fuel > 4000.0, "refuelling should start without the usual delay, has %s kg" % lander().fuel)
+	check(message() == "Docked!\nLoading… 12s\nRefueling…",
+		"Refueling… should show under the loading countdown, got %s" % message())
+	await seconds(4.0)
+	check(economy().phase == Economy.Phase.LOADING, "loading should still run")
+	check(lander().fuel == 4840.0, "refuelling should stop at the cap for the Contracts' Load, has %s kg" % lander().fuel)
+	check(message() == "Docked!\nLoading… 8s", "no Refueling… once at the cap, got %s" % message())
+	check(lander().total_mass() == 14840.0, "the Load shouldn't count before loading ends, got %s" % lander().total_mass())
+	await seconds(8.5)
+	check(economy().phase == Economy.Phase.DELIVERING, "loading should have finished")
+	check(lander().total_mass() == 22000.0, "the Load should join the mass when loading ends, got %s" % lander().total_mass())
 
 
 func test_loading_adds_the_load_and_pumps_out_fuel_above_the_cap() -> void:
@@ -44,17 +72,17 @@ func test_loading_adds_the_load_and_pumps_out_fuel_above_the_cap() -> void:
 
 func test_after_loading_refuelling_resumes_up_to_the_cap() -> void:
 	await start_loading([known_offer(1, 0.0)])
-	lander().fuel = 1000.0
-	# As if the ship had already rested long enough: the delay must still start over.
-	lander().rest_time = Lander.REFUEL_DELAY
+	lander().fuel = 0.0
 	# 3 s + 1 passenger.
 	await seconds(4.5)
-	check(message() == "Docked!\nLoaded! Deliver within 1:30",
-		"a light Load gives no fuel warning, got %s" % message())
-	await seconds(Lander.REFUEL_DELAY - 0.8)
-	check(lander().fuel == 1000.0, "refuelling should wait the usual delay after loading, has %s kg" % lander().fuel)
-	await seconds(0.6)
-	check(lander().fuel > 1000.0, "refuelling should resume after the usual delay, has %s kg" % lander().fuel)
+	check(economy().phase == Economy.Phase.DELIVERING, "loading should have finished")
+	var after_loading := lander().fuel
+	check(after_loading > 0.0 and after_loading < lander().ship_type.tank,
+		"the ship should have refuelled part of the Tank while loading, has %s kg" % after_loading)
+	check(message() == "Docked!\nLoaded! Deliver within 1:30\nRefueling…",
+		"a light Load gives no fuel warning and refuelling goes on, got %s" % message())
+	await seconds(Lander.REFUEL_DELAY + 0.5)
+	check(lander().fuel > after_loading, "refuelling should carry on after loading, has %s kg" % lander().fuel)
 	check(message().ends_with("Loaded! Deliver within 1:30\nRefueling…"),
 		"the loaded message should stay while refuelling, got %s" % message())
 

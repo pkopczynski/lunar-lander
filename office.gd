@@ -5,7 +5,7 @@ extends CanvasLayer
 # the world while showing, and puts the chosen ship type in the parking spot.
 
 enum Screen { MAIN, SHIP_SELECTION, TRANSPORT_OFFERS, BANK_ACCOUNT }
-enum PopupKind { NONE, ARE_YOU_SURE, ENTER_OFFICE, ACCEPT_OFFER }
+enum PopupKind { NONE, ARE_YOU_SURE, ENTER_OFFICE, ACCEPT_OFFER, REMOVE_CONTRACT }
 enum Choice { YES, NO }
 
 const HEADER := "ORBITAL FREIGHT CO. // "
@@ -14,11 +14,12 @@ const KEY_HINTS := {
 	Screen.MAIN: "← → MOVE   RETURN OPEN   ESC LEAVE",
 	Screen.SHIP_SELECTION: "← → BROWSE   RETURN SELECT   ESC BACK",
 	Screen.TRANSPORT_OFFERS: "← → COLUMNS   UP DOWN MOVE   RETURN SELECT   ESC BACK",
-	Screen.BANK_ACCOUNT: "ESC BACK",
+	Screen.BANK_ACCOUNT: "UP DOWN MOVE   RETURN OPEN   ESC BACK",
 }
 const ARROWS := "← →"
 const ARE_YOU_SURE_TEXT := "ARE YOU SURE?"
 const ENTER_OFFICE_TEXT := "ENTER THE OFFICE?"
+const REMOVE_CONTRACT_TEXT := "REMOVE CONTRACT?"
 const IN_SERVICE_TEXT := "IN SERVICE"
 const SHIP_LOCKED_TEXT := "SHIP LOCKED: CONTRACTS ACCEPTED"
 const VERSION_PREFIX := "V"
@@ -40,6 +41,13 @@ const Hud := preload("res://hud.gd")
 const GREEN := Color(0.25, 1.0, 0.4)
 const DIM_GREEN := Color(0.25, 1.0, 0.4, 0.25)
 const BLACK := Color.BLACK
+# Values next to green labels, and values over a limit.
+const WHITE := Color(0.9, 1.0, 0.92)
+const RED := Color(1.0, 0.3, 0.25)
+# Faint list tints: alternating rows, and open details a little stronger.
+const ROW_TINT_LIGHT := Color(0.25, 1.0, 0.4, 0.08)
+const ROW_TINT_DARK := Color(0.25, 1.0, 0.4, 0.04)
+const DETAILS_TINT := Color(0.25, 1.0, 0.4, 0.14)
 const SCANLINE_COLOR := Color(0.0, 0.0, 0.0, 0.35)
 const SCANLINE_SPACING := 4.0
 
@@ -55,11 +63,11 @@ const HINT_SIZE := 16
 const LINE_GAP := 14.0
 const BLOCK_SIZE := Vector2(22, 22)
 const BLOCK_GAP := 6.0
-const RATING_LABEL_WIDTH := 200.0
+const RATING_LABEL_WIDTH := 230.0
 const HINT_ARROW_SIZE := 12.0
 # The Ship offer's text block (name, flavour, stats, ratings) is centred on the picture by
 # starting this far above the Ship offer area's middle.
-const SHIP_OFFER_TEXT_LIFT := 5.0 * STAT_SIZE + 3.0 * LINE_GAP
+const SHIP_OFFER_TEXT_LIFT := 4.5 * STAT_SIZE + 2.5 * LINE_GAP
 # Padding around the IN SERVICE tag's text, and how far the tag sits above the name's middle.
 const TAG_PADDING := Vector2(8, 4)
 const TAG_RAISE := 4.0
@@ -98,6 +106,7 @@ var powering := false
 # How far the Terminal's picture is powered on: 0 is off, 1 fully on.
 var power := 1.0
 var transport_offers: TransportOffersScreen
+var bank_account: BankAccountScreen
 
 @onready var lander: Lander = $"../Lander"
 @onready var economy: Economy = $"../Economy"
@@ -106,15 +115,17 @@ var transport_offers: TransportOffersScreen
 
 func _ready() -> void:
 	transport_offers = TransportOffersScreen.new(self, economy)
+	bank_account = BankAccountScreen.new(self, economy)
 	terminal.draw.connect(draw_terminal)
 	lander.docked_at_station.connect(ask_to_enter)
 	open()
 
 
-# The Transport offers' countdowns tick every second.
+# The Transport offers' countdowns tick every second; open details grow open.
 func _process(delta: float) -> void:
 	transport_offers.tick(delta)
-	if showing and screen == Screen.TRANSPORT_OFFERS:
+	bank_account.tick(delta)
+	if showing and screen in [Screen.TRANSPORT_OFFERS, Screen.BANK_ACCOUNT]:
 		terminal.queue_redraw()
 
 
@@ -128,6 +139,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif screen == Screen.MAIN:
 		handle_main_input(event)
 	elif screen == Screen.TRANSPORT_OFFERS and transport_offers.handle_input(event):
+		handled()
+	elif screen == Screen.BANK_ACCOUNT and bank_account.handle_input(event):
 		handled()
 	elif event.is_action_pressed("ui_cancel"):
 		screen = Screen.MAIN
@@ -274,11 +287,15 @@ func answer(choice: Choice) -> void:
 			lander.start_docked(selected_ship_offer())
 			popup = PopupKind.NONE
 			screen = Screen.MAIN
-		[PopupKind.ARE_YOU_SURE, Choice.NO], [PopupKind.ACCEPT_OFFER, Choice.NO]:
+		[PopupKind.ARE_YOU_SURE, Choice.NO], [PopupKind.ACCEPT_OFFER, Choice.NO], \
+				[PopupKind.REMOVE_CONTRACT, Choice.NO]:
 			popup = PopupKind.NONE
 		[PopupKind.ACCEPT_OFFER, Choice.YES]:
 			popup = PopupKind.NONE
 			transport_offers.confirm_accept()
+		[PopupKind.REMOVE_CONTRACT, Choice.YES]:
+			popup = PopupKind.NONE
+			transport_offers.confirm_remove()
 
 
 # Observable state
@@ -292,21 +309,6 @@ func tile_labels() -> PackedStringArray:
 
 func selected_tile() -> String:
 	return SCREEN_TITLES[TILES[tile_index]]
-
-
-func bank_lines() -> PackedStringArray:
-	return PackedStringArray([Economy.PILOT, "BALANCE " + Economy.eur(economy.balance)])
-
-
-# Newest first, e.g. #004 MINING SUPPLIES  CARGO  €640 - €96 = €544.
-func transaction_lines() -> PackedStringArray:
-	var lines := PackedStringArray()
-	for transaction in economy.transactions:
-		var contract := transaction.contract
-		lines.append("%s  %s  %s - %s = %s" % [contract.label(),
-			TransportOffer.KIND_LABELS[contract.kind()], Economy.eur(transaction.reward),
-			Economy.eur(transaction.penalty), Economy.eur(transaction.payout)])
-	return lines
 
 
 func selected_ship_offer() -> ShipType:
@@ -347,9 +349,8 @@ func ship_offer_lines() -> PackedStringArray:
 # The selected Ship offer's numbers as [label, text] pairs.
 func ship_offer_stats() -> Array[Array]:
 	var type := selected_ship_offer()
-	return [["TANK", kg(type.tank)], ["DRY MASS", kg(type.default_dry_mass)],
-		["MAX WEIGHT", kg(type.maximum_weight)], ["SEATS", str(type.passenger_seats)],
-		["CARGO", kg(type.cargo_capacity)]]
+	return [["TANK", kg(type.tank)], ["SEATS", str(type.passenger_seats)],
+		["CARGO", kg(type.full_tank_cargo())], ["MAX CAPACITY", kg(type.cargo_capacity)]]
 
 
 # The selected Ship offer's ratings as [label, blocks out of RATING_BLOCKS] pairs.
@@ -361,6 +362,11 @@ func ship_offer_ratings() -> Array[Array]:
 # The wireframe picture's outline: the ship type's hull.
 func ship_offer_picture() -> PackedVector2Array:
 	return selected_ship_offer().hull
+
+
+# Alternating faint list row tints, lighter on even rows.
+static func row_tint(index: int) -> Color:
+	return ROW_TINT_LIGHT if index % 2 == 0 else ROW_TINT_DARK
 
 
 static func kg(value: float) -> String:
@@ -427,7 +433,7 @@ func draw_screen(view: Rect2) -> void:
 	draw_text(version_text(), Vector2(inner.position.x, hint_y), HINT_SIZE, inner.size.x,
 		HORIZONTAL_ALIGNMENT_RIGHT, DIM_GREEN)
 
-	var body := Rect2(inner.position.x, rule_y + LINE_GAP, inner.size.x, hint_rule_y - rule_y - 2.0 * LINE_GAP)
+	var body := body_area(view)
 	match screen:
 		Screen.MAIN:
 			draw_tiles(body)
@@ -436,9 +442,17 @@ func draw_screen(view: Rect2) -> void:
 		Screen.TRANSPORT_OFFERS:
 			transport_offers.draw(body)
 		Screen.BANK_ACCOUNT:
-			draw_bank_account(body)
+			bank_account.draw(body)
 	if popup != PopupKind.NONE:
 		draw_popup(view)
+
+
+# The area between the header's and the key hint's rules, where the current screen draws.
+func body_area(view: Rect2) -> Rect2:
+	var inner := view.grow(-MARGIN - PADDING)
+	var rule_y := inner.position.y + HEADER_SIZE + LINE_GAP
+	var hint_rule_y := inner.end.y - HINT_SIZE - LINE_GAP
+	return Rect2(inner.position.x, rule_y + LINE_GAP, inner.size.x, hint_rule_y - rule_y - 2.0 * LINE_GAP)
 
 
 # The main screen's tiles in a row across the middle; the selected one is inverted.
@@ -456,21 +470,6 @@ func draw_tiles(area: Rect2) -> void:
 		draw_text(labels[i], Vector2(tile.position.x, tile.get_center().y + STAT_SIZE / 2.0), STAT_SIZE,
 			tile.size.x, HORIZONTAL_ALIGNMENT_CENTER, BLACK if selected else GREEN)
 		x += TILE_SIZE.x + TILE_GAP
-
-
-func draw_bank_account(area: Rect2) -> void:
-	var lines := bank_lines()
-	var y := area.position.y + LINE_GAP + NAME_SIZE
-	draw_text(lines[0], Vector2(area.position.x, y), NAME_SIZE)
-	y += 2.0 * LINE_GAP + STAT_SIZE
-	draw_text(lines[1], Vector2(area.position.x, y), STAT_SIZE)
-	y += LINE_GAP
-	# As many as fit, newest first; no scrolling.
-	for line in transaction_lines():
-		y += LINE_GAP + TEXT_SIZE
-		if y > area.end.y:
-			break
-		draw_text(line, Vector2(area.position.x, y), TEXT_SIZE)
 
 
 func draw_ship_offer(area: Rect2) -> void:
@@ -567,7 +566,12 @@ func version_text() -> String:
 
 
 func popup_text() -> String:
-	return ENTER_OFFICE_TEXT if popup == PopupKind.ENTER_OFFICE else ARE_YOU_SURE_TEXT
+	match popup:
+		PopupKind.ENTER_OFFICE:
+			return ENTER_OFFICE_TEXT
+		PopupKind.REMOVE_CONTRACT:
+			return REMOVE_CONTRACT_TEXT
+	return ARE_YOU_SURE_TEXT
 
 
 func draw_popup(view: Rect2) -> void:
@@ -604,6 +608,16 @@ func draw_scanlines(view: Rect2) -> void:
 func draw_text(text: String, baseline: Vector2, font_size: int, width := -1.0,
 		alignment := HORIZONTAL_ALIGNMENT_LEFT, color := GREEN) -> void:
 	terminal.draw_string(FONT, baseline, text, alignment, width, font_size, color)
+
+
+# A label and its value after it on one line, green and white unless given.
+func draw_label_value(label: String, value: String, baseline: Vector2, font_size: int, width := -1.0,
+		label_color := GREEN, value_color := WHITE) -> void:
+	var spaced := label + " "
+	draw_text(spaced, baseline, font_size, width, HORIZONTAL_ALIGNMENT_LEFT, label_color)
+	var label_width := text_width(spaced, font_size)
+	draw_text(value, baseline + Vector2(label_width, 0.0), font_size, width - label_width if width >= 0.0 else -1.0,
+		HORIZONTAL_ALIGNMENT_LEFT, value_color)
 
 
 func text_width(text: String, font_size: int) -> float:

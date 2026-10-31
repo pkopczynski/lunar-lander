@@ -113,6 +113,13 @@ func dock_in_spot() -> void:
 	check(lander().state == Lander.State.DOCKED, "the ship should dock in the parking spot")
 
 
+func open_bank_account() -> void:
+	for i in Office.TILES.size():
+		await press(&"ui_right")
+	await press(&"ui_accept")
+	check(office().screen == Office.Screen.BANK_ACCOUNT, "Return should open the Bank account")
+
+
 # Transport offers
 
 func open_transport_offers() -> void:
@@ -123,12 +130,13 @@ func open_transport_offers() -> void:
 	check(office().screen == Office.Screen.TRANSPORT_OFFERS, "Return should open Transport offers")
 
 
+# Puts the cursor on the row itself, not its ACCEPT.
 func select_row(index: int) -> void:
-	while offers().selected_index < index:
+	while offers().list.selected_index() < index:
 		await press(&"ui_down")
-	while offers().selected_index > index:
+	while offers().list.selected_index() > index or offers().on_accept():
 		await press(&"ui_up")
-	check(offers().selected_index == index, "Down should reach row %d" % index)
+	check(offers().list.selected_index() == index and not offers().on_accept(), "Up/Down should reach row %d" % index)
 
 
 func listed(prefix: String) -> bool:
@@ -152,12 +160,14 @@ func offers() -> TransportOffersScreen:
 func open_details(offer: TransportOffer) -> void:
 	await select_row(economy().offers.find(offer))
 	await press(&"ui_accept")
-	check(offers().expanded_row() == economy().offers.find(offer), "Return should open offer #%03d's details" % offer.number)
+	check(economy().offers.find(offer) in offers().list.expanded_rows(), "Return should open offer #%03d's details" % offer.number)
 
 
-# Accepts the offer the way a player does: its details, ACCEPT, then Yes.
+# Accepts the offer the way a player does: its details, Down to its ACCEPT, Return, then Yes.
 func accept(offer: TransportOffer) -> void:
 	await open_details(offer)
+	await press(&"ui_down")
+	check(offers().on_accept(), "Down should reach offer #%03d's ACCEPT" % offer.number)
 	await press(&"ui_accept")
 	check(office().popup == Office.PopupKind.ACCEPT_OFFER, "ACCEPT on offer #%03d should ask ARE YOU SURE?" % offer.number)
 	await press(&"ui_accept")
@@ -218,13 +228,13 @@ func climbs_under_full_thrust() -> bool:
 
 
 # Holds full thrust from below the border band until the ship crosses into deep
-# space or 10 s pass; returns the top climb speed reached.
+# space or 15 s pass; returns the top climb speed reached.
 func top_climb_speed_to_the_border() -> float:
 	var ship := lander()
 	place(Vector2(World.WORLD_WIDTH / 2.0, World.BORDER_Y + 600.0))
 	var top_speed := 0.0
 	hold(&"ui_up")
-	for i in roundi(10.0 * PHYSICS_FPS):
+	for i in roundi(15.0 * PHYSICS_FPS):
 		await frames(1)
 		top_speed = maxf(top_speed, -ship.velocity.y)
 		if ship.in_deep_space:

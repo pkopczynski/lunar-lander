@@ -7,7 +7,7 @@ extends RefCounted
 const PASSENGER_MASS := 80.0
 
 # Generation
-const MIN_EXPIRY := 120
+const MIN_EXPIRY := 180
 const MAX_EXPIRY := 600
 const MIN_DEADLINE := 60
 const MAX_DEADLINE := 180
@@ -42,15 +42,22 @@ const TRADERS: Array[String] = ["Tycho Haulage", "Selene Mining", "Mare Logistic
 	"Kepler Supply", "Apollo Freight", "Regolith & Sons", "Crater Works"]
 
 const NOT_ENOUGH_SEATS := "Not enough passenger seats"
-const CARGO_EXCEEDED := "Cargo capacity exceeded"
+const OVERLOADED := "Overloaded"
 
 
-# A delivered Contract's line in the Bank account, in euros.
+# A delivered Contract's line in the Bank account, in euros, with the flight's deadline it was
+# settled against and the delivery time (seconds from the end of loading to landing on the pad).
 class Transaction:
 	var contract: TransportOffer
 	var reward: int
 	var penalty: int
 	var payout: int
+	var deadline: float
+	var delivery_time: float
+
+	# Whole seconds overdue, rounded down like the red counter.
+	func overdue_seconds() -> int:
+		return maxi(floori(delivery_time - deadline), 0)
 
 
 var number: int
@@ -90,19 +97,22 @@ func misfit_reason(seats_left: int, cargo_left: float) -> String:
 	if passengers > seats_left:
 		return NOT_ENOUGH_SEATS
 	if cargo_mass > cargo_left:
-		return CARGO_EXCEEDED
+		return OVERLOADED
 	return ""
 
 
-# What it pays when delivered overdue_seconds late. The passenger and cargo parts are
-# penalised separately, each never below €0.
-func settlement(overdue_seconds: float) -> Transaction:
-	var late := maxi(floori(overdue_seconds), 0)
+# What it pays when delivered after delivery_time against the flight's deadline, for each
+# whole second overdue. The passenger and cargo parts are penalised separately, each never
+# below €0.
+func settlement(flight_deadline: float, delivery_time: float) -> Transaction:
 	var transaction := Transaction.new()
 	transaction.contract = self
+	transaction.deadline = flight_deadline
+	transaction.delivery_time = delivery_time
+	var overdue := transaction.overdue_seconds()
 	transaction.reward = reward()
-	transaction.penalty = mini(roundi(passenger_reward * PASSENGER_PENALTY_SHARE * late), passenger_reward) \
-		+ mini(roundi(cargo_reward * CARGO_PENALTY_SHARE * late), cargo_reward)
+	transaction.penalty = mini(roundi(passenger_reward * PASSENGER_PENALTY_SHARE * overdue), passenger_reward) \
+		+ mini(roundi(cargo_reward * CARGO_PENALTY_SHARE * overdue), cargo_reward)
 	transaction.payout = transaction.reward - transaction.penalty
 	return transaction
 
@@ -113,12 +123,7 @@ static func countdown(seconds_left: float) -> String:
 	return "%d:%02d" % [whole / 60, whole % 60]
 
 
-# Whether anything at all could be generated within these limits.
-static func could_fit(seats_left: int, cargo_left: float) -> bool:
-	return seats_left >= 1 or cargo_left >= MIN_CARGO
-
-
-# A random offer of at most max_passengers and max_cargo; could_fit() must hold for them.
+# A random offer of at most max_passengers (at least 1) and max_cargo (at least MIN_CARGO).
 static func generate(rng: RandomNumberGenerator, offer_number: int, max_passengers: int,
 		max_cargo: float) -> TransportOffer:
 	var kinds: Array[Kind] = []
