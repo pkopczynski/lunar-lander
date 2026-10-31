@@ -16,7 +16,7 @@ func test_accepting_asks_are_you_sure_and_moves_the_offer_to_the_contracts() -> 
 	check(office().popup == Office.PopupKind.NONE, "Yes should close the popup")
 	check(economy().contracts.size() == 1 and economy().contracts[0] == offer, "Yes should make the offer a Contract")
 	check(not listed("#%03d " % offer.number), "the Contract should leave the offer list, lists %s" % offers().rows())
-	check(offers().expanded_rows().is_empty(), "the details should close")
+	check(offers().list.expanded_rows().is_empty(), "the details should close")
 	check("#%03d TEST RUN" % offer.number in offers().contract_lines(),
 		"the Contracts column should list it, lists %s" % offers().contract_lines())
 	check(offers().rows().size() == 5, "nothing should take the Contract's place, lists %s" % offers().rows())
@@ -44,7 +44,7 @@ func test_an_offer_that_expires_during_are_you_sure_cant_be_accepted_and_shows_o
 	check(office().popup == Office.PopupKind.ACCEPT_OFFER, "ACCEPT should ask ARE YOU SURE?")
 	await seconds(1.0)
 	check(office().popup == Office.PopupKind.NONE, "the offer expiring should close ARE YOU SURE?")
-	check(offers().expanded_rows().is_empty(), "the offer expiring should close its details")
+	check(offers().list.expanded_rows().is_empty(), "the offer expiring should close its details")
 	check(offers().notice() == "OFFER EXPIRED", "OFFER EXPIRED should show, got %s" % offers().notice())
 	await press(&"ui_accept")
 	check(economy().contracts.is_empty(), "nothing should be accepted, got %d Contracts" % economy().contracts.size())
@@ -62,7 +62,7 @@ func test_an_open_offer_that_expires_just_closes_and_leaves_the_others_open() ->
 	await open_details(other)
 	await seconds(1.0)
 	check(not listed("#%03d " % offer.number), "the offer should have expired")
-	check(offers().expanded_rows() == [economy().offers.find(other)], "only the other offer should stay open, open %s" % [offers().expanded_rows()])
+	check(offers().list.expanded_rows() == [economy().offers.find(other)], "only the other offer should stay open, open %s" % [offers().list.expanded_rows()])
 	check(offers().notice() == "", "OFFER EXPIRED should show only for an open ARE YOU SURE?, got %s" % offers().notice())
 
 
@@ -166,7 +166,7 @@ func test_right_and_left_move_focus_between_the_offers_and_start_loading() -> vo
 	await press(&"ui_down")
 	await press(&"ui_left")
 	check(offers().focus == TransportOffersScreen.Column.OFFERS, "Left should move focus back to the offers")
-	check(offers().selected_index == 2, "the offer list should keep its row, got %d" % offers().selected_index)
+	check(offers().list.selected_index() == 2, "the offer list should keep its row, got %d" % offers().list.selected_index())
 	await press(&"ui_right")
 	await press(&"ui_cancel")
 	check(office().screen == Office.Screen.MAIN, "Escape from the Contracts column should return to the main screen")

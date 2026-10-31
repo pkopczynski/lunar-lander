@@ -12,48 +12,32 @@ const BALANCE_LABEL := "BALANCE"
 var office: Office
 var economy: Economy
 # The open transactions and the cursor over their rows; transactions have no buttons.
-var list := ExpandableList.new()
-# The row under the cursor.
-var selected_index: int:
-	get:
-		sync()
-		return list.row
+var list: ExpandableList
 
 
 func _init(owner: Office, owner_economy: Economy) -> void:
 	office = owner
 	economy = owner_economy
+	list = ExpandableList.new(func() -> Array: return owner_economy.transactions, no_button, measure, 0.0)
 
 
 func tick(delta: float) -> void:
 	list.tick(delta)
-	follow()
+	list.follow(list_area(office.body_area(Rect2(Vector2.ZERO, office.terminal.size))).size.y)
 
 
 # Returns whether it used the event; Escape with no open transaction under the cursor is left
 # to the Office.
 func handle_input(event: InputEvent) -> bool:
-	sync()
 	if event.is_action_pressed("ui_up"):
-		list.move(economy.transactions, -1, no_button)
+		list.move(-1)
 	elif event.is_action_pressed("ui_down"):
-		list.move(economy.transactions, 1, no_button)
+		list.move(1)
 	elif event.is_action_pressed("ui_accept"):
 		list.toggle()
 	elif not (event.is_action_pressed("ui_cancel") and list.close_selected()):
 		return false
 	return true
-
-
-func sync() -> void:
-	list.sync(economy.transactions, no_button)
-
-
-# Scrolls the list to keep the cursor in view.
-func follow() -> void:
-	sync()
-	list.follow(economy.transactions, measure,
-		list_area(office.body_area(Rect2(Vector2.ZERO, office.terminal.size))).size.y, 0.0, no_button)
 
 
 static func no_button(_transaction: TransportOffer.Transaction) -> bool:
@@ -86,47 +70,14 @@ func rows() -> PackedStringArray:
 	return texts
 
 
-# The transactions whose details are open, top to bottom.
-func expanded_rows() -> Array:
-	sync()
-	var open := []
-	for i in economy.transactions.size():
-		if economy.transactions[i] in list.expanded:
-			open.append(i)
-	return open
-
-
 # The row's details; empty when the row isn't open.
 func details(row: int) -> PackedStringArray:
 	var texts := PackedStringArray()
-	if not row in expanded_rows():
+	if not row in list.expanded_rows():
 		return texts
 	for detail: Array in detail_pairs(economy.transactions[row]):
 		texts.append("%s %s" % detail)
 	return texts
-
-
-# Pixels the list is scrolled down to keep the cursor in view.
-func scroll() -> float:
-	follow()
-	return list.scroll
-
-
-# Whether the list has content above or below its area, shown by the ▲/▼ markers.
-func more_above() -> bool:
-	follow()
-	return list.more_above()
-
-
-func more_below() -> bool:
-	follow()
-	return list.more_below()
-
-
-# Whether the row under the cursor lies wholly in the list's area.
-func cursor_in_view() -> bool:
-	follow()
-	return list.cursor_in_view()
 
 
 # How the payout was worked out, as [label, text] pairs. The deadline is the flight's, which
@@ -152,22 +103,18 @@ func draw(area: Rect2) -> void:
 	var y := area.position.y + Office.LINE_GAP + Office.NAME_SIZE
 	office.draw_text(Economy.PILOT, Vector2(area.position.x, y), Office.NAME_SIZE)
 	y += 2.0 * Office.LINE_GAP + Office.STAT_SIZE
-	var label := BALANCE_LABEL + " "
-	office.draw_text(label, Vector2(area.position.x, y), Office.STAT_SIZE)
-	office.draw_text(Economy.eur(economy.balance), Vector2(area.position.x + office.text_width(label, Office.STAT_SIZE), y),
-		Office.STAT_SIZE, -1, HORIZONTAL_ALIGNMENT_LEFT, Office.WHITE)
+	office.draw_label_value(BALANCE_LABEL, Economy.eur(economy.balance), Vector2(area.position.x, y), Office.STAT_SIZE)
 
-	sync()
 	var column := list_area(area)
-	list.follow(economy.transactions, measure, column.size.y, 0.0, no_button)
+	list.follow(column.size.y)
+	var selected_index := list.selected_index()
 	# Drawing has no clipping, so tints are cut to the column and lines outside it are skipped.
 	y = column.position.y - list.scroll
 	for i in economy.transactions.size():
 		var transaction := economy.transactions[i]
 		var row := Rect2(column.position.x, y, column.size.x, ROW_HEIGHT)
-		var selected := i == list.row
-		ExpandableList.draw_clipped_rect(office.terminal, row, column,
-			Office.GREEN if selected else ExpandableList.row_tint(i))
+		var selected := i == selected_index
+		ExpandableList.draw_clipped_rect(office.terminal, row, column, Office.GREEN if selected else Office.row_tint(i))
 		var color := Office.BLACK if selected else Office.GREEN
 		var baseline := Vector2(row.position.x + ROW_PADDING, row.get_center().y + Office.TEXT_SIZE / 2.0)
 		var width := row.size.x - 2.0 * ROW_PADDING
@@ -193,8 +140,4 @@ func draw_details(transaction: TransportOffer.Transaction, top_left: Vector2, wi
 		y += ROW_HEIGHT
 		if not ExpandableList.line_fits(y, Office.TEXT_SIZE, clip):
 			continue
-		var label: String = pair[0] + " "
-		office.draw_text(label, Vector2(top_left.x, y), Office.TEXT_SIZE, width)
-		var label_width := office.text_width(label, Office.TEXT_SIZE)
-		office.draw_text(pair[1], Vector2(top_left.x + label_width, y), Office.TEXT_SIZE, width - label_width,
-			HORIZONTAL_ALIGNMENT_LEFT, Office.WHITE)
+		office.draw_label_value(pair[0], pair[1], Vector2(top_left.x, y), Office.TEXT_SIZE, width)

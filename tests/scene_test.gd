@@ -132,11 +132,11 @@ func open_transport_offers() -> void:
 
 # Puts the cursor on the row itself, not its ACCEPT.
 func select_row(index: int) -> void:
-	while offers().selected_index < index:
+	while offers().list.selected_index() < index:
 		await press(&"ui_down")
-	while offers().selected_index > index or offers().on_accept():
+	while offers().list.selected_index() > index or offers().on_accept():
 		await press(&"ui_up")
-	check(offers().selected_index == index and not offers().on_accept(), "Up/Down should reach row %d" % index)
+	check(offers().list.selected_index() == index and not offers().on_accept(), "Up/Down should reach row %d" % index)
 
 
 func listed(prefix: String) -> bool:
@@ -160,7 +160,7 @@ func offers() -> TransportOffersScreen:
 func open_details(offer: TransportOffer) -> void:
 	await select_row(economy().offers.find(offer))
 	await press(&"ui_accept")
-	check(economy().offers.find(offer) in offers().expanded_rows(), "Return should open offer #%03d's details" % offer.number)
+	check(economy().offers.find(offer) in offers().list.expanded_rows(), "Return should open offer #%03d's details" % offer.number)
 
 
 # Accepts the offer the way a player does: its details, Down to its ACCEPT, Return, then Yes.

@@ -364,6 +364,11 @@ func ship_offer_picture() -> PackedVector2Array:
 	return selected_ship_offer().hull
 
 
+# Alternating faint list row tints, lighter on even rows.
+static func row_tint(index: int) -> Color:
+	return ROW_TINT_LIGHT if index % 2 == 0 else ROW_TINT_DARK
+
+
 static func kg(value: float) -> String:
 	return Hud.format_kg(value).to_upper()
 
@@ -603,6 +608,16 @@ func draw_scanlines(view: Rect2) -> void:
 func draw_text(text: String, baseline: Vector2, font_size: int, width := -1.0,
 		alignment := HORIZONTAL_ALIGNMENT_LEFT, color := GREEN) -> void:
 	terminal.draw_string(FONT, baseline, text, alignment, width, font_size, color)
+
+
+# A label and its value after it on one line, green and white unless given.
+func draw_label_value(label: String, value: String, baseline: Vector2, font_size: int, width := -1.0,
+		label_color := GREEN, value_color := WHITE) -> void:
+	var spaced := label + " "
+	draw_text(spaced, baseline, font_size, width, HORIZONTAL_ALIGNMENT_LEFT, label_color)
+	var label_width := text_width(spaced, font_size)
+	draw_text(value, baseline + Vector2(label_width, 0.0), font_size, width - label_width if width >= 0.0 else -1.0,
+		HORIZONTAL_ALIGNMENT_LEFT, value_color)
 
 
 func text_width(text: String, font_size: int) -> float:

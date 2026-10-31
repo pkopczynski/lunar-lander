@@ -61,11 +61,11 @@ func test_return_opens_and_closes_an_offers_details_and_leaves_the_cursor_on_its
 	var details := offers().details(5)
 	for expected: String in ["PASSENGERS 3", "CARGO 1 200 KG", "DEADLINE 1:30", "TRADER TEST TRADER", "VALUE €420", "ACCEPT"]:
 		check(expected in details, "the details should show %s, show %s" % [expected, details])
-	check(offers().expanded_rows() == [5], "the details should open under the selected row, open %s" % [offers().expanded_rows()])
-	check(offers().selected_index == 5 and not offers().on_accept(), "opening should leave the cursor on the row")
+	check(offers().list.expanded_rows() == [5], "the details should open under the selected row, open %s" % [offers().list.expanded_rows()])
+	check(offers().list.selected_index() == 5 and not offers().on_accept(), "opening should leave the cursor on the row")
 	await press(&"ui_accept")
-	check(offers().expanded_rows().is_empty(), "Return on an open row should close it, open %s" % [offers().expanded_rows()])
-	check(offers().selected_index == 5, "closing should leave the cursor on the row, got %d" % offers().selected_index)
+	check(offers().list.expanded_rows().is_empty(), "Return on an open row should close it, open %s" % [offers().list.expanded_rows()])
+	check(offers().list.selected_index() == 5, "closing should leave the cursor on the row, got %d" % offers().list.selected_index())
 
 
 func test_several_offers_can_be_open_at_once() -> void:
@@ -74,10 +74,10 @@ func test_several_offers_can_be_open_at_once() -> void:
 	await press(&"ui_accept")
 	await select_row(3)
 	await press(&"ui_accept")
-	check(offers().expanded_rows() == [1, 3], "both offers should be open, open %s" % [offers().expanded_rows()])
+	check(offers().list.expanded_rows() == [1, 3], "both offers should be open, open %s" % [offers().list.expanded_rows()])
 	check(not offers().details(1).is_empty() and not offers().details(3).is_empty(), "each open offer should show its details")
 	await press(&"ui_accept")
-	check(offers().expanded_rows() == [1], "closing one should leave the other open, open %s" % [offers().expanded_rows()])
+	check(offers().list.expanded_rows() == [1], "closing one should leave the other open, open %s" % [offers().list.expanded_rows()])
 
 
 func test_escape_closes_only_the_offer_under_the_cursor_and_then_returns_to_the_main_screen() -> void:
@@ -92,12 +92,12 @@ func test_escape_closes_only_the_offer_under_the_cursor_and_then_returns_to_the_
 	await press(&"ui_down")
 	check(offers().on_accept(), "Down from an open row should reach its ACCEPT")
 	await press(&"ui_cancel")
-	check(offers().expanded_rows() == [6], "Escape on an ACCEPT should close only its offer, open %s" % [offers().expanded_rows()])
-	check(offers().selected_index == 5 and not offers().on_accept(), "Escape should put the cursor on the closed offer's row")
+	check(offers().list.expanded_rows() == [6], "Escape on an ACCEPT should close only its offer, open %s" % [offers().list.expanded_rows()])
+	check(offers().list.selected_index() == 5 and not offers().on_accept(), "Escape should put the cursor on the closed offer's row")
 	check(office().screen == Office.Screen.TRANSPORT_OFFERS, "closing an offer should stay on Transport offers")
 	await select_row(6)
 	await press(&"ui_cancel")
-	check(offers().expanded_rows().is_empty(), "Escape on an open row should close it, open %s" % [offers().expanded_rows()])
+	check(offers().list.expanded_rows().is_empty(), "Escape on an open row should close it, open %s" % [offers().list.expanded_rows()])
 	check(office().screen == Office.Screen.TRANSPORT_OFFERS, "closing an offer should stay on Transport offers")
 	await press(&"ui_cancel")
 	check(office().screen == Office.Screen.MAIN, "Escape with no open offer under the cursor should return to the main screen")
@@ -115,11 +115,11 @@ func test_up_and_down_visit_the_accept_of_each_open_offer_that_fits_and_skip_a_d
 	var visited: Array = []
 	for i in 3:
 		await press(&"ui_down")
-		visited.append([offers().selected_index, offers().on_accept()])
+		visited.append([offers().list.selected_index(), offers().on_accept()])
 	check(visited == [[5, true], [6, false], [6, false]],
 		"Down should visit row 5's ACCEPT, then row 6, skipping its dimmed ACCEPT, visited %s" % [visited])
 	await press(&"ui_up")
-	check(offers().selected_index == 5 and offers().on_accept(), "Up should come back to row 5's ACCEPT")
+	check(offers().list.selected_index() == 5 and offers().on_accept(), "Up should come back to row 5's ACCEPT")
 
 
 func test_accept_on_one_of_two_open_offers_accepts_only_that_offer() -> void:
@@ -131,13 +131,13 @@ func test_accept_on_one_of_two_open_offers_accepts_only_that_offer() -> void:
 	await open_details(first)
 	await open_details(second)
 	await press(&"ui_down")
-	check(offers().on_accept() and offers().selected_index == 6, "Down should reach the second offer's ACCEPT")
+	check(offers().on_accept() and offers().list.selected_index() == 6, "Down should reach the second offer's ACCEPT")
 	await press(&"ui_accept")
 	check(office().popup == Office.PopupKind.ACCEPT_OFFER, "ACCEPT should ask ARE YOU SURE?")
 	await press(&"ui_accept")
 	check(economy().contracts.size() == 1 and economy().contracts[0] == second, "only the second offer should be accepted, got %d Contracts" % economy().contracts.size())
 	check(first in economy().offers, "the first offer should stay listed")
-	check(offers().expanded_rows() == [economy().offers.find(first)], "the first offer should stay open, open %s" % [offers().expanded_rows()])
+	check(offers().list.expanded_rows() == [economy().offers.find(first)], "the first offer should stay open, open %s" % [offers().list.expanded_rows()])
 
 
 func test_switching_columns_keeps_offers_open() -> void:
@@ -145,20 +145,20 @@ func test_switching_columns_keeps_offers_open() -> void:
 	await select_row(2)
 	await press(&"ui_accept")
 	await press(&"ui_right")
-	check(offers().expanded_rows() == [2], "moving to the Contracts should keep the offer open, open %s" % [offers().expanded_rows()])
+	check(offers().list.expanded_rows() == [2], "moving to the Contracts should keep the offer open, open %s" % [offers().list.expanded_rows()])
 	await press(&"ui_left")
-	check(offers().expanded_rows() == [2], "moving back should keep the offer open, open %s" % [offers().expanded_rows()])
-	check(offers().selected_index == 2, "the cursor should stay on its row, got %d" % offers().selected_index)
+	check(offers().list.expanded_rows() == [2], "moving back should keep the offer open, open %s" % [offers().list.expanded_rows()])
+	check(offers().list.selected_index() == 2, "the cursor should stay on its row, got %d" % offers().list.selected_index())
 
 
 func test_up_and_down_move_between_the_rows_and_stop_at_both_ends() -> void:
 	await open_transport_offers()
-	check(offers().selected_index == 0, "the first row should be selected, got %d" % offers().selected_index)
+	check(offers().list.selected_index() == 0, "the first row should be selected, got %d" % offers().list.selected_index())
 	await press(&"ui_up")
-	check(offers().selected_index == 0, "Up on the first row should keep it, got %d" % offers().selected_index)
+	check(offers().list.selected_index() == 0, "Up on the first row should keep it, got %d" % offers().list.selected_index())
 	await select_row(4)
 	await press(&"ui_down")
-	check(offers().selected_index == 4, "Down on the last row should keep it, got %d" % offers().selected_index)
+	check(offers().list.selected_index() == 4, "Down on the last row should keep it, got %d" % offers().list.selected_index())
 
 
 func test_offers_too_big_for_the_ship_show_why_and_fuel_never_disables_one() -> void:
@@ -212,7 +212,7 @@ func test_return_does_nothing_once_every_offer_is_gone() -> void:
 	check(offers().rows().is_empty(), "every offer should have expired, lists %s" % offers().rows())
 	await press(&"ui_down")
 	await press(&"ui_accept")
-	check(offers().expanded_rows().is_empty(), "Return on an empty list should open nothing")
+	check(offers().list.expanded_rows().is_empty(), "Return on an empty list should open nothing")
 	check(office().screen == Office.Screen.TRANSPORT_OFFERS, "the screen should stay on Transport offers")
 
 
@@ -244,15 +244,15 @@ func test_a_tall_list_scrolls_to_the_last_accept_and_marks_what_lies_beyond() ->
 		await open_details(offer)
 	await select_row(0)
 	await seconds(0.5)
-	check(offers().scroll() == 0.0 and not offers().more_above(), "the cursor on the first row should keep the list at its top, scrolled %s" % offers().scroll())
-	check(offers().more_below(), "7 open offers should overflow the list")
+	check(offers().list.scroll == 0.0 and not offers().list.more_above(), "the cursor on the first row should keep the list at its top, scrolled %s" % offers().list.scroll)
+	check(offers().list.more_below(), "7 open offers should overflow the list")
 	await select_row(known.size() - 1)
 	await press(&"ui_down")
 	await seconds(0.5)
 	check(offers().on_accept(), "Down should reach the last offer's ACCEPT")
-	check(offers().scroll() > 0.0, "reaching the last ACCEPT should scroll the list")
-	check(offers().cursor_in_view(), "the last ACCEPT should be scrolled into view, scrolled %s" % offers().scroll())
-	check(offers().more_above() and not offers().more_below(), "at the bottom the list should mark content above only")
+	check(offers().list.scroll > 0.0, "reaching the last ACCEPT should scroll the list")
+	check(offers().list.cursor_in_view(), "the last ACCEPT should be scrolled into view, scrolled %s" % offers().list.scroll)
+	check(offers().list.more_above() and not offers().list.more_below(), "at the bottom the list should mark content above only")
 	await press(&"ui_accept")
 	await press(&"ui_accept")
 	check(known[-1] in economy().contracts, "the last ACCEPT should accept its offer")
@@ -268,6 +268,6 @@ func test_opening_a_dimmed_last_offer_at_the_bottom_scrolls_its_details_into_vie
 	for offer in known:
 		await open_details(offer)
 	await seconds(0.5)
-	check(offers().selected_index == known.size() - 1 and not offers().on_accept(), "the cursor should be on the last row")
-	check(offers().more_above() and not offers().more_below(),
-		"the dimmed last offer's details should be scrolled into view, scrolled %s" % offers().scroll())
+	check(offers().list.selected_index() == known.size() - 1 and not offers().on_accept(), "the cursor should be on the last row")
+	check(offers().list.more_above() and not offers().list.more_below(),
+		"the dimmed last offer's details should be scrolled into view, scrolled %s" % offers().list.scroll)

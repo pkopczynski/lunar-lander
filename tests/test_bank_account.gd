@@ -37,19 +37,19 @@ func test_the_deadline_shown_is_the_flights_shortest() -> void:
 func test_up_down_select_transactions_and_several_open_at_once_until_return_closes_one() -> void:
 	await deliver([known_offer(1, 0.0), known_offer(0, 1000.0), known_offer(2, 0.0)], 5.0)
 	await open_bank_account()
-	check(bank().selected_index == 0, "the newest transaction should be selected first")
+	check(bank().list.selected_index() == 0, "the newest transaction should be selected first")
 	await press(&"ui_accept")
 	await press(&"ui_down")
 	await press(&"ui_down")
-	check(bank().selected_index == 2, "Down should move to the third transaction, on %d" % bank().selected_index)
+	check(bank().list.selected_index() == 2, "Down should move to the third transaction, on %d" % bank().list.selected_index())
 	await press(&"ui_down")
-	check(bank().selected_index == 2, "Down should stop at the last transaction")
+	check(bank().list.selected_index() == 2, "Down should stop at the last transaction")
 	await press(&"ui_accept")
-	check(bank().expanded_rows() == [0, 2], "two transactions should be open, open %s" % [bank().expanded_rows()])
+	check(bank().list.expanded_rows() == [0, 2], "two transactions should be open, open %s" % [bank().list.expanded_rows()])
 	await press(&"ui_up")
 	await press(&"ui_up")
 	await press(&"ui_accept")
-	check(bank().expanded_rows() == [2], "Return should close only the first, open %s" % [bank().expanded_rows()])
+	check(bank().list.expanded_rows() == [2], "Return should close only the first, open %s" % [bank().list.expanded_rows()])
 	check(bank().details(2).size() == 5, "the third should stay open, shows %s" % bank().details(2))
 
 
@@ -58,7 +58,7 @@ func test_escape_on_an_open_transaction_closes_it_then_returns_to_the_main_scree
 	await open_bank_account()
 	await press(&"ui_accept")
 	await press(&"ui_cancel")
-	check(bank().expanded_rows().is_empty(), "Escape should close the open transaction")
+	check(bank().list.expanded_rows().is_empty(), "Escape should close the open transaction")
 	check(office().screen == Office.Screen.BANK_ACCOUNT, "the first Escape should stay on the Bank account")
 	await press(&"ui_cancel")
 	check(office().screen == Office.Screen.MAIN, "Escape with nothing open should return to the main screen")
@@ -71,17 +71,17 @@ func test_a_long_history_scrolls_to_follow_the_cursor() -> void:
 	await deliver(contracts, 5.0)
 	await deliver(contracts.map(func(_offer: TransportOffer) -> TransportOffer: return known_offer(1, 0.0)), 5.0)
 	await open_bank_account()
-	while bank().selected_index > 0:
+	while bank().list.selected_index() > 0:
 		await press(&"ui_up")
 	for i in bank().rows().size():
 		await press(&"ui_accept")
 		await press(&"ui_down")
 	await seconds(0.5)
-	check(bank().more_above(), "with every transaction open the list should scroll, scrolled %s" % bank().scroll())
-	check(bank().cursor_in_view(), "the selected transaction should stay in view")
-	while bank().selected_index > 0:
+	check(bank().list.more_above(), "with every transaction open the list should scroll, scrolled %s" % bank().list.scroll)
+	check(bank().list.cursor_in_view(), "the selected transaction should stay in view")
+	while bank().list.selected_index() > 0:
 		await press(&"ui_up")
-	check(not bank().more_above() and bank().more_below(), "back at the newest, the list should scroll back to the top")
+	check(not bank().list.more_above() and bank().list.more_below(), "back at the newest, the list should scroll back to the top")
 
 
 func test_opening_the_last_transaction_at_the_bottom_scrolls_its_details_into_view() -> void:
@@ -91,15 +91,15 @@ func test_opening_the_last_transaction_at_the_bottom_scrolls_its_details_into_vi
 	await deliver(contracts, 5.0)
 	await deliver(contracts.map(func(_offer: TransportOffer) -> TransportOffer: return known_offer(1, 0.0)), 5.0)
 	await open_bank_account()
-	while bank().selected_index > 0:
+	while bank().list.selected_index() > 0:
 		await press(&"ui_up")
 	for i in bank().rows().size():
 		await press(&"ui_accept")
 		await press(&"ui_down")
 	await seconds(0.5)
-	check(bank().selected_index == bank().rows().size() - 1, "the cursor should be on the last transaction")
-	check(bank().more_above() and not bank().more_below(),
-		"the last open transaction's details should be scrolled into view, scrolled %s" % bank().scroll())
+	check(bank().list.selected_index() == bank().rows().size() - 1, "the cursor should be on the last transaction")
+	check(bank().list.more_above() and not bank().list.more_below(),
+		"the last open transaction's details should be scrolled into view, scrolled %s" % bank().list.scroll)
 
 
 func bank() -> BankAccountScreen:

@@ -37,12 +37,7 @@ var office: Office
 var economy: Economy
 var focus := Column.OFFERS
 # The open offers and the cursor over their rows and ACCEPT buttons.
-var list := ExpandableList.new()
-# The row under the cursor.
-var selected_index: int:
-	get:
-		sync()
-		return list.row
+var list: ExpandableList
 # The offer whose ARE YOU SURE? is showing, if any.
 var accepting: TransportOffer
 # The Contracts column's cursor: a Contract's index, or the Contracts' count for START LOADING.
@@ -54,19 +49,19 @@ var notice_left := 0.0
 func _init(owner: Office, owner_economy: Economy) -> void:
 	office = owner
 	economy = owner_economy
+	list = ExpandableList.new(func() -> Array: return owner_economy.offers, fits, measure, ACCEPT_SPAN)
 	economy.offer_expired.connect(on_offer_expired)
 
 
 func tick(delta: float) -> void:
 	notice_left = maxf(notice_left - delta, 0.0)
 	list.tick(delta)
-	follow()
+	list.follow(list_area(office.body_area(Rect2(Vector2.ZERO, office.terminal.size))).size.y)
 
 
 # An open offer that expires just closes; one whose ARE YOU SURE? is showing closes that too
 # and says so.
 func on_offer_expired(offer: TransportOffer) -> void:
-	sync()
 	if offer == accepting and office.popup == Office.PopupKind.ACCEPT_OFFER:
 		office.popup = Office.PopupKind.NONE
 		accepting = null
@@ -81,7 +76,6 @@ func show_notice(text: String) -> void:
 # Returns whether it used the event; Escape with no open offer under the cursor is left to
 # the Office.
 func handle_input(event: InputEvent) -> bool:
-	sync()
 	if event.is_action_pressed("ui_right"):
 		if focus != Column.CONTRACTS:
 			contract_index = economy.contracts.size()
@@ -91,11 +85,11 @@ func handle_input(event: InputEvent) -> bool:
 	elif focus == Column.CONTRACTS:
 		return handle_contracts_input(event)
 	elif event.is_action_pressed("ui_up"):
-		list.move(economy.offers, -1, fits)
+		list.move(-1)
 	elif event.is_action_pressed("ui_down"):
-		list.move(economy.offers, 1, fits)
+		list.move(1)
 	elif event.is_action_pressed("ui_accept"):
-		if list.on_button:
+		if list.on_button():
 			accepting = list.selected()
 			office.show_popup(Office.PopupKind.ACCEPT_OFFER, Office.Choice.YES)
 		else:
@@ -134,18 +128,6 @@ func confirm_remove() -> void:
 	contract_index = maxi(mini(contract_index, economy.contracts.size() - 1), 0)
 
 
-# Keeps the open offers and the cursor with their offers, and in range, as offers come and go.
-func sync() -> void:
-	list.sync(economy.offers, fits)
-
-
-# Scrolls the list to keep the cursor in view.
-func follow() -> void:
-	sync()
-	list.follow(economy.offers, measure, list_area(office.body_area(Rect2(Vector2.ZERO, office.terminal.size))).size.y,
-		ACCEPT_SPAN, fits)
-
-
 # The left column of the screen's area.
 static func list_area(area: Rect2) -> Rect2:
 	return Rect2(area.position, Vector2(area.size.x * LIST_SHARE, area.size.y))
@@ -176,49 +158,14 @@ func notice() -> String:
 	return notice_text if notice_left > 0.0 else ""
 
 
-# Pixels the list is scrolled down to keep the cursor in view.
-func scroll() -> float:
-	follow()
-	return list.scroll
-
-
-# Whether the list has content above or below its area, shown by the ▲/▼ markers.
-func more_above() -> bool:
-	follow()
-	return list.more_above()
-
-
-func more_below() -> bool:
-	follow()
-	return list.more_below()
-
-
-# Whether the row or ACCEPT under the cursor lies wholly in the list's area.
-func cursor_in_view() -> bool:
-	follow()
-	return list.cursor_in_view()
-
-
-# The rows whose details are open, top to bottom.
-func expanded_rows() -> Array:
-	sync()
-	var open := []
-	for i in economy.offers.size():
-		if economy.offers[i] in list.expanded:
-			open.append(i)
-	return open
-
-
-# Whether the cursor is on an ACCEPT rather than a row.
 func on_accept() -> bool:
-	sync()
-	return list.on_button
+	return list.on_button()
 
 
 # The row's details, ending with the ACCEPT button; empty when the row isn't open.
 func details(row: int) -> PackedStringArray:
 	var lines := PackedStringArray()
-	if not row in expanded_rows():
+	if not row in list.expanded_rows():
 		return lines
 	for detail: Array in detail_pairs(economy.offers[row]):
 		lines.append("%s %s" % detail)
@@ -267,7 +214,6 @@ func summary() -> PackedStringArray:
 	return lines
 
 
-# The summary lines whose value is red.
 func red_summary_lines() -> PackedStringArray:
 	var lines := PackedStringArray()
 	for part in summary_parts():
@@ -339,19 +285,20 @@ static func row_text(offer: TransportOffer) -> String:
 # Drawing
 
 func draw(area: Rect2) -> void:
-	sync()
 	var column := list_area(area)
-	list.follow(economy.offers, measure, column.size.y, ACCEPT_SPAN, fits)
+	list.follow(column.size.y)
+	var selected_index := list.selected_index()
+	var on_button := list.on_button()
 	# Drawing has no clipping, so tints are cut to the column and lines outside it are skipped.
 	var y := column.position.y - list.scroll
 	for i in economy.offers.size():
 		var offer := economy.offers[i]
 		var heights := measure(offer)
 		ExpandableList.draw_clipped_rect(office.terminal, Rect2(column.position.x, y, column.size.x, heights.x), column,
-			ExpandableList.row_tint(i))
+			Office.row_tint(i))
 		var row := Rect2(column.position.x, y, column.size.x, ROW_HEIGHT)
 		# With focus on the Contracts, the list's row is outlined instead of inverted.
-		var under_cursor := i == list.row and not list.on_button
+		var under_cursor := i == selected_index and not on_button
 		var selected := under_cursor and focus == Column.OFFERS
 		var reason := economy.misfit_reason(offer).to_upper()
 		var lit := Office.GREEN if reason == "" else Office.DIM_GREEN
@@ -381,7 +328,7 @@ func draw(area: Rect2) -> void:
 			# Open details grow from the row on a stronger tint, cut to their height so far.
 			var clip := Rect2(column.position.x, y, column.size.x, open_height).intersection(column)
 			ExpandableList.draw_clipped_rect(office.terminal, clip, column, Office.DETAILS_TINT)
-			var accept_selected := i == list.row and list.on_button and focus == Column.OFFERS
+			var accept_selected := i == selected_index and on_button and focus == Column.OFFERS
 			draw_details(offer, Vector2(baseline.x, y), width, reason == "", accept_selected, clip)
 			y += open_height
 	list.draw_markers(office.terminal, column, Office.GREEN)
@@ -400,7 +347,6 @@ func draw_notice(bottom_left: Vector2) -> void:
 		-1, HORIZONTAL_ALIGNMENT_LEFT, Office.BLACK)
 
 
-# A Contract's X, inverted when selected.
 func draw_remove_button(top_left: Vector2, selected: bool) -> void:
 	var button := Rect2(top_left, REMOVE_SIZE)
 	if selected:
@@ -429,12 +375,8 @@ func draw_contracts(area: Rect2) -> void:
 	y += ROW_HEIGHT
 	for part in summary_parts():
 		y += ROW_HEIGHT
-		var label: String = part[0] + " "
-		office.draw_text(label, Vector2(area.position.x, y), Office.TEXT_SIZE, area.size.x,
-			HORIZONTAL_ALIGNMENT_LEFT, part[2])
-		var label_width := office.text_width(label, Office.TEXT_SIZE)
-		office.draw_text(part[1], Vector2(area.position.x + label_width, y), Office.TEXT_SIZE,
-			area.size.x - label_width, HORIZONTAL_ALIGNMENT_LEFT, part[3])
+		office.draw_label_value(part[0], part[1], Vector2(area.position.x, y), Office.TEXT_SIZE, area.size.x, part[2],
+			part[3])
 	var button := Rect2(Vector2(area.position.x, y + ROW_HEIGHT), START_LOADING_SIZE)
 	var lit := Office.GREEN if start_loading_enabled() else Office.DIM_GREEN
 	focused = focused and selected_contract() == null
@@ -460,11 +402,7 @@ func draw_details(offer: TransportOffer, top_left: Vector2, width: float, fits: 
 			y += ROW_HEIGHT
 		if not ExpandableList.line_fits(y, Office.TEXT_SIZE, clip):
 			continue
-		var label: String = pairs[i][0] + " "
-		office.draw_text(label, Vector2(x, y), Office.TEXT_SIZE, column_width)
-		var label_width := office.text_width(label, Office.TEXT_SIZE)
-		office.draw_text(pairs[i][1], Vector2(x + label_width, y), Office.TEXT_SIZE, column_width - label_width,
-			HORIZONTAL_ALIGNMENT_LEFT, Office.WHITE)
+		office.draw_label_value(pairs[i][0], pairs[i][1], Vector2(x, y), Office.TEXT_SIZE, column_width)
 	var button := Rect2(Vector2(top_left.x + width - ACCEPT_SIZE.x, y + ROW_PADDING * 2.0), ACCEPT_SIZE)
 	if not clip.encloses(button):
 		return

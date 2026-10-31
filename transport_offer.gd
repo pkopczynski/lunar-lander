@@ -109,10 +109,10 @@ func settlement(flight_deadline: float, delivery_time: float) -> Transaction:
 	transaction.contract = self
 	transaction.deadline = flight_deadline
 	transaction.delivery_time = delivery_time
-	var late := transaction.overdue_seconds()
+	var overdue := transaction.overdue_seconds()
 	transaction.reward = reward()
-	transaction.penalty = mini(roundi(passenger_reward * PASSENGER_PENALTY_SHARE * late), passenger_reward) \
-		+ mini(roundi(cargo_reward * CARGO_PENALTY_SHARE * late), cargo_reward)
+	transaction.penalty = mini(roundi(passenger_reward * PASSENGER_PENALTY_SHARE * overdue), passenger_reward) \
+		+ mini(roundi(cargo_reward * CARGO_PENALTY_SHARE * overdue), cargo_reward)
 	transaction.payout = transaction.reward - transaction.penalty
 	return transaction
 
