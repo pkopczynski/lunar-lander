@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.0](https://github.com/pkopczynski/lunar-lander/compare/v0.1.0...v0.2.0) (2026-10-31)
+
+
+### ⚠ BREAKING CHANGES
+
+* carry passengers and cargo on timed transport contracts for pay ([#23](https://github.com/pkopczynski/lunar-lander/issues/23))
+
+### Features
+
+* carry passengers and cargo on timed transport contracts for pay ([#23](https://github.com/pkopczynski/lunar-lander/issues/23)) ([8d0ae57](https://github.com/pkopczynski/lunar-lander/commit/8d0ae575c142d3b56339d83ea8dad8e0ea389d77))
+* jolt the ship when it crosses the border, and polish the Office lists ([#37](https://github.com/pkopczynski/lunar-lander/issues/37)) ([f39a102](https://github.com/pkopczynski/lunar-lander/commit/f39a102094ebcc023e4cb5635304a5a517afd2d9))
+* open several offers, remove Contracts, see payout breakdowns and fly loaded ships more easily ([#36](https://github.com/pkopczynski/lunar-lander/issues/36)) ([5f6207c](https://github.com/pkopczynski/lunar-lander/commit/5f6207cbf6abfa5823642b4a46ef171c2adf4404))
+
 ## 0.1.0 (2026-10-29)
 
 The first release: fly a freighter between an orbital station and the surface.
