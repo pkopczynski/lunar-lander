@@ -232,3 +232,27 @@ func test_offer_numbers_start_again_from_001_on_a_new_run() -> void:
 	await open_transport_offers()
 	check(offers().rows()[0].begins_with("#001 "), "a new run should number offers from #001, lists %s" % offers().rows())
 	check(not " TEST RUN " in " ".join(offers().rows()), "the last run's known offer should be gone, lists %s" % offers().rows())
+
+
+func test_a_tall_list_scrolls_to_the_last_accept_and_marks_what_lies_beyond() -> void:
+	var known: Array[TransportOffer] = []
+	for i in Economy.MAX_OFFERS:
+		known.append(known_offer(1, 0.0, 1000.0 + i))
+		economy().put_offer(known[i])
+	await open_transport_offers()
+	for offer in known:
+		await open_details(offer)
+	await select_row(0)
+	await seconds(0.5)
+	check(offers().scroll() == 0.0 and not offers().more_above(), "the cursor on the first row should keep the list at its top, scrolled %s" % offers().scroll())
+	check(offers().more_below(), "7 open offers should overflow the list")
+	await select_row(known.size() - 1)
+	await press(&"ui_down")
+	await seconds(0.5)
+	check(offers().on_accept(), "Down should reach the last offer's ACCEPT")
+	check(offers().scroll() > 0.0, "reaching the last ACCEPT should scroll the list")
+	check(offers().cursor_in_view(), "the last ACCEPT should be scrolled into view, scrolled %s" % offers().scroll())
+	check(offers().more_above() and not offers().more_below(), "at the bottom the list should mark content above only")
+	await press(&"ui_accept")
+	await press(&"ui_accept")
+	check(known[-1] in economy().contracts, "the last ACCEPT should accept its offer")

@@ -14,6 +14,8 @@ const ROW_HEIGHT := 28.0
 const ROW_PADDING := 6.0
 const DETAIL_COLUMNS := 2
 const ACCEPT_SIZE := Vector2(120, 32)
+# The ACCEPT button with its padding above and below, at the bottom of open details.
+const ACCEPT_SPAN := ACCEPT_SIZE.y + 4.0 * ROW_PADDING
 const START_LOADING_SIZE := Vector2(200, 32)
 const NOTICE_PADDING := Vector2(8, 4)
 
@@ -53,6 +55,8 @@ func _init(owner: Office, owner_economy: Economy) -> void:
 
 func tick(delta: float) -> void:
 	notice_left = maxf(notice_left - delta, 0.0)
+	list.tick(delta)
+	follow()
 
 
 # An open offer that expires just closes; one whose ARE YOU SURE? is showing closes that too
@@ -111,6 +115,25 @@ func sync() -> void:
 	list.sync(economy.offers, fits)
 
 
+# Scrolls the list to keep the cursor in view.
+func follow() -> void:
+	sync()
+	list.follow(economy.offers, measure, list_area(office.body_area(Rect2(Vector2.ZERO, office.terminal.size))).size.y,
+		ACCEPT_SPAN)
+
+
+# The left column of the screen's area.
+static func list_area(area: Rect2) -> Rect2:
+	return Rect2(area.position, Vector2(area.size.x * LIST_SHARE, area.size.y))
+
+
+# An offer's row (with its reason and note lines) and fully open details, as heights.
+func measure(offer: TransportOffer) -> Vector2:
+	var row_lines := 1 + int(economy.misfit_reason(offer) != "") + int(red_note(offer) != "")
+	var detail_lines := ceili(float(detail_pairs(offer).size()) / DETAIL_COLUMNS)
+	return Vector2(row_lines * ROW_HEIGHT, detail_lines * ROW_HEIGHT + ACCEPT_SPAN)
+
+
 # An offer's ACCEPT can be selected only when the offer fits.
 func fits(offer: TransportOffer) -> bool:
 	return economy.misfit_reason(offer) == ""
@@ -121,6 +144,29 @@ func fits(offer: TransportOffer) -> bool:
 # The notice showing, such as OFFER EXPIRED, or "".
 func notice() -> String:
 	return notice_text if notice_left > 0.0 else ""
+
+
+# Pixels the list is scrolled down to keep the cursor in view.
+func scroll() -> float:
+	follow()
+	return list.scroll
+
+
+# Whether the list has content above or below its area, shown by the ▲/▼ markers.
+func more_above() -> bool:
+	follow()
+	return list.more_above()
+
+
+func more_below() -> bool:
+	follow()
+	return list.more_below()
+
+
+# Whether the row or ACCEPT under the cursor lies wholly in the list's area.
+func cursor_in_view() -> bool:
+	follow()
+	return list.cursor_in_view()
 
 
 # The rows whose details are open, top to bottom.
@@ -264,10 +310,15 @@ static func row_text(offer: TransportOffer) -> String:
 
 func draw(area: Rect2) -> void:
 	sync()
-	var column := Rect2(area.position, Vector2(area.size.x * LIST_SHARE, area.size.y))
-	var y := column.position.y
+	var column := list_area(area)
+	list.follow(economy.offers, measure, column.size.y, ACCEPT_SPAN)
+	# Drawing has no clipping, so tints are cut to the column and lines outside it are skipped.
+	var y := column.position.y - list.scroll
 	for i in economy.offers.size():
 		var offer := economy.offers[i]
+		var heights := measure(offer)
+		ExpandableList.draw_clipped_rect(office.terminal, Rect2(column.position.x, y, column.size.x, heights.x), column,
+			ExpandableList.row_tint(i))
 		var row := Rect2(column.position.x, y, column.size.x, ROW_HEIGHT)
 		# With focus on the Contracts, the list's row is outlined instead of inverted.
 		var under_cursor := i == list.row and not list.on_button
@@ -275,29 +326,35 @@ func draw(area: Rect2) -> void:
 		var reason := economy.misfit_reason(offer).to_upper()
 		var lit := Office.GREEN if reason == "" else Office.DIM_GREEN
 		if selected:
-			office.terminal.draw_rect(row, lit)
-		elif under_cursor:
+			ExpandableList.draw_clipped_rect(office.terminal, row, column, lit)
+		elif under_cursor and column.encloses(row):
 			office.terminal.draw_rect(row, lit, false, Office.LINE_WIDTH)
 		var color := Office.BLACK if selected else lit
 		var baseline := Vector2(row.position.x + ROW_PADDING, row.get_center().y + Office.TEXT_SIZE / 2.0)
 		var width := row.size.x - 2.0 * ROW_PADDING
-		office.draw_text(offer.label(), baseline, Office.TEXT_SIZE, width,
-			HORIZONTAL_ALIGNMENT_LEFT, color)
-		office.draw_text("%s   %s" % [TransportOffer.KIND_LABELS[offer.kind()], TransportOffer.countdown(offer.time_left)],
-			baseline, Office.TEXT_SIZE, width, HORIZONTAL_ALIGNMENT_RIGHT, color)
+		if ExpandableList.line_fits(baseline.y, Office.TEXT_SIZE, column):
+			office.draw_text(offer.label(), baseline, Office.TEXT_SIZE, width,
+				HORIZONTAL_ALIGNMENT_LEFT, color)
+			office.draw_text("%s   %s" % [TransportOffer.KIND_LABELS[offer.kind()], TransportOffer.countdown(offer.time_left)],
+				baseline, Office.TEXT_SIZE, width, HORIZONTAL_ALIGNMENT_RIGHT, color)
 		y += ROW_HEIGHT
-		if reason != "":
-			office.draw_text(reason, Vector2(baseline.x, y + Office.TEXT_SIZE), Office.TEXT_SIZE, width,
-				HORIZONTAL_ALIGNMENT_RIGHT, Office.DIM_GREEN)
-			y += ROW_HEIGHT
 		var note := red_note(offer)
-		if note != "":
-			office.draw_text(note, Vector2(baseline.x, y + Office.TEXT_SIZE), Office.TEXT_SIZE, width,
-				HORIZONTAL_ALIGNMENT_RIGHT, Office.RED)
+		for line: Array in [[reason, Office.DIM_GREEN], [note, Office.RED]]:
+			if line[0] == "":
+				continue
+			if ExpandableList.line_fits(y + Office.TEXT_SIZE, Office.TEXT_SIZE, column):
+				office.draw_text(line[0], Vector2(baseline.x, y + Office.TEXT_SIZE), Office.TEXT_SIZE, width,
+					HORIZONTAL_ALIGNMENT_RIGHT, line[1])
 			y += ROW_HEIGHT
-		if offer in list.expanded:
+		var open_height := heights.y * list.open_share(offer)
+		if open_height > 0.0:
+			# Open details grow from the row on a stronger tint, cut to their height so far.
+			var clip := Rect2(column.position.x, y, column.size.x, open_height).intersection(column)
+			ExpandableList.draw_clipped_rect(office.terminal, clip, column, Office.DETAILS_TINT)
 			var accept_selected := i == list.row and list.on_button and focus == Column.OFFERS
-			y = draw_details(offer, Vector2(baseline.x, y), width, reason == "", accept_selected)
+			draw_details(offer, Vector2(baseline.x, y), width, reason == "", accept_selected, clip)
+			y += open_height
+	list.draw_markers(office.terminal, column, Office.GREEN)
 	if notice() != "":
 		draw_notice(Vector2(column.position.x, column.end.y))
 	var right_x := column.end.x + COLUMN_GAP
@@ -344,9 +401,10 @@ func draw_contracts(area: Rect2) -> void:
 
 
 # Draws the details in two columns under the row, labels green and values white, then ACCEPT
-# at their bottom right (inverted when selected, dimmed when the offer doesn't fit); returns
-# the y below them.
-func draw_details(offer: TransportOffer, top_left: Vector2, width: float, fits: bool, selected: bool) -> float:
+# at their bottom right (inverted when selected, dimmed when the offer doesn't fit). Only
+# what lies wholly in clip is drawn.
+func draw_details(offer: TransportOffer, top_left: Vector2, width: float, fits: bool, selected: bool,
+		clip: Rect2) -> void:
 	var y := top_left.y
 	var pairs := detail_pairs(offer)
 	var column_width := width / DETAIL_COLUMNS
@@ -354,12 +412,16 @@ func draw_details(offer: TransportOffer, top_left: Vector2, width: float, fits: 
 		var x := top_left.x + (i % DETAIL_COLUMNS) * column_width
 		if i % DETAIL_COLUMNS == 0:
 			y += ROW_HEIGHT
+		if not ExpandableList.line_fits(y, Office.TEXT_SIZE, clip):
+			continue
 		var label: String = pairs[i][0] + " "
 		office.draw_text(label, Vector2(x, y), Office.TEXT_SIZE, column_width)
 		var label_width := office.text_width(label, Office.TEXT_SIZE)
 		office.draw_text(pairs[i][1], Vector2(x + label_width, y), Office.TEXT_SIZE, column_width - label_width,
 			HORIZONTAL_ALIGNMENT_LEFT, Office.WHITE)
 	var button := Rect2(Vector2(top_left.x + width - ACCEPT_SIZE.x, y + ROW_PADDING * 2.0), ACCEPT_SIZE)
+	if not clip.encloses(button):
+		return
 	var lit := Office.GREEN if fits else Office.DIM_GREEN
 	if selected:
 		office.terminal.draw_rect(button, lit)
@@ -367,4 +429,3 @@ func draw_details(offer: TransportOffer, top_left: Vector2, width: float, fits: 
 		office.terminal.draw_rect(button, lit, false, Office.LINE_WIDTH)
 	office.draw_text(ACCEPT_TEXT, Vector2(button.position.x, button.get_center().y + Office.TEXT_SIZE / 2.0),
 		Office.TEXT_SIZE, button.size.x, HORIZONTAL_ALIGNMENT_CENTER, Office.BLACK if selected else lit)
-	return button.end.y + ROW_PADDING * 2.0

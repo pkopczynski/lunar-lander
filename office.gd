@@ -43,6 +43,10 @@ const BLACK := Color.BLACK
 # Values next to green labels, and values over a limit.
 const WHITE := Color(0.9, 1.0, 0.92)
 const RED := Color(1.0, 0.3, 0.25)
+# Faint list tints: alternating rows, and open details a little stronger.
+const ROW_TINT_LIGHT := Color(0.25, 1.0, 0.4, 0.08)
+const ROW_TINT_DARK := Color(0.25, 1.0, 0.4, 0.04)
+const DETAILS_TINT := Color(0.25, 1.0, 0.4, 0.14)
 const SCANLINE_COLOR := Color(0.0, 0.0, 0.0, 0.35)
 const SCANLINE_SPACING := 4.0
 
@@ -429,7 +433,7 @@ func draw_screen(view: Rect2) -> void:
 	draw_text(version_text(), Vector2(inner.position.x, hint_y), HINT_SIZE, inner.size.x,
 		HORIZONTAL_ALIGNMENT_RIGHT, DIM_GREEN)
 
-	var body := Rect2(inner.position.x, rule_y + LINE_GAP, inner.size.x, hint_rule_y - rule_y - 2.0 * LINE_GAP)
+	var body := body_area(view)
 	match screen:
 		Screen.MAIN:
 			draw_tiles(body)
@@ -441,6 +445,14 @@ func draw_screen(view: Rect2) -> void:
 			draw_bank_account(body)
 	if popup != PopupKind.NONE:
 		draw_popup(view)
+
+
+# The area between the header's and the key hint's rules, where the current screen draws.
+func body_area(view: Rect2) -> Rect2:
+	var inner := view.grow(-MARGIN - PADDING)
+	var rule_y := inner.position.y + HEADER_SIZE + LINE_GAP
+	var hint_rule_y := inner.end.y - HINT_SIZE - LINE_GAP
+	return Rect2(inner.position.x, rule_y + LINE_GAP, inner.size.x, hint_rule_y - rule_y - 2.0 * LINE_GAP)
 
 
 # The main screen's tiles in a row across the middle; the selected one is inverted.
