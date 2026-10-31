@@ -10,7 +10,7 @@ func test_an_open_late_transaction_shows_how_the_payout_was_worked_out() -> void
 	await press(&"ui_accept")
 	# 12 s overdue: €300 − €72 and €120 − €14.40, rounded.
 	check(bank().details(0) == PackedStringArray(["BASE VALUE €420", "PENALTY -€86 (12 S OVERDUE)", "PAYOUT €334",
-			"DEADLINE 0:10", "DELIVERED IN 0:22"]),
+			"DEADLINE 0:10", "DELIVERED IN 0:22", "SHIP SPARROW"]),
 		"Return should open the breakdown, shows %s" % bank().details(0))
 
 
@@ -20,7 +20,7 @@ func test_an_on_time_transaction_shows_no_penalty() -> void:
 	await open_bank_account()
 	await press(&"ui_accept")
 	check(bank().details(0) == PackedStringArray(["BASE VALUE €420", "PENALTY €0", "PAYOUT €420",
-			"DEADLINE 1:30", "DELIVERED IN 0:05"]),
+			"DEADLINE 1:30", "DELIVERED IN 0:05", "SHIP SPARROW"]),
 		"an on-time delivery should show PENALTY €0, shows %s" % bank().details(0))
 
 
@@ -50,7 +50,7 @@ func test_up_down_select_transactions_and_several_open_at_once_until_return_clos
 	await press(&"ui_up")
 	await press(&"ui_accept")
 	check(bank().list.expanded_rows() == [2], "Return should close only the first, open %s" % [bank().list.expanded_rows()])
-	check(bank().details(2).size() == 5, "the third should stay open, shows %s" % bank().details(2))
+	check(bank().details(2).size() == 6, "the third should stay open, shows %s" % bank().details(2))
 
 
 func test_escape_on_an_open_transaction_closes_it_then_returns_to_the_main_screen() -> void:
@@ -100,6 +100,29 @@ func test_opening_the_last_transaction_at_the_bottom_scrolls_its_details_into_vi
 	check(bank().list.selected_index() == bank().rows().size() - 1, "the cursor should be on the last transaction")
 	check(bank().list.more_above() and not bank().list.more_below(),
 		"the last open transaction's details should be scrolled into view, scrolled %s" % bank().list.scroll)
+
+
+func test_the_details_name_the_ship_type_that_delivered() -> void:
+	await choose_ship(ShipType.MULE)
+	await deliver([known_offer(1, 0.0)], 5.0)
+	await open_bank_account()
+	await press(&"ui_accept")
+	check("SHIP MULE" in bank().details(0), "the Mule delivered it, shows %s" % bank().details(0))
+
+
+func test_closing_a_transaction_shrinks_its_details_back() -> void:
+	await deliver([known_offer(1, 0.0)], 5.0)
+	await open_bank_account()
+	var transaction := economy().transactions[0]
+	await press(&"ui_accept")
+	await seconds(ExpandableList.OPEN_TIME)
+	await press(&"ui_accept")
+	check(bank().list.expanded_rows().is_empty(), "Return should close it at once")
+	await frames(2)
+	var share := bank().list.open_share(transaction)
+	check(share > 0.0 and share < 1.0, "the details should still be shrinking, %s open" % share)
+	await seconds(ExpandableList.OPEN_TIME)
+	check(bank().list.open_share(transaction) == 0.0, "the details should be gone after %s s" % ExpandableList.OPEN_TIME)
 
 
 func bank() -> BankAccountScreen:

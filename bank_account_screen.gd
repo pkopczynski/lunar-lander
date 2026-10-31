@@ -44,9 +44,10 @@ static func no_button(_transaction: TransportOffer.Transaction) -> bool:
 	return false
 
 
-# Under the pilot's name and the balance, leaving room right of it for the ▲/▼ markers.
+# Under the pilot's name and the balance, a row's height below it, leaving room right of it
+# for the ▲/▼ markers.
 static func list_area(area: Rect2) -> Rect2:
-	var top := area.position.y + 3.0 * Office.LINE_GAP + Office.NAME_SIZE + Office.STAT_SIZE
+	var top := area.position.y + 3.0 * Office.LINE_GAP + Office.NAME_SIZE + Office.STAT_SIZE + ROW_HEIGHT
 	var marker_room := 2.0 * (ExpandableList.MARKER_GAP + ExpandableList.MARKER_SIZE.x)
 	return Rect2(area.position.x, top, area.size.x - marker_room, area.end.y - top)
 
@@ -89,7 +90,8 @@ static func detail_pairs(transaction: TransportOffer.Transaction) -> Array[Array
 		penalty = "%s (%d S OVERDUE)" % [Economy.eur(-transaction.penalty), overdue]
 	return [["BASE VALUE", Economy.eur(transaction.reward)], ["PENALTY", penalty],
 		["PAYOUT", Economy.eur(transaction.payout)], ["DEADLINE", TransportOffer.countdown(transaction.deadline)],
-		["DELIVERED IN", TransportOffer.countdown(floorf(transaction.delivery_time))]]
+		["DELIVERED IN", TransportOffer.countdown(floorf(transaction.delivery_time))],
+		["SHIP", transaction.ship.to_upper()]]
 
 
 # The row's right-hand part: the kind and the payout.

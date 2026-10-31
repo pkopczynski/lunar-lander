@@ -17,7 +17,8 @@ const ACCEPT_SIZE := Vector2(120, 32)
 # The ACCEPT button with its padding above and below, at the bottom of open details.
 const ACCEPT_SPAN := ACCEPT_SIZE.y + 4.0 * ROW_PADDING
 const START_LOADING_SIZE := Vector2(200, 32)
-const REMOVE_SIZE := Vector2(24, 24)
+# The room kept at a Contract's right end for its X.
+const REMOVE_WIDTH := 24.0
 const NOTICE_PADDING := Vector2(8, 4)
 
 # Text
@@ -301,12 +302,12 @@ func draw(area: Rect2) -> void:
 		var under_cursor := i == selected_index and not on_button
 		var selected := under_cursor and focus == Column.OFFERS
 		var reason := economy.misfit_reason(offer).to_upper()
-		var lit := Office.GREEN if reason == "" else Office.DIM_GREEN
+		# Only an unavailable offer's text is dimmed; the cursor stays bright on it.
 		if selected:
-			ExpandableList.draw_clipped_rect(office.terminal, row, column, lit)
+			ExpandableList.draw_clipped_rect(office.terminal, row, column, Office.GREEN)
 		elif under_cursor and column.encloses(row):
-			office.terminal.draw_rect(row, lit, false, Office.LINE_WIDTH)
-		var color := Office.BLACK if selected else lit
+			office.terminal.draw_rect(row, Office.GREEN, false, Office.LINE_WIDTH)
+		var color := Office.BLACK if selected else Office.GREEN if reason == "" else Office.DIM_GREEN
 		var baseline := Vector2(row.position.x + ROW_PADDING, row.get_center().y + Office.TEXT_SIZE / 2.0)
 		var width := row.size.x - 2.0 * ROW_PADDING
 		if ExpandableList.line_fits(baseline.y, Office.TEXT_SIZE, column):
@@ -347,31 +348,28 @@ func draw_notice(bottom_left: Vector2) -> void:
 		-1, HORIZONTAL_ALIGNMENT_LEFT, Office.BLACK)
 
 
-func draw_remove_button(top_left: Vector2, selected: bool) -> void:
-	var button := Rect2(top_left, REMOVE_SIZE)
-	if selected:
-		office.terminal.draw_rect(button, Office.GREEN)
-	else:
-		office.terminal.draw_rect(button, Office.GREEN, false, Office.LINE_WIDTH)
-	office.draw_text(REMOVE_TEXT, Vector2(button.position.x, button.get_center().y + Office.TEXT_SIZE / 2.0),
-		Office.TEXT_SIZE, button.size.x, HORIZONTAL_ALIGNMENT_CENTER, Office.BLACK if selected else Office.GREEN)
-
-
-# CONTRACTS and its list (each with its X), the summary, then START LOADING (dimmed while
-# there are no Contracts); the button under the cursor is inverted.
+# CONTRACTS and its list (each with a plain X at its right end), the summary, then START LOADING
+# (dimmed while there are no Contracts); the Contract row or button under the cursor is inverted.
 func draw_contracts(area: Rect2) -> void:
 	var y := area.position.y
 	var lines := contract_lines()
 	var focused := focus == Column.CONTRACTS
 	for i in lines.size():
 		y += ROW_HEIGHT
-		office.draw_text(lines[i], Vector2(area.position.x, y), Office.TEXT_SIZE, area.size.x - REMOVE_SIZE.x)
+		var selected := i > 0 and focused and contract_index == i - 1
+		var color := Office.BLACK if selected else Office.GREEN
+		if selected:
+			# The whole row inverted, like a selected offer, its text sharing the baseline.
+			office.terminal.draw_rect(Rect2(area.position.x - ROW_PADDING, y - (ROW_HEIGHT + Office.TEXT_SIZE) / 2.0,
+				area.size.x + 2.0 * ROW_PADDING, ROW_HEIGHT), Office.GREEN)
+		office.draw_text(lines[i], Vector2(area.position.x, y), Office.TEXT_SIZE, area.size.x - REMOVE_WIDTH,
+			HORIZONTAL_ALIGNMENT_LEFT, color)
 		if i == 0:
 			office.terminal.draw_line(Vector2(area.position.x, y + ROW_PADDING),
 				Vector2(area.end.x, y + ROW_PADDING), Office.GREEN, Office.LINE_WIDTH)
 		else:
-			draw_remove_button(Vector2(area.end.x - REMOVE_SIZE.x, y - (REMOVE_SIZE.y + Office.TEXT_SIZE) / 2.0),
-				focused and contract_index == i - 1)
+			office.draw_text(REMOVE_TEXT, Vector2(area.end.x - REMOVE_WIDTH, y), Office.TEXT_SIZE, REMOVE_WIDTH,
+				HORIZONTAL_ALIGNMENT_RIGHT, color)
 	y += ROW_HEIGHT
 	for part in summary_parts():
 		y += ROW_HEIGHT
@@ -388,9 +386,9 @@ func draw_contracts(area: Rect2) -> void:
 		Office.TEXT_SIZE, button.size.x, HORIZONTAL_ALIGNMENT_CENTER, Office.BLACK if focused else lit)
 
 
-# Draws the details in two columns under the row, labels green and values white, then ACCEPT
-# at their bottom right (inverted when selected, dimmed when the offer doesn't fit). Only
-# what lies wholly in clip is drawn.
+# Draws the details in two columns under the row, labels green and values white (both dimmed
+# when the offer doesn't fit), then ACCEPT at their bottom right (inverted when selected,
+# dimmed when the offer doesn't fit). Only what lies wholly in clip is drawn.
 func draw_details(offer: TransportOffer, top_left: Vector2, width: float, fits: bool, selected: bool,
 		clip: Rect2) -> void:
 	var y := top_left.y
@@ -402,7 +400,8 @@ func draw_details(offer: TransportOffer, top_left: Vector2, width: float, fits: 
 			y += ROW_HEIGHT
 		if not ExpandableList.line_fits(y, Office.TEXT_SIZE, clip):
 			continue
-		office.draw_label_value(pairs[i][0], pairs[i][1], Vector2(x, y), Office.TEXT_SIZE, column_width)
+		office.draw_label_value(pairs[i][0], pairs[i][1], Vector2(x, y), Office.TEXT_SIZE, column_width,
+			Office.GREEN if fits else Office.DIM_GREEN, Office.WHITE if fits else Office.DIM_WHITE)
 	var button := Rect2(Vector2(top_left.x + width - ACCEPT_SIZE.x, y + ROW_PADDING * 2.0), ACCEPT_SIZE)
 	if not clip.encloses(button):
 		return

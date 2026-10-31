@@ -5,11 +5,12 @@ extends RefCounted
 # Open rows and the cursor are kept by item, not index, so they stay with their item as
 # rows above come and go; items that leave the list drop out. The caller gives the current
 # items, whether an open item's button can be selected, and each item's heights.
-# It also keeps what the list's drawing shares: open details grow open over OPEN_TIME, the
+# It also keeps what the list's drawing shares: details grow open and shrink closed over OPEN_TIME, the
 # list scrolls to keep the cursor in view, and drawn ▲/▼ markers (Silkscreen has no arrow
 # glyphs) show when content lies above or below.
 
-# Opening animation: seconds the details take to grow open, and its ease (below 1 eases out).
+# Opening and closing animation: seconds the details take to grow open or shrink closed, and
+# its ease (below 1 eases out).
 const OPEN_TIME := 0.15
 const OPEN_EASE := 0.5
 # ▲/▼ markers: triangle size, and their gap from the list's right edge.
@@ -36,7 +37,8 @@ var _on_button := false
 var _content_height := 0.0
 var _view_height := 0.0
 var _cursor := Vector2.ZERO
-# Seconds since each open item opened.
+# How far each item's details are open, in seconds of OPEN_TIME: rising while open, falling
+# after it closes until it's gone.
 var _opened: Dictionary[Object, float] = {}
 
 
@@ -53,7 +55,7 @@ func sync() -> void:
 	var items: Array = _items.call()
 	_expanded.assign(_expanded.filter(func(item: Object) -> bool: return item in items))
 	for item: Object in _opened.keys():
-		if not item in _expanded:
+		if not item in items:
 			_opened.erase(item)
 	_item = selected()
 	_row = selected_index()
@@ -111,7 +113,7 @@ func toggle() -> void:
 		_expanded.erase(_item)
 	else:
 		_expanded.append(_item)
-		_opened[_item] = 0.0
+		_opened[_item] = _opened.get(_item, 0.0)
 	_on_button = false
 
 
@@ -127,15 +129,19 @@ func close_selected() -> bool:
 
 
 func tick(delta: float) -> void:
-	for item: Object in _opened:
-		_opened[item] += delta
+	for item: Object in _opened.keys():
+		if item in _expanded:
+			_opened[item] = minf(_opened[item] + delta, OPEN_TIME)
+		elif _opened[item] > delta:
+			_opened[item] -= delta
+		else:
+			_opened.erase(item)
 
 
-# How far the item's details are open: 0 closed, 1 fully open.
+# How far the item's details are drawn open: 0 closed, 1 fully open. A closed item's details
+# shrink back the way they grew.
 func open_share(item: Object) -> float:
-	if not item in _expanded:
-		return 0.0
-	return ease(clampf(_opened.get(item, OPEN_TIME) / OPEN_TIME, 0.0, 1.0), OPEN_EASE)
+	return ease(clampf(_opened.get(item, 0.0) / OPEN_TIME, 0.0, 1.0), OPEN_EASE)
 
 
 # Scrolls just enough to keep the cursor in a view_height tall view. On an open item with no

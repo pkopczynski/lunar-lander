@@ -68,6 +68,27 @@ func test_return_opens_and_closes_an_offers_details_and_leaves_the_cursor_on_its
 	check(offers().list.selected_index() == 5, "closing should leave the cursor on the row, got %d" % offers().list.selected_index())
 
 
+func test_closing_an_offer_shrinks_its_details_back_and_reopening_grows_them_from_there() -> void:
+	var offer := known_offer(3, 1200.0)
+	economy().put_offer(offer)
+	await open_transport_offers()
+	await select_row(5)
+	await press(&"ui_accept")
+	await seconds(ExpandableList.OPEN_TIME)
+	check(offers().list.open_share(offer) == 1.0, "the details should be fully open")
+	await press(&"ui_accept")
+	check(offers().list.expanded_rows().is_empty() and offers().details(5).is_empty(), "Return should close the offer at once")
+	await frames(3)
+	var shrinking := offers().list.open_share(offer)
+	check(shrinking > 0.0 and shrinking < 1.0, "the details should still be shrinking, %s open" % shrinking)
+	await press(&"ui_accept")
+	await frames(1)
+	check(offers().list.open_share(offer) >= shrinking, "reopening should grow from where it was, %s after %s" % [offers().list.open_share(offer), shrinking])
+	await press(&"ui_accept")
+	await seconds(ExpandableList.OPEN_TIME + 0.05)
+	check(offers().list.open_share(offer) == 0.0, "the details should be gone once shrunk")
+
+
 func test_several_offers_can_be_open_at_once() -> void:
 	await open_transport_offers()
 	await select_row(1)

@@ -43,6 +43,7 @@ const DIM_GREEN := Color(0.25, 1.0, 0.4, 0.25)
 const BLACK := Color.BLACK
 # Values next to green labels, and values over a limit.
 const WHITE := Color(0.9, 1.0, 0.92)
+const DIM_WHITE := Color(0.9, 1.0, 0.92, 0.25)
 const RED := Color(1.0, 0.3, 0.25)
 # Faint list tints: alternating rows, and open details a little stronger.
 const ROW_TINT_LIGHT := Color(0.25, 1.0, 0.4, 0.08)

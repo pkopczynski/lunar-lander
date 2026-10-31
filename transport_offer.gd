@@ -54,6 +54,8 @@ class Transaction:
 	var payout: int
 	var deadline: float
 	var delivery_time: float
+	# The name of the ship type that delivered it.
+	var ship: String
 
 	# Whole seconds overdue, rounded down like the red counter.
 	func overdue_seconds() -> int:
