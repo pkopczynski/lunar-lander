@@ -26,6 +26,10 @@ _Avoid_: Mountains (the solid side walls), background mountains, skyline
 
 **Border band**:
 The strip around the border where gravity fades out. A ship too slow to cross is bounced back to the side it came from.
+
+**Disturbance**:
+The brief jolt of crossing the border: for a moment the controls don't respond while the nose wobbles, and the ship ends up turned a little, nose and path together. Slower crossings are disturbed more.
+_Avoid_: Turbulence, glitch, shake (that's the camera)
 _Avoid_: Transition zone, atmosphere
 
 **Soft wall**:
@@ -33,7 +37,7 @@ A world edge that steers the ship back inside instead of crashing it.
 _Avoid_: Bumper, invisible wall
 
 **Steering**:
-The world briefly slowing the ship down: it damps the ship's speed and pushes it back, but never turns its nose, so the player keeps Left/Right control. This happens at soft walls and just after crossing the border.
+The world briefly slowing the ship down: it damps the ship's speed and pushes it back, but never turns its nose, so the player keeps Left/Right control. (Crossing the border also brings a disturbance, which does turn it.) This happens at soft walls and just after crossing the border.
 _Avoid_: Autopilot, assist
 
 **Zoom punch**:
