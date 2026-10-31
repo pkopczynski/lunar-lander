@@ -84,6 +84,24 @@ func test_a_long_history_scrolls_to_follow_the_cursor() -> void:
 	check(not bank().more_above() and bank().more_below(), "back at the newest, the list should scroll back to the top")
 
 
+func test_opening_the_last_transaction_at_the_bottom_scrolls_its_details_into_view() -> void:
+	var contracts: Array[TransportOffer] = []
+	for i in 4:
+		contracts.append(known_offer(1, 0.0))
+	await deliver(contracts, 5.0)
+	await deliver(contracts.map(func(_offer: TransportOffer) -> TransportOffer: return known_offer(1, 0.0)), 5.0)
+	await open_bank_account()
+	while bank().selected_index > 0:
+		await press(&"ui_up")
+	for i in bank().rows().size():
+		await press(&"ui_accept")
+		await press(&"ui_down")
+	await seconds(0.5)
+	check(bank().selected_index == bank().rows().size() - 1, "the cursor should be on the last transaction")
+	check(bank().more_above() and not bank().more_below(),
+		"the last open transaction's details should be scrolled into view, scrolled %s" % bank().scroll())
+
+
 func bank() -> BankAccountScreen:
 	return office().bank_account
 

@@ -256,3 +256,18 @@ func test_a_tall_list_scrolls_to_the_last_accept_and_marks_what_lies_beyond() ->
 	await press(&"ui_accept")
 	await press(&"ui_accept")
 	check(known[-1] in economy().contracts, "the last ACCEPT should accept its offer")
+
+
+func test_opening_a_dimmed_last_offer_at_the_bottom_scrolls_its_details_into_view() -> void:
+	var known: Array[TransportOffer] = []
+	for i in Economy.MAX_OFFERS:
+		known.append(known_offer(5 if i == Economy.MAX_OFFERS - 1 else 1, 0.0, 1000.0 + i))
+		economy().put_offer(known[i])
+	await open_transport_offers()
+	check(reason_for(known[-1]) != "", "the last offer should be dimmed")
+	for offer in known:
+		await open_details(offer)
+	await seconds(0.5)
+	check(offers().selected_index == known.size() - 1 and not offers().on_accept(), "the cursor should be on the last row")
+	check(offers().more_above() and not offers().more_below(),
+		"the dimmed last offer's details should be scrolled into view, scrolled %s" % offers().scroll())

@@ -99,19 +99,25 @@ func open_share(item: Object) -> float:
 
 # Scrolls just enough to keep the cursor in a view_height tall view. measure(item) gives
 # Vector2(row height, details height when fully open); an open item's button takes the
-# bottom button_height of its details.
-func follow(items: Array, measure: Callable, view_height: float, button_height: float) -> void:
+# bottom button_height of its details. On an open item with no button to stop on, the
+# details can't be reached by moving down, so they're kept in view with the row, as far
+# as the view's height allows.
+func follow(items: Array, measure: Callable, view_height: float, button_height: float, has_button: Callable) -> void:
 	var top := 0.0
 	_cursor = Vector2.ZERO
+	var kept := Vector2.ZERO
 	for item: Object in items:
 		var heights: Vector2 = measure.call(item)
 		var bottom := top + heights.x + heights.y * open_share(item)
 		if item == _item:
 			_cursor = Vector2(bottom - button_height, bottom) if on_button else Vector2(top, top + heights.x)
+			kept = _cursor
+			if item in expanded and not has_button.call(item):
+				kept = Vector2(top, minf(bottom, top + view_height))
 		top = bottom
 	_content_height = top
 	_view_height = view_height
-	scroll = clampf(scroll, _cursor.y - view_height, _cursor.x)
+	scroll = clampf(scroll, kept.y - view_height, kept.x)
 	scroll = clampf(scroll, 0.0, maxf(_content_height - view_height, 0.0))
 
 

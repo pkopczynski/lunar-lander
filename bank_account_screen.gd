@@ -53,7 +53,7 @@ func sync() -> void:
 func follow() -> void:
 	sync()
 	list.follow(economy.transactions, measure,
-		list_area(office.body_area(Rect2(Vector2.ZERO, office.terminal.size))).size.y, 0.0)
+		list_area(office.body_area(Rect2(Vector2.ZERO, office.terminal.size))).size.y, 0.0, no_button)
 
 
 static func no_button(_transaction: TransportOffer.Transaction) -> bool:
@@ -159,7 +159,7 @@ func draw(area: Rect2) -> void:
 
 	sync()
 	var column := list_area(area)
-	list.follow(economy.transactions, measure, column.size.y, 0.0)
+	list.follow(economy.transactions, measure, column.size.y, 0.0, no_button)
 	# Drawing has no clipping, so tints are cut to the column and lines outside it are skipped.
 	y = column.position.y - list.scroll
 	for i in economy.transactions.size():

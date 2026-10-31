@@ -143,7 +143,7 @@ func sync() -> void:
 func follow() -> void:
 	sync()
 	list.follow(economy.offers, measure, list_area(office.body_area(Rect2(Vector2.ZERO, office.terminal.size))).size.y,
-		ACCEPT_SPAN)
+		ACCEPT_SPAN, fits)
 
 
 # The left column of the screen's area.
@@ -341,7 +341,7 @@ static func row_text(offer: TransportOffer) -> String:
 func draw(area: Rect2) -> void:
 	sync()
 	var column := list_area(area)
-	list.follow(economy.offers, measure, column.size.y, ACCEPT_SPAN)
+	list.follow(economy.offers, measure, column.size.y, ACCEPT_SPAN, fits)
 	# Drawing has no clipping, so tints are cut to the column and lines outside it are skipped.
 	var y := column.position.y - list.scroll
 	for i in economy.offers.size():
