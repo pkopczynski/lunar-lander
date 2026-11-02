@@ -115,12 +115,16 @@ func misfit_reason(seats_left: int, cargo_left: float) -> String:
 
 # What it pays when delivered after delivery_time against the flight's deadline, for each
 # whole second overdue. The passenger and cargo parts are penalised separately, each never
-# below €0.
-func settlement(flight_deadline: float, delivery_time: float) -> Transaction:
+# below €0. The local times and the location are only recorded, for the payout's breakdown.
+func settlement(flight_deadline: float, delivery_time: float, deadline_at: float, landed_at: float,
+		delivered_to: Location) -> Transaction:
 	var transaction := Transaction.new()
 	transaction.contract = self
 	transaction.deadline = flight_deadline
 	transaction.delivery_time = delivery_time
+	transaction.deadline_at = deadline_at
+	transaction.landed_at = landed_at
+	transaction.delivered_to = delivered_to.name
 	var overdue := transaction.overdue_seconds()
 	transaction.reward = reward()
 	transaction.penalty = mini(roundi(passenger_reward * PASSENGER_PENALTY_SHARE * overdue), passenger_reward) \

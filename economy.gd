@@ -153,11 +153,8 @@ func finish_unloading() -> void:
 	phase = Phase.NONE
 	var total := 0
 	for contract in contracts:
-		var transaction := contract.settlement(deadline(), delivery_time)
+		var transaction := contract.settlement(deadline(), delivery_time, deadline_at(), landed_at, landed_location)
 		transaction.ship = lander.ship_type.name
-		transaction.deadline_at = deadline_at()
-		transaction.landed_at = landed_at
-		transaction.delivered_to = landed_location.name
 		transactions.push_front(transaction)
 		total += transaction.payout
 	balance += total
