@@ -202,17 +202,37 @@ func add_stars(rng: RandomNumberGenerator, area: Rect2, count: int) -> void:
 		star_alphas.append(1.0 - clampf((star.y - BORDER_Y) / SURFACE_STAR_DEPTH, 0.0, 1.0))
 
 
-# Every star the World draws, as {position, radius, color}: the surface's night stars (none by
-# day), then the deep-space stars. Fully transparent ones are left out.
-func shown_stars() -> Array[Dictionary]:
-	var stars: Array[Dictionary] = []
+# A star as drawn.
+class Star:
+	var position: Vector2
+	var radius: float
+	var color: Color
+
+	func _init(at: Vector2, size: float, tint: Color) -> void:
+		position = at
+		radius = size
+		color = tint
+
+
+# Every star the World draws: the surface's night stars (none by day), then the deep-space
+# stars. Fully transparent ones are left out.
+func shown_stars() -> Array[Star]:
+	return night_stars() + deep_space_stars()
+
+
+func night_stars() -> Array[Star]:
+	var stars: Array[Star] = []
 	if sky.star_brightness > 0.0:
 		for i in night_star_positions.size():
-			stars.append({position = night_star_positions[i], radius = night_star_radii[i],
-				color = Color(1, 1, 1, sky.star_brightness)})
+			stars.append(Star.new(night_star_positions[i], night_star_radii[i], Color(1, 1, 1, sky.star_brightness)))
+	return stars
+
+
+func deep_space_stars() -> Array[Star]:
+	var stars: Array[Star] = []
 	for i in star_positions.size():
 		if star_alphas[i] > 0.0:
-			stars.append({position = star_positions[i], radius = star_radii[i], color = Color(1, 1, 1, star_alphas[i])})
+			stars.append(Star.new(star_positions[i], star_radii[i], Color(1, 1, 1, star_alphas[i])))
 	return stars
 
 
@@ -226,11 +246,13 @@ func _draw() -> void:
 	# Down into the open-pit mine, below the Valley's ground, the sky keeps its ground colour.
 	if ground_bottom() > GROUND_BOTTOM_Y:
 		draw_rect(Rect2(left, GROUND_BOTTOM_Y, right - left, ground_bottom() - GROUND_BOTTOM_Y), sky.ground_color)
-	# Stars go behind the Backdrop; the ground and mountains, child nodes, cover them too.
-	for star in shown_stars():
+	# The night stars go behind the Backdrop; the ground and mountains, child nodes, cover them too.
+	for star in night_stars():
 		draw_circle(star.position, star.radius, star.color)
 	draw_ridge(FAR_RIDGE, FAR_RIDGE_DARKENING)
 	draw_ridge(NEAR_RIDGE, NEAR_RIDGE_DARKENING)
+	for star in deep_space_stars():
+		draw_circle(star.position, star.radius, star.color)
 
 
 # Fills a Backdrop ridge with the background gradient, darkened, so it reads as

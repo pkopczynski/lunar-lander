@@ -101,14 +101,19 @@ func test_night_stars_are_faint_and_fade_in_late_in_the_evening_and_out_at_dawn(
 
 
 # The shown stars (as World.shown_stars() gives them) with a centre inside an area.
-func stars_in(stars: Array, area: Rect2) -> Array:
-	return stars.filter(func(star: Dictionary) -> bool: return area.has_point(star.position))
+func stars_in(stars: Array[World.Star], area: Rect2) -> Array[World.Star]:
+	return stars.filter(func(star: World.Star) -> bool: return area.has_point(star.position))
+
+
+# A star's position, size and colour, to compare stars from two readings.
+func star_key(star: World.Star) -> String:
+	return "%s %s %s" % [star.position, star.radius, star.color]
 
 
 func test_faint_stars_cover_the_whole_surface_sky_at_night_and_are_gone_by_day() -> void:
 	await choose_ship()
 	var night := await sky_at(2, 0)
-	var stars: Array = world().shown_stars()
+	var stars := world().shown_stars()
 	# The surface sky, split into a grid; every cell should have a star at night.
 	var columns := 8
 	var rows := 6
@@ -120,13 +125,13 @@ func test_faint_stars_cover_the_whole_surface_sky_at_night_and_are_gone_by_day()
 			check(not stars_in(stars, cell).is_empty(), "at 02:00 a star should show in the surface sky at %s" % cell)
 	# Low in the surface sky, far below the deep-space stars' fade, the stars are the night stars.
 	var low := Rect2(-World.SIDE_OVERHANG, 0.0, World.WORLD_WIDTH + 2.0 * World.SIDE_OVERHANG, World.GROUND_BOTTOM_Y)
-	for star: Dictionary in stars_in(stars, low):
+	for star: World.Star in stars_in(stars, low):
 		check_near(star.color.a, night.star_brightness, 0.001, "a low surface star's opacity at 02:00")
 	check(night.star_brightness <= 0.6, "the night stars should be faint, brightness %s" % night.star_brightness)
 	var dawn := await sky_at(6, 0)
-	var fading: Array = stars_in(world().shown_stars(), low)
+	var fading := stars_in(world().shown_stars(), low)
 	check(not fading.is_empty(), "at 06:00 the night stars should still show, fading")
-	for star: Dictionary in fading:
+	for star: World.Star in fading:
 		check_near(star.color.a, dawn.star_brightness, 0.001, "a low surface star's opacity at 06:00")
 	await sky_at(13, 0)
 	var below_fade := Rect2(-World.SIDE_OVERHANG, World.BORDER_Y + World.SURFACE_STAR_DEPTH,
@@ -139,10 +144,10 @@ func test_deep_space_stars_are_the_same_at_every_hour() -> void:
 	# By day only the deep-space stars show, with their fade just below the Border.
 	var by_day := (await sky_at(13, 0)).star_brightness
 	check_near(by_day, 0.0, 0.001, "star brightness at 13:00")
-	var deep: Array = world().shown_stars()
+	var deep := world().shown_stars()
 	check(not deep.is_empty(), "the deep-space stars should show at 13:00")
 	for hour in 24:
 		await sky_at(hour, 0)
-		var shown: Array = world().shown_stars()
-		var missing: Array = deep.filter(func(star: Dictionary) -> bool: return not shown.has(star))
+		var shown := world().shown_stars().map(star_key)
+		var missing := deep.filter(func(star: World.Star) -> bool: return not shown.has(star_key(star)))
 		check(missing.is_empty(), "at %02d:00 every deep-space star should show as at 13:00, %d differ" % [hour, missing.size()])
