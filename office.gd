@@ -234,12 +234,13 @@ func power_off(after_closing: Callable) -> void:
 		after_closing.call())
 
 
-# Loading starts over the flight view once the Terminal is off, and the mission starts in the
-# chosen start period: the local time is re-rolled within it every time.
+# Loading starts over the flight view once the Terminal is off, and the mission starts at the
+# chosen destination in the chosen start period: the local time is re-rolled within it every time.
 func start_loading() -> void:
+	var destination := transport_offers.destination
 	var period := transport_offers.start_period
 	power_off(func() -> void:
-		clock.start_mission(clock.location, period)
+		clock.start_mission(destination, period)
 		economy.start_loading())
 
 

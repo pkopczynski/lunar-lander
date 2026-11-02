@@ -13,7 +13,7 @@ const MINUTES_PER_SECOND := 2.0
 enum StartPeriod { NIGHT, MORNING, DAY, EVENING }
 const PERIOD_MINUTES := 360
 
-# The World follows it, moving the pad (and later the terrain).
+# The World follows it, moving the pad and rebuilding the terrain.
 signal location_changed(location: Location)
 
 # The location below the station; change it only through move_to().

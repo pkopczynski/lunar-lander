@@ -17,6 +17,8 @@ const MOUNTAIN_OUTLINE := [
 	Vector2(170, 460), Vector2(230, 500), Vector2(210, 550), Vector2(250, 600), Vector2(250, 640),
 ]
 const MOUNTAIN_COLOR := Color(0.35, 0.33, 0.33)
+# A location's terrain, such as the Mine's benches: warmer than the ground, like cut rock.
+const TERRAIN_COLOR := Color(0.52, 0.45, 0.38)
 
 # The Backdrop: two Tatra-like ridges behind the surface, no collision. Only the
 # top edge is listed; each ridge closes down to the ground bottom. Most of it
@@ -74,6 +76,7 @@ var star_radii := PackedFloat32Array()
 var star_alphas := PackedFloat32Array()
 
 @onready var mountains: StaticBody2D = $Mountains
+@onready var terrain: StaticBody2D = $Terrain
 @onready var pad: Polygon2D = $Ground/Pad
 @onready var clock: PlanetClock = $PlanetClock
 
@@ -131,9 +134,21 @@ func dim(visual: CanvasItem) -> void:
 	visual.self_modulate = Color.WHITE.darkened(sky.darkness)
 
 
-# Moves the surface to the clock's new location, with its pad.
+# Moves the surface to the clock's new location: its pad, and its terrain built afresh.
 func show_location(to: Location) -> void:
 	pad.position.x = to.pad_center_x - pad.get_parent().position.x
+	for child in terrain.get_children():
+		terrain.remove_child(child)
+		child.queue_free()
+	for outline in to.terrain:
+		var shape := CollisionPolygon2D.new()
+		shape.polygon = outline
+		terrain.add_child(shape)
+		var visual := Polygon2D.new()
+		visual.polygon = outline
+		visual.color = TERRAIN_COLOR
+		terrain.add_child(visual)
+		add_scenery(visual)
 
 
 func build_mountain(outline: PackedVector2Array) -> void:

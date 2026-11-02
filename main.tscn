@@ -32,6 +32,8 @@ color = Color(0.3, 0.8, 1, 1)
 [node name="PlanetClock" type="Node" parent="."]
 script = ExtResource("8_planet_clock")
 
+[node name="Terrain" type="StaticBody2D" parent="."]
+
 [node name="Mountains" type="StaticBody2D" parent="."]
 
 [node name="Station" type="StaticBody2D" parent="."]

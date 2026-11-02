@@ -9,14 +9,15 @@ func shown_hour() -> int:
 
 func test_the_start_period_row_sits_above_start_loading_and_is_reachable_without_contracts() -> void:
 	await open_transport_offers()
-	check(offers().mission_lines() == PackedStringArray(["START PERIOD EVENING"]),
+	check(offers().mission_lines()[1] == "START PERIOD EVENING",
 		"a run starts in the Evening, so the row should read START PERIOD EVENING, got %s" % offers().mission_lines())
 	await press(&"ui_right")
 	check(offers().on_start_loading(), "Right should land on START LOADING")
 	await press(&"ui_up")
 	check(offers().selected_mission_line() == "START PERIOD", "Up from START LOADING should reach START PERIOD")
 	await press(&"ui_up")
-	check(offers().selected_mission_line() == "START PERIOD", "Up should stop at START PERIOD without Contracts")
+	check(offers().selected_mission_line() == "DESTINATION", "Up from START PERIOD should reach DESTINATION")
+	await press(&"ui_down")
 	await press(&"ui_down")
 	check(offers().on_start_loading(), "Down should go back to START LOADING")
 	await press(&"ui_down")
@@ -27,10 +28,10 @@ func test_return_cycles_morning_day_evening_night_and_wraps() -> void:
 	await open_transport_offers()
 	await press(&"ui_right")
 	await press(&"ui_up")
-	var seen := PackedStringArray([offers().mission_lines()[0]])
+	var seen := PackedStringArray([offers().mission_lines()[1]])
 	for i in 4:
 		await press(&"ui_accept")
-		seen.append(offers().mission_lines()[0])
+		seen.append(offers().mission_lines()[1])
 	check(seen == PackedStringArray(["START PERIOD EVENING", "START PERIOD NIGHT", "START PERIOD MORNING",
 		"START PERIOD DAY", "START PERIOD EVENING"]), "Return should cycle the period and wrap, got %s" % seen)
 	check(office().showing and economy().phase == Economy.Phase.NONE, "Return on the row shouldn't start loading")
@@ -45,7 +46,10 @@ func test_the_row_is_reachable_with_contracts_between_them_and_start_loading() -
 	await press(&"ui_up")
 	check(offers().selected_mission_line() == "START PERIOD", "Up from START LOADING should reach START PERIOD first")
 	await press(&"ui_up")
-	check(offers().selected_contract() == offer, "Up from START PERIOD should reach the Contract")
+	check(offers().selected_mission_line() == "DESTINATION", "Up from START PERIOD should reach DESTINATION")
+	await press(&"ui_up")
+	check(offers().selected_contract() == offer, "Up from DESTINATION should reach the Contract")
+	await press(&"ui_down")
 	await press(&"ui_down")
 	check(offers().selected_mission_line() == "START PERIOD", "Down from the Contract should reach START PERIOD")
 	await press(&"ui_down")
@@ -80,7 +84,7 @@ func test_opening_the_office_sets_the_row_to_the_period_holding_the_local_time()
 		set_time(time[0], time[1])
 		await enter_the_office()
 		await open_transport_offers()
-		check(offers().mission_lines() == PackedStringArray(["START PERIOD " + time[2]]),
+		check(offers().mission_lines()[1] == "START PERIOD " + time[2],
 			"opened at %02d:%02d, the row should read START PERIOD %s, got %s" % [time[0], time[1], time[2], offers().mission_lines()])
 		# A changed row starts over on the next opening.
 		await press(&"ui_right")
@@ -98,7 +102,7 @@ func test_changing_the_row_without_starting_loading_leaves_the_local_time_alone(
 	await press(&"ui_up")
 	await press(&"ui_accept")
 	await press(&"ui_accept")
-	check(offers().mission_lines()[0] != "START PERIOD EVENING", "Return should change the row")
+	check(offers().mission_lines()[1] != "START PERIOD EVENING", "Return should change the row")
 	await leave_the_office()
 	check(hud().clock_text() == "VALLEY  14:00", "leaving the Office without loading should keep the time, got '%s'" % hud().clock_text())
 
@@ -112,10 +116,10 @@ func start_loading_in(period: String, offer: TransportOffer) -> void:
 	await press(&"ui_right")
 	await press(&"ui_up")
 	for i in 4:
-		if offers().mission_lines()[0] == "START PERIOD " + period:
+		if offers().mission_lines()[1] == "START PERIOD " + period:
 			break
 		await press(&"ui_accept")
-	check(offers().mission_lines()[0] == "START PERIOD " + period, "Return should reach %s" % period)
+	check(offers().mission_lines()[1] == "START PERIOD " + period, "Return should reach %s" % period)
 	await press(&"ui_down")
 	await press(&"ui_accept")
 	await wait_for_terminal()

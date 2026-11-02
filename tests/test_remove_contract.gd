@@ -11,19 +11,22 @@ func accept_and_focus_contracts(contracts: Array[TransportOffer]) -> void:
 	await press(&"ui_right")
 
 
-# From START LOADING, Up past START PERIOD to the last Contract.
+# From START LOADING, Up past START PERIOD and DESTINATION to the last Contract.
 func up_to_last_contract() -> void:
 	await press(&"ui_up")
 	await press(&"ui_up")
+	await press(&"ui_up")
 
 
-func test_up_and_down_select_each_contract_then_start_period_and_start_loading() -> void:
+func test_up_and_down_select_each_contract_then_the_mission_rows_and_start_loading() -> void:
 	var first := known_offer(1, 0.0)
 	var second := known_offer(0, 1000.0)
 	await accept_and_focus_contracts([first, second])
 	check(offers().on_start_loading(), "Right should land on START LOADING")
 	await press(&"ui_up")
 	check(offers().selected_mission_line() == "START PERIOD", "Up should select START PERIOD")
+	await press(&"ui_up")
+	check(offers().selected_mission_line() == "DESTINATION", "Up again should select DESTINATION")
 	await press(&"ui_up")
 	check(offers().selected_contract() == second, "Up again should select the last Contract")
 	await press(&"ui_up")
@@ -32,7 +35,9 @@ func test_up_and_down_select_each_contract_then_start_period_and_start_loading()
 	check(offers().selected_contract() == first, "Up should stop at the first Contract")
 	await press(&"ui_down")
 	await press(&"ui_down")
-	check(offers().selected_mission_line() == "START PERIOD", "Down should reach START PERIOD after the Contracts")
+	check(offers().selected_mission_line() == "DESTINATION", "Down should reach DESTINATION after the Contracts")
+	await press(&"ui_down")
+	check(offers().selected_mission_line() == "START PERIOD", "Down should reach START PERIOD after DESTINATION")
 	await press(&"ui_down")
 	check(offers().on_start_loading(), "Down should reach START LOADING after START PERIOD")
 	await press(&"ui_down")

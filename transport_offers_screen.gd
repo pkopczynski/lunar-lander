@@ -27,6 +27,7 @@ const CONTRACTS_TEXT := "CONTRACTS"
 const FUEL_LIMITED_LABEL := "FUEL LIMITED:"
 const FUEL_LIMITED_NOTE := "FUEL LIMITED"
 const START_LOADING_TEXT := "START LOADING"
+const DESTINATION_LABEL := "DESTINATION"
 const START_PERIOD_LABEL := "START PERIOD"
 const REMOVE_TEXT := "X"
 const KG_SUFFIX := " KG"
@@ -42,7 +43,8 @@ var focus := Column.OFFERS
 var list: ExpandableList
 # The offer whose ARE YOU SURE? is showing, if any.
 var accepting: TransportOffer
-# The start period START LOADING passes to the planet clock.
+# The destination and start period START LOADING passes to the planet clock.
+var destination := Location.VALLEY
 var start_period := PlanetClock.StartPeriod.EVENING
 # The Contracts column's cursor, walking its stops top to bottom: each Contract, each mission
 # row, then START LOADING.
@@ -136,15 +138,18 @@ func confirm_remove() -> void:
 	cursor = start_loading_stop() if economy.contracts.is_empty() else mini(cursor, economy.contracts.size() - 1)
 
 
-# Each time the Office opens, the mission rows start on the here and now: the start
-# period holding the current local time.
+# Each time the Office opens, the mission rows start on the here and now: the current
+# location and the start period holding the current local time.
 func reset_mission_rows(clock: PlanetClock) -> void:
+	destination = clock.location
 	start_period = clock.start_period()
 
 
 # Return on a mission row: its next value, wrapping.
 func cycle_mission_row(row: int) -> void:
 	match mission_parts()[row][0]:
+		DESTINATION_LABEL:
+			destination = Location.ALL[posmod(Location.ALL.find(destination) + 1, Location.ALL.size())]
 		START_PERIOD_LABEL:
 			start_period = posmod(start_period + 1, PlanetClock.StartPeriod.size()) as PlanetClock.StartPeriod
 
@@ -196,7 +201,7 @@ func on_start_loading() -> bool:
 	return focus == Column.CONTRACTS and selected_contract() == null and selected_mission_row() == -1
 
 
-# The mission rows between the summary and START LOADING, e.g. START PERIOD MORNING.
+# The mission rows between the summary and START LOADING, e.g. DESTINATION MINE.
 func mission_lines() -> PackedStringArray:
 	var lines := PackedStringArray()
 	for part in mission_parts():
@@ -207,7 +212,7 @@ func mission_lines() -> PackedStringArray:
 # The mission rows as [label, value], top to bottom: what START LOADING passes to the planet
 # clock.
 func mission_parts() -> Array[Array]:
-	return [[START_PERIOD_LABEL, PlanetClock.StartPeriod.keys()[start_period]]]
+	return [[DESTINATION_LABEL, destination.name], [START_PERIOD_LABEL, PlanetClock.StartPeriod.keys()[start_period]]]
 
 
 # The notice showing, such as OFFER EXPIRED, or "".
