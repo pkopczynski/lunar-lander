@@ -70,20 +70,28 @@ func test_the_count_doesnt_run_while_the_office_shows() -> void:
 	check(world().location == Location.MINE, "once the Office closes the count should run on and move the location")
 
 
+# The minutes since midnight the HUD clock shows.
+func shown_minutes() -> int:
+	var hhmm: String = hud().clock_text().get_slice("  ", 1)
+	return hhmm.get_slice(":", 0).to_int() * 60 + hhmm.get_slice(":", 1).to_int()
+
+
 func test_the_local_time_carries_on_at_a_location_change() -> void:
 	await choose_ship()
 	clock().minutes = 600.5
 	clock().drift = PlanetClock.DRIFT_MINUTES - 1.0
-	var readings := PackedFloat32Array()
+	var readings := PackedInt32Array()
 	for i in roundi(PHYSICS_FPS):
-		readings.append(clock().minutes)
+		readings.append(shown_minutes())
 		await frames(1)
 	check(world().location == Location.MINE, "the location should have moved on")
-	var steepest := 0.0
+	check(hud().clock_text().begins_with("MINE  "), "the HUD should read MINE, got '%s'" % hud().clock_text())
+	var steepest := 0
 	for i in range(1, readings.size()):
-		steepest = maxf(steepest, readings[i] - readings[i - 1])
-	check(steepest < 0.1, "the local time shouldn't jump at the change, largest step %.3f in-game minutes" % steepest)
-	check_near(clock().minutes, 602.5, 0.1, "a real second should still be 2 in-game minutes across the change")
+		steepest = maxi(steepest, readings[i] - readings[i - 1])
+	check(steepest <= 1, "the HUD's local time shouldn't jump at the change, largest step %d minutes" % steepest)
+	check(hud().clock_text().ends_with("10:02"),
+		"a real second from 10:00 should still read 10:02 across the change, got '%s'" % hud().clock_text())
 
 
 func test_the_location_drifts_during_a_delivery_and_landing_on_the_new_pad_delivers() -> void:
