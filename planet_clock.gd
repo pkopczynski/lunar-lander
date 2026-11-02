@@ -65,7 +65,7 @@ func count_drift(delta: float, above_border: bool, surface_in_view: bool) -> voi
 		return
 	drift += delta * MINUTES_PER_SECOND
 	if drift >= DRIFT_MINUTES and not surface_in_view:
-		move_to(Location.ALL[(Location.ALL.find(location) + 1) % Location.ALL.size()])
+		move_to(location.next())
 
 
 # The local time carries on unchanged; the drift count starts over.

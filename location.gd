@@ -25,6 +25,11 @@ static var MINE := mine()
 static var ALL: Array[Location] = [VALLEY, MINE]
 
 
+# The location after this one in drift order, wrapping to the first.
+func next() -> Location:
+	return ALL[(ALL.find(self) + 1) % ALL.size()]
+
+
 static func valley() -> Location:
 	var location := Location.new()
 	location.name = "VALLEY"
