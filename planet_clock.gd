@@ -57,6 +57,11 @@ func move_to(to: Location) -> void:
 	location_changed.emit(location)
 
 
+# The start period holding the local time.
+func start_period() -> StartPeriod:
+	return floori(minutes) / PERIOD_MINUTES as StartPeriod
+
+
 func hhmm() -> String:
 	var whole := floori(minutes)
 	return "%02d:%02d" % [whole / 60, whole % 60]

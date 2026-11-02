@@ -11,22 +11,32 @@ func accept_and_focus_contracts(contracts: Array[TransportOffer]) -> void:
 	await press(&"ui_right")
 
 
-func test_up_and_down_select_each_contract_then_start_loading() -> void:
+# From START LOADING, Up past START PERIOD to the last Contract.
+func up_to_last_contract() -> void:
+	await press(&"ui_up")
+	await press(&"ui_up")
+
+
+func test_up_and_down_select_each_contract_then_start_period_and_start_loading() -> void:
 	var first := known_offer(1, 0.0)
 	var second := known_offer(0, 1000.0)
 	await accept_and_focus_contracts([first, second])
-	check(offers().selected_contract() == null, "Right should land on START LOADING")
+	check(offers().on_start_loading(), "Right should land on START LOADING")
 	await press(&"ui_up")
-	check(offers().selected_contract() == second, "Up should select the last Contract")
+	check(offers().selected_mission_line() == "START PERIOD", "Up should select START PERIOD")
+	await press(&"ui_up")
+	check(offers().selected_contract() == second, "Up again should select the last Contract")
 	await press(&"ui_up")
 	check(offers().selected_contract() == first, "Up again should select the first Contract")
 	await press(&"ui_up")
 	check(offers().selected_contract() == first, "Up should stop at the first Contract")
 	await press(&"ui_down")
 	await press(&"ui_down")
-	check(offers().selected_contract() == null, "Down should reach START LOADING after the Contracts")
+	check(offers().selected_mission_line() == "START PERIOD", "Down should reach START PERIOD after the Contracts")
 	await press(&"ui_down")
-	check(offers().selected_contract() == null, "Down should stop at START LOADING")
+	check(offers().on_start_loading(), "Down should reach START LOADING after START PERIOD")
+	await press(&"ui_down")
+	check(offers().on_start_loading(), "Down should stop at START LOADING")
 	await press(&"ui_accept")
 	await wait_for_terminal()
 	check(economy().phase == Economy.Phase.LOADING, "Return on START LOADING should still start loading")
@@ -35,7 +45,7 @@ func test_up_and_down_select_each_contract_then_start_loading() -> void:
 func test_return_on_a_contract_asks_remove_contract_and_no_or_escape_keep_it() -> void:
 	var offer := known_offer(1, 0.0)
 	await accept_and_focus_contracts([offer])
-	await press(&"ui_up")
+	await up_to_last_contract()
 	await press(&"ui_accept")
 	check(office().popup == Office.PopupKind.REMOVE_CONTRACT, "Return on a Contract should ask to remove it")
 	check(office().popup_text() == "REMOVE CONTRACT?", "the popup should ask REMOVE CONTRACT?, got %s" % office().popup_text())
@@ -55,7 +65,7 @@ func test_yes_removes_the_contract_for_good_with_no_payout() -> void:
 	var kept := known_offer(1, 1000.0)
 	var removed := known_offer(2, 2000.0)
 	await accept_and_focus_contracts([kept, removed])
-	await press(&"ui_up")
+	await up_to_last_contract()
 	check(offers().selected_contract() == removed, "Up should select the last Contract")
 	await press(&"ui_accept")
 	await press(&"ui_left")
@@ -77,12 +87,12 @@ func test_yes_removes_the_contract_for_good_with_no_payout() -> void:
 func test_removing_the_last_contract_dims_start_loading() -> void:
 	var offer := known_offer(1, 0.0)
 	await accept_and_focus_contracts([offer])
-	await press(&"ui_up")
+	await up_to_last_contract()
 	await press(&"ui_accept")
 	await press(&"ui_left")
 	await press(&"ui_accept")
 	check(economy().contracts.is_empty(), "Yes should remove the Contract")
 	check(not offers().start_loading_enabled(), "START LOADING should dim with no Contracts")
-	check(offers().selected_contract() == null, "the cursor should be on START LOADING")
+	check(offers().on_start_loading(), "the cursor should be on START LOADING")
 	await press(&"ui_accept")
 	check(office().showing and economy().phase == Economy.Phase.NONE, "START LOADING should do nothing")
