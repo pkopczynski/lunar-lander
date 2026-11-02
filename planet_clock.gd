@@ -12,6 +12,8 @@ const MINUTES_PER_SECOND := 2.0
 # from midnight (Night 00:00-05:59, Morning 06:00-11:59, Day 12:00-17:59, Evening 18:00-23:59).
 enum StartPeriod { NIGHT, MORNING, DAY, EVENING }
 const PERIOD_MINUTES := 360
+# Two whole days above the Border, then the location moves on to the next one.
+const DRIFT_MINUTES := 2880.0
 
 # The World follows it, moving the pad and rebuilding the terrain.
 signal location_changed(location: Location)
@@ -20,6 +22,9 @@ signal location_changed(location: Location)
 var location := Location.VALLEY
 # The local time, in in-game minutes since midnight.
 var minutes := 0.0
+# In-game minutes counted toward drift: the time above the Border since the ship last went
+# below it or the location last changed.
+var drift := 0.0
 var rng := RandomNumberGenerator.new()
 
 
@@ -51,9 +56,22 @@ func start_mission(destination: Location, period: StartPeriod) -> void:
 	minutes = period * PERIOD_MINUTES + rng.randi_range(0, PERIOD_MINUTES - 1)
 
 
-# The local time carries on unchanged.
+# Called every physics frame by the World. Counts while the ship is above the Border, and
+# moves the location on once the count reaches DRIFT_MINUTES, but only while the surface isn't
+# in view, so the change never pops into sight.
+func count_drift(delta: float, above_border: bool, surface_in_view: bool) -> void:
+	if not above_border:
+		drift = 0.0
+		return
+	drift += delta * MINUTES_PER_SECOND
+	if drift >= DRIFT_MINUTES and not surface_in_view:
+		move_to(Location.ALL[(Location.ALL.find(location) + 1) % Location.ALL.size()])
+
+
+# The local time carries on unchanged; the drift count starts over.
 func move_to(to: Location) -> void:
 	location = to
+	drift = 0.0
 	location_changed.emit(location)
 
 

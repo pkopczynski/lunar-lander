@@ -84,6 +84,7 @@ var night_star_radii := PackedFloat32Array()
 @onready var terrain: StaticBody2D = $Terrain
 @onready var pad: Polygon2D = $Ground/Pad
 @onready var clock: PlanetClock = $PlanetClock
+@onready var lander: Lander = $Lander
 
 
 func _ready() -> void:
@@ -117,10 +118,17 @@ func _ready() -> void:
 		night_star_radii.append(rng.randf_range(STAR_RADIUS_MIN, STAR_RADIUS_MAX))
 
 
-# The world redraws as the local time passes.
-func _physics_process(_delta: float) -> void:
+# The world redraws as the local time passes, and the location drifts.
+func _physics_process(delta: float) -> void:
 	if floori(clock.minutes) != sky_minute:
 		show_sky()
+	clock.count_drift(delta, lander.in_deep_space, surface_in_view())
+
+
+# Whether any part of the surface (everything below the Border) is inside the visible area.
+func surface_in_view() -> bool:
+	var view := get_viewport().get_canvas_transform().affine_inverse() * get_viewport_rect()
+	return view.end.y > BORDER_Y
 
 
 # Takes the sky look for the current local time: redraws the gradient and Backdrop from it and
