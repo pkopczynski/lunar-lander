@@ -60,7 +60,6 @@ func clock() -> PlanetClock:
 	return main().get_node("PlanetClock")
 
 
-# The current location's pad centre x.
 func pad_x() -> float:
 	return world().location.pad_center_x
 
@@ -76,12 +75,10 @@ func pad_visual_center_x() -> float:
 	return (left + right) / 2.0
 
 
-# The ground's visual.
 func ground() -> Polygon2D:
 	return main().get_node("Ground/Polygon2D")
 
 
-# One of the mountains' visuals.
 func mountain() -> Polygon2D:
 	for child in main().get_node("Mountains").get_children():
 		if child is Polygon2D:

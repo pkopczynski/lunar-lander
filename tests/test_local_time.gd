@@ -25,7 +25,6 @@ func test_the_hud_shows_the_location_and_local_time_in_every_ship_state() -> voi
 	check(shows_valley_time(clock_text()), "Crashed: the HUD clock should read VALLEY  HH:MM, got '%s'" % clock_text())
 
 
-# The hour and minute the HUD clock shows.
 func shown_time() -> Vector2i:
 	var hhmm := clock_text().get_slice("  ", 1)
 	return Vector2i(hhmm.get_slice(":", 0).to_int(), hhmm.get_slice(":", 1).to_int())

@@ -78,7 +78,7 @@ func descend_from(start: Vector2) -> void:
 	await seconds(0.5)
 
 
-func test_every_ship_type_can_fly_down_into_the_pit_and_land_on_the_mines_pad() -> void:
+func test_every_ship_type_can_fly_down_into_the_open_pit_mine_and_land_on_the_mines_pad() -> void:
 	for type: ShipType in ShipType.ALL:
 		await choose_ship(type)
 		clock().move_to(Location.MINE)

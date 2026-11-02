@@ -2,7 +2,6 @@ extends "res://tests/scene_test.gd"
 # The Transport offers screen's START PERIOD row: the mission starts when the player chooses.
 
 
-# The hour the HUD clock shows.
 func shown_hour() -> int:
 	return hud().clock_text().get_slice("  ", 1).get_slice(":", 0).to_int()
 

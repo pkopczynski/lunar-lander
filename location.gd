@@ -11,7 +11,6 @@ const PIT_DEPTH := 3.0 * BENCH_STEP
 
 # Shown in the HUD.
 var name: String
-# The pad's centre, in world x.
 var pad_center_x: float
 # The top of the ground here, where the pad sits and ships land, in world y.
 var ground_y := World.GROUND_TOP_Y

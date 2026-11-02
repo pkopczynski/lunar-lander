@@ -73,7 +73,6 @@ const NIGHT_STAR_SPACING := 12000.0
 var location: Location:
 	get:
 		return clock.location
-# The sky look at the current local time; the World draws from it.
 var sky := SkyLook.at(0.0)
 # The whole local minute the sky was last taken for; it's taken again once a minute.
 var sky_minute := -1
@@ -202,7 +201,6 @@ func add_stars(rng: RandomNumberGenerator, area: Rect2, count: int) -> void:
 		star_alphas.append(1.0 - clampf((star.y - BORDER_Y) / SURFACE_STAR_DEPTH, 0.0, 1.0))
 
 
-# A star as drawn.
 class Star:
 	var position: Vector2
 	var radius: float

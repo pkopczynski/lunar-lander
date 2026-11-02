@@ -70,7 +70,6 @@ func test_the_count_doesnt_run_while_the_office_shows() -> void:
 	check(world().location == Location.MINE, "once the Office closes the count should run on and move the location")
 
 
-# The minutes since midnight the HUD clock shows.
 func shown_minutes() -> int:
 	var hhmm: String = hud().clock_text().get_slice("  ", 1)
 	return hhmm.get_slice(":", 0).to_int() * 60 + hhmm.get_slice(":", 1).to_int()

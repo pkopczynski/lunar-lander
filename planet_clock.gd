@@ -75,7 +75,6 @@ func move_to(to: Location) -> void:
 	location_changed.emit(location)
 
 
-# The start period holding the local time.
 func start_period() -> StartPeriod:
 	return floori(minutes) / PERIOD_MINUTES as StartPeriod
 
