@@ -349,7 +349,7 @@ static func kg_of(part: float, whole: float) -> String:
 
 static func row_text(offer: TransportOffer) -> String:
 	return "%s %s %s" % [offer.label(), TransportOffer.KIND_LABELS[offer.kind()],
-		TransportOffer.countdown(offer.time_left)]
+		PlanetClock.countdown(offer.time_left)]
 
 
 # Drawing
@@ -382,7 +382,7 @@ func draw(area: Rect2) -> void:
 		if ExpandableList.line_fits(baseline.y, Office.TEXT_SIZE, column):
 			office.draw_text(offer.label(), baseline, Office.TEXT_SIZE, width,
 				HORIZONTAL_ALIGNMENT_LEFT, color)
-			office.draw_text("%s   %s" % [TransportOffer.KIND_LABELS[offer.kind()], TransportOffer.countdown(offer.time_left)],
+			office.draw_text("%s   %s" % [TransportOffer.KIND_LABELS[offer.kind()], PlanetClock.countdown(offer.time_left)],
 				baseline, Office.TEXT_SIZE, width, HORIZONTAL_ALIGNMENT_RIGHT, color)
 		y += ROW_HEIGHT
 		var note := red_note(offer)

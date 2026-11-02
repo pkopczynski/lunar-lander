@@ -125,7 +125,7 @@ func finish_loading() -> void:
 	delivery_time = 0.0
 	loaded_at = clock.minutes
 	lander.finish_loading()
-	var status := LOADED_TEXT % PlanetClock.local_time(deadline_at())
+	var status := LOADED_TEXT % PlanetClock.time_of_day(deadline_at())
 	if lander.fuel_cap() < lander.ship_type.tank:
 		status += "\n" + FUEL_LIMITED_TEXT % Hud.format_kg(lander.fuel_cap())
 	lander.show_status(status)

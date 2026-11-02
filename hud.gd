@@ -110,12 +110,12 @@ func clock_text() -> String:
 
 
 # The flight deadline as a local time while delivering: DELIVER BY 14:30, OVERDUE SINCE 14:30
-# once late (01:10 +1 on the next day), "" otherwise.
+# once late, "" otherwise. The time alone is clear enough, so a next-day one has no +1.
 func delivery_text() -> String:
 	if economy.phase != Economy.Phase.DELIVERING:
 		return ""
 	var prefix := OVERDUE_PREFIX if delivery_overdue() else DELIVERY_PREFIX
-	return prefix + PlanetClock.local_time(economy.deadline_at())
+	return prefix + PlanetClock.time_of_day(economy.deadline_at())
 
 
 func delivery_overdue() -> bool:

@@ -133,12 +133,6 @@ func settlement(flight_deadline: float, delivery_time: float, deadline_at: float
 	return transaction
 
 
-# Whole seconds as m:ss, counting a started second as a whole one.
-static func countdown(seconds_left: float) -> String:
-	var whole := maxi(ceili(seconds_left), 0)
-	return "%d:%02d" % [whole / 60, whole % 60]
-
-
 # A random offer of at most max_passengers (at least 1) and max_cargo (at least MIN_CARGO).
 static func generate(rng: RandomNumberGenerator, offer_number: int, max_passengers: int,
 		max_cargo: float) -> TransportOffer:
