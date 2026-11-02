@@ -62,6 +62,8 @@ const STAR_SEED := 7
 const STAR_SPACING := 6000.0
 const STAR_RADIUS_MIN := 1.0
 const STAR_RADIUS_MAX := 2.0
+# Sides of the polygon each star is drawn as.
+const STAR_SIDES := 8
 const SURFACE_STAR_DEPTH := 300.0
 const SURFACE_STAR_SHARE := 0.4
 # The surface's night stars cover the whole surface sky, sparser than deep space, drawn at the
@@ -81,6 +83,11 @@ var star_radii := PackedFloat32Array()
 var star_alphas := PackedFloat32Array()
 var night_star_positions := PackedVector2Array()
 var night_star_radii := PackedFloat32Array()
+# Each star layer is one mesh built once, so neither a sky change nor a frame redraws its stars
+# one by one; the night stars' brightness is their layer's modulate.
+var deep_star_layer := MeshInstance2D.new()
+var night_star_layer := MeshInstance2D.new()
+var backdrop := Node2D.new()
 
 @onready var mountains: StaticBody2D = $Mountains
 @onready var terrain: StaticBody2D = $Terrain
@@ -106,7 +113,12 @@ func _ready() -> void:
 	clock.location_changed.connect(show_location)
 	show_location(location)
 	add_scenery(ground_visual)
-	show_sky()
+	# Drawn over the gradient and under everything in the scene: the stars, then the Backdrop.
+	var layers: Array[CanvasItem] = [deep_star_layer, night_star_layer, backdrop]
+	for i in layers.size():
+		add_child(layers[i])
+		move_child(layers[i], i)
+	backdrop.draw.connect(draw_backdrop)
 
 	var rng := RandomNumberGenerator.new()
 	rng.seed = STAR_SEED
@@ -120,6 +132,12 @@ func _ready() -> void:
 		night_star_positions.append(Vector2(rng.randf_range(surface_sky.position.x, surface_sky.end.x),
 			rng.randf_range(surface_sky.position.y, surface_sky.end.y)))
 		night_star_radii.append(rng.randf_range(STAR_RADIUS_MIN, STAR_RADIUS_MAX))
+	var opaque := PackedFloat32Array()
+	opaque.resize(night_star_positions.size())
+	opaque.fill(1.0)
+	deep_star_layer.mesh = star_mesh(star_positions, star_radii, star_alphas)
+	night_star_layer.mesh = star_mesh(night_star_positions, night_star_radii, opaque)
+	show_sky()
 
 
 # The world redraws as the local time passes, and the location drifts.
@@ -142,7 +160,10 @@ func show_sky() -> void:
 	sky_minute = floori(clock.minutes)
 	for visual in get_tree().get_nodes_in_group(SCENERY_GROUP):
 		dim(visual)
+	night_star_layer.modulate.a = sky.star_brightness
+	night_star_layer.visible = sky.star_brightness > 0.0
 	queue_redraw()
+	backdrop.queue_redraw()
 
 
 # Makes a solid visual part of the scenery, dimmed by the sky's darkness from now on; a
@@ -162,6 +183,7 @@ func show_location(to: Location) -> void:
 	ground.position.y = to.ground_y + GROUND_DEPTH / 2.0
 	pad.position.x = to.pad_center_x - ground.position.x
 	queue_redraw()
+	backdrop.queue_redraw()
 	for child in terrain.get_children():
 		terrain.remove_child(child)
 		child.queue_free()
@@ -201,6 +223,29 @@ func add_stars(rng: RandomNumberGenerator, area: Rect2, count: int) -> void:
 		star_alphas.append(1.0 - clampf((star.y - BORDER_Y) / SURFACE_STAR_DEPTH, 0.0, 1.0))
 
 
+# One mesh of small white polygons, each star's alpha in its vertex colours.
+func star_mesh(positions: PackedVector2Array, radii: PackedFloat32Array, alphas: PackedFloat32Array) -> ArrayMesh:
+	var vertices := PackedVector2Array()
+	var colors := PackedColorArray()
+	for i in positions.size():
+		if alphas[i] <= 0.0:
+			continue
+		var color := Color(1, 1, 1, alphas[i])
+		for side in STAR_SIDES:
+			vertices.append(positions[i])
+			vertices.append(positions[i] + Vector2.from_angle(TAU * side / STAR_SIDES) * radii[i])
+			vertices.append(positions[i] + Vector2.from_angle(TAU * (side + 1) / STAR_SIDES) * radii[i])
+			for corner in 3:
+				colors.append(color)
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = vertices
+	arrays[Mesh.ARRAY_COLOR] = colors
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return mesh
+
+
 class Star:
 	var position: Vector2
 	var radius: float
@@ -220,9 +265,9 @@ func shown_stars() -> Array[Star]:
 
 func night_stars() -> Array[Star]:
 	var stars: Array[Star] = []
-	if sky.star_brightness > 0.0:
+	if night_star_layer.visible:
 		for i in night_star_positions.size():
-			stars.append(Star.new(night_star_positions[i], night_star_radii[i], Color(1, 1, 1, sky.star_brightness)))
+			stars.append(Star.new(night_star_positions[i], night_star_radii[i], Color(1, 1, 1, night_star_layer.modulate.a)))
 	return stars
 
 
@@ -244,13 +289,11 @@ func _draw() -> void:
 	# Down into the open-pit mine, below the Valley's ground, the sky keeps its ground colour.
 	if ground_bottom() > GROUND_BOTTOM_Y:
 		draw_rect(Rect2(left, GROUND_BOTTOM_Y, right - left, ground_bottom() - GROUND_BOTTOM_Y), sky.ground_color)
-	# The night stars go behind the Backdrop; the ground and mountains, child nodes, cover them too.
-	for star in night_stars():
-		draw_circle(star.position, star.radius, star.color)
+
+
+func draw_backdrop() -> void:
 	draw_ridge(FAR_RIDGE, FAR_RIDGE_DARKENING)
 	draw_ridge(NEAR_RIDGE, NEAR_RIDGE_DARKENING)
-	for star in deep_space_stars():
-		draw_circle(star.position, star.radius, star.color)
 
 
 # Fills a Backdrop ridge with the background gradient, darkened, so it reads as
@@ -262,7 +305,7 @@ func draw_ridge(top_edge: Array, darkening: float) -> void:
 	var colors := PackedColorArray()
 	for point in outline:
 		colors.append(background_color(point.y).darkened(darkening))
-	draw_polygon(outline, colors)
+	backdrop.draw_polygon(outline, colors)
 
 
 func background_color(y: float) -> Color:
