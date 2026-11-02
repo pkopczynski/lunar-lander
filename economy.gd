@@ -57,6 +57,10 @@ var loading_left := 0.0
 var delivery_time := 0.0
 # The local time when loading finished, in in-game minutes since that day's midnight.
 var loaded_at := 0.0
+# The local time of landing on the pad, counted on from loaded_at's midnight (so at or past
+# PlanetClock.MINUTES_PER_DAY on the next day), and the location landed at.
+var landed_at := 0.0
+var landed_location: Location
 var unloading_left := 0.0
 
 @onready var lander: Lander = $"../Lander"
@@ -133,6 +137,8 @@ func start_unloading() -> void:
 	if phase != Phase.DELIVERING:
 		return
 	phase = Phase.UNLOADING
+	landed_at = loaded_at + delivery_time * PlanetClock.MINUTES_PER_SECOND
+	landed_location = clock.location
 	unloading_left = UNLOADING_TIME + contract_passengers() * UNLOADING_TIME_PER_PASSENGER \
 		+ contract_cargo() / 1000.0 * UNLOADING_TIME_PER_TONNE
 	lander.lift_off_blocked = true
@@ -149,6 +155,9 @@ func finish_unloading() -> void:
 	for contract in contracts:
 		var transaction := contract.settlement(deadline(), delivery_time)
 		transaction.ship = lander.ship_type.name
+		transaction.deadline_at = deadline_at()
+		transaction.landed_at = landed_at
+		transaction.delivered_to = landed_location.name
 		transactions.push_front(transaction)
 		total += transaction.payout
 	balance += total

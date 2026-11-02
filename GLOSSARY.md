@@ -149,7 +149,7 @@ What a contract pays into the bank account once unloaded: its reward less a pena
 _Avoid_: Reward (that's before the penalty), income, score
 
 **Transaction**:
-One line in the bank account per delivered contract: its payout, opening to show its reward, penalty, the flight's deadline it was settled against and the delivery time.
+One line in the bank account per delivered contract: its payout, opening to show its reward, penalty, the flight's deadline it was settled against and the landing, both as local times, and the location it was delivered to.
 _Avoid_: Receipt, entry, log
 
 **Load**:
