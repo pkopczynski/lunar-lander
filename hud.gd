@@ -17,9 +17,10 @@ const FUEL_BOTTOM_COLOR := Color("7a4a1e")
 const TEXT_COLOR := Color(0.9, 0.9, 0.95)
 const OVERDUE_COLOR := Color(1.0, 0.3, 0.3)
 
-# The delivery timer in the upper right.
+# The clock line in the upper right, with the delivery timer under it.
 const TIMER_FONT_SIZE := 24
 const TIMER_MARGIN := Vector2(24, 40)
+const TIMER_LINE_HEIGHT := 32.0
 const DELIVERY_PREFIX := "DELIVERY "
 const OVERDUE_PREFIX := "OVERDUE +"
 
@@ -47,6 +48,7 @@ var payout_tween: Tween
 
 @onready var lander: Lander = $"../../Lander"
 @onready var economy: Economy = $"../../Economy"
+@onready var clock: PlanetClock = $"../../PlanetClock"
 
 
 func _ready() -> void:
@@ -78,9 +80,11 @@ func _draw() -> void:
 	draw_string(font, Vector2(text_x, bar.end.y + TEXT_GAP + FONT_SIZE), format_kg(lander.total_mass()),
 		HORIZONTAL_ALIGNMENT_CENTER, text_width, FONT_SIZE, TEXT_COLOR)
 
+	draw_string(font, Vector2(0.0, TIMER_MARGIN.y), clock_text(), HORIZONTAL_ALIGNMENT_RIGHT,
+		size.x - TIMER_MARGIN.x, TIMER_FONT_SIZE, TEXT_COLOR)
 	var timer := delivery_text()
 	if timer != "":
-		draw_string(font, Vector2(0.0, TIMER_MARGIN.y), timer, HORIZONTAL_ALIGNMENT_RIGHT,
+		draw_string(font, Vector2(0.0, TIMER_MARGIN.y + TIMER_LINE_HEIGHT), timer, HORIZONTAL_ALIGNMENT_RIGHT,
 			size.x - TIMER_MARGIN.x, TIMER_FONT_SIZE, OVERDUE_COLOR if delivery_overdue() else TEXT_COLOR)
 
 	if payout != "":
@@ -98,6 +102,11 @@ func show_payout(total: int) -> void:
 	payout_tween = create_tween()
 	payout_tween.tween_property(self, "payout_progress", 1.0, PAYOUT_TIME)
 	payout_tween.tween_callback(func() -> void: payout = "")
+
+
+# The current location's name and the local time: VALLEY  14:07.
+func clock_text() -> String:
+	return "%s  %s" % [clock.location.name, clock.hhmm()]
 
 
 # DELIVERY 1:23 while delivering, OVERDUE +0:12 once late, "" otherwise.

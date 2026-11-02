@@ -56,6 +56,10 @@ func station() -> Station:
 	return main().get_node("Station")
 
 
+func clock() -> PlanetClock:
+	return main().get_node("PlanetClock")
+
+
 # The current location's pad centre x.
 func pad_x() -> float:
 	return world().location.pad_center_x

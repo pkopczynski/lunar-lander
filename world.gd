@@ -58,14 +58,18 @@ const STAR_RADIUS_MAX := 2.0
 const SURFACE_STAR_DEPTH := 300.0
 const SURFACE_STAR_SHARE := 0.4
 
-# The location below the station, whose pad and terrain the surface shows.
-var location := Location.VALLEY
+# The location below the station, whose pad and terrain the surface shows. The planet
+# clock owns it; the World follows.
+var location: Location:
+	get:
+		return clock.location
 var star_positions := PackedVector2Array()
 var star_radii := PackedFloat32Array()
 var star_alphas := PackedFloat32Array()
 
 @onready var mountains: StaticBody2D = $Mountains
 @onready var pad: Polygon2D = $Ground/Pad
+@onready var clock: PlanetClock = $PlanetClock
 
 
 func _ready() -> void:
@@ -80,7 +84,8 @@ func _ready() -> void:
 		Vector2(-half, -Lander.PAD_HEIGHT), Vector2(half, -Lander.PAD_HEIGHT),
 		Vector2(half, 0), Vector2(-half, 0),
 	])
-	change_location(location)
+	clock.location_changed.connect(show_location)
+	show_location(location)
 
 	var rng := RandomNumberGenerator.new()
 	rng.seed = STAR_SEED
@@ -91,10 +96,9 @@ func _ready() -> void:
 	add_stars(rng, surface, roundi(surface.get_area() / STAR_SPACING * SURFACE_STAR_SHARE))
 
 
-# Moves the surface to another location, with its pad.
-func change_location(to: Location) -> void:
-	location = to
-	pad.position.x = location.pad_center_x - pad.get_parent().position.x
+# Moves the surface to the clock's new location, with its pad.
+func show_location(to: Location) -> void:
+	pad.position.x = to.pad_center_x - pad.get_parent().position.x
 
 
 func build_mountain(outline: PackedVector2Array) -> void:

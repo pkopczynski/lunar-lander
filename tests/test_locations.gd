@@ -24,7 +24,7 @@ func elsewhere() -> Location:
 func test_the_pad_and_the_debug_pad_shortcut_follow_the_current_location() -> void:
 	await choose_ship()
 	var location := elsewhere()
-	world().change_location(location)
+	clock().move_to(location)
 	check_near(pad_visual_center_x(), 600.0, 0.01, "the drawn pad should move to the location's pad")
 	place(Vector2(1400, 100))
 	await press(&"restart")
@@ -36,7 +36,7 @@ func test_the_pad_and_the_debug_pad_shortcut_follow_the_current_location() -> vo
 func test_landing_is_judged_against_the_current_locations_pad() -> void:
 	await choose_ship()
 	var location := elsewhere()
-	world().change_location(location)
+	clock().move_to(location)
 	place(Vector2(600, 580), Vector2(0, 20))
 	await seconds(1.0)
 	check(message().begins_with("Landed"), "landing on the current location's pad should land, got %s" % message())
