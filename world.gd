@@ -18,8 +18,6 @@ const MOUNTAIN_OUTLINE := [
 ]
 const MOUNTAIN_COLOR := Color(0.35, 0.33, 0.33)
 
-const SURFACE_COLOR := Color(0.9, 0.4, 0.1)
-
 # The Backdrop: two Tatra-like ridges behind the surface, no collision. Only the
 # top edge is listed; each ridge closes down to the ground bottom. Most of it
 # sits between the mountains, which cover its ends.
@@ -50,6 +48,10 @@ const NEAR_RIDGE := [
 const FAR_RIDGE_DARKENING := 0.08
 const NEAR_RIDGE_DARKENING := 0.16
 
+# The solid scenery the sky's darkness dims (the ground, the mountains, a location's terrain);
+# the pad isn't in it, so it stays easy to find at night.
+const SCENERY_GROUP := &"scenery"
+
 const STAR_SEED := 7
 # Area of deep space per star, in px².
 const STAR_SPACING := 6000.0
@@ -63,6 +65,10 @@ const SURFACE_STAR_SHARE := 0.4
 var location: Location:
 	get:
 		return clock.location
+# The sky look at the current local time; the World draws from it.
+var sky := SkyLook.at(0.0)
+# The whole local minute the sky was last taken for; it's taken again once a minute.
+var sky_minute := -1
 var star_positions := PackedVector2Array()
 var star_radii := PackedFloat32Array()
 var star_alphas := PackedFloat32Array()
@@ -86,6 +92,8 @@ func _ready() -> void:
 	])
 	clock.location_changed.connect(show_location)
 	show_location(location)
+	add_scenery($Ground/Polygon2D)
+	show_sky()
 
 	var rng := RandomNumberGenerator.new()
 	rng.seed = STAR_SEED
@@ -94,6 +102,33 @@ func _ready() -> void:
 	add_stars(rng, deep, roundi(deep.get_area() / STAR_SPACING))
 	var surface := Rect2(-SIDE_OVERHANG, BORDER_Y, width, SURFACE_STAR_DEPTH)
 	add_stars(rng, surface, roundi(surface.get_area() / STAR_SPACING * SURFACE_STAR_SHARE))
+
+
+# The world redraws as the local time passes.
+func _physics_process(_delta: float) -> void:
+	if floori(clock.minutes) != sky_minute:
+		show_sky()
+
+
+# Takes the sky look for the current local time: redraws the gradient and Backdrop from it and
+# dims the scenery.
+func show_sky() -> void:
+	sky = SkyLook.at(clock.minutes)
+	sky_minute = floori(clock.minutes)
+	for visual in get_tree().get_nodes_in_group(SCENERY_GROUP):
+		dim(visual)
+	queue_redraw()
+
+
+# Makes a solid visual part of the scenery, dimmed by the sky's darkness from now on; a
+# location's terrain goes through here too.
+func add_scenery(visual: CanvasItem) -> void:
+	visual.add_to_group(SCENERY_GROUP)
+	dim(visual)
+
+
+func dim(visual: CanvasItem) -> void:
+	visual.self_modulate = Color.WHITE.darkened(sky.darkness)
 
 
 # Moves the surface to the clock's new location, with its pad.
@@ -109,6 +144,7 @@ func build_mountain(outline: PackedVector2Array) -> void:
 	visual.polygon = outline
 	visual.color = MOUNTAIN_COLOR
 	mountains.add_child(visual)
+	add_scenery(visual)
 
 
 func add_stars(rng: RandomNumberGenerator, area: Rect2, count: int) -> void:
@@ -126,7 +162,7 @@ func _draw() -> void:
 	draw_polygon(PackedVector2Array([
 		Vector2(left, BORDER_Y), Vector2(right, BORDER_Y),
 		Vector2(right, GROUND_BOTTOM_Y), Vector2(left, GROUND_BOTTOM_Y),
-	]), PackedColorArray([Color.BLACK, Color.BLACK, SURFACE_COLOR, SURFACE_COLOR]))
+	]), PackedColorArray([Color.BLACK, Color.BLACK, sky.ground_color, sky.ground_color]))
 	draw_ridge(FAR_RIDGE, FAR_RIDGE_DARKENING)
 	draw_ridge(NEAR_RIDGE, NEAR_RIDGE_DARKENING)
 	for i in star_positions.size():
@@ -146,4 +182,4 @@ func draw_ridge(top_edge: Array, darkening: float) -> void:
 
 
 func background_color(y: float) -> Color:
-	return Color.BLACK.lerp(SURFACE_COLOR, inverse_lerp(BORDER_Y, GROUND_BOTTOM_Y, y))
+	return Color.BLACK.lerp(sky.ground_color, inverse_lerp(BORDER_Y, GROUND_BOTTOM_Y, y))
