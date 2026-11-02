@@ -65,7 +65,7 @@ func test_yes_removes_the_contract_for_good_with_no_payout() -> void:
 	check(not "#%03d TEST RUN" % removed.number in offers().contract_lines(),
 		"the Contracts column should drop it, lists %s" % offers().contract_lines())
 	check(offers().summary() == PackedStringArray(["PASSENGERS 1/4", "CARGO 1 000/6 920 KG",
-		"DELIVER WITHIN 1:30", "TOTAL VALUE €420"]), "the summary should count only the kept Contract, got %s" % offers().summary())
+		"DELIVER WITHIN 3H 00M", "TOTAL VALUE €420"]), "the summary should count only the kept Contract, got %s" % offers().summary())
 	check(economy().balance == 0, "removing should pay nothing, balance %d" % economy().balance)
 	check(economy().transactions.is_empty(), "removing should add no transaction")
 	check(not listed("#%03d " % removed.number), "the removed Contract should not return to the offers, lists %s" % offers().rows())

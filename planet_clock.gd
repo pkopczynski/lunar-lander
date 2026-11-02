@@ -58,5 +58,19 @@ func move_to(to: Location) -> void:
 
 
 func hhmm() -> String:
-	var whole := floori(minutes)
-	return "%02d:%02d" % [whole / 60, whole % 60]
+	return local_time(minutes)
+
+
+# A local time in in-game minutes since midnight as 14:30, counting on past midnight: a time
+# on the next day (at or past MINUTES_PER_DAY) reads 01:10 +1.
+static func local_time(at: float) -> String:
+	var whole := floori(at)
+	var day := whole / MINUTES_PER_DAY
+	var text := "%02d:%02d" % [whole % MINUTES_PER_DAY / 60, whole % 60]
+	return text + (" +%d" % day if day > 0 else "")
+
+
+# Real seconds as an in-game duration, 3H 00M, in whole in-game minutes.
+static func duration(real_seconds: float) -> String:
+	var whole := floori(real_seconds * MINUTES_PER_SECOND)
+	return "%dH %02dM" % [whole / 60, whole % 60]

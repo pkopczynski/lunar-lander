@@ -1,6 +1,11 @@
 extends "res://tests/scene_test.gd"
 
 
+# Sets the local time half a minute past hh:mm, so whole-minute readings aren't on a boundary.
+func set_time(hours: int, minutes: int) -> void:
+	clock().minutes = hours * 60 + minutes + 0.5
+
+
 func test_start_loading_closes_the_office_and_counts_down_3_s_plus_1_s_per_passenger_and_tonne() -> void:
 	# 3 s + 2 passengers + 7 000 kg = 12 s.
 	await start_loading([known_offer(2, 7000.0)])
@@ -56,10 +61,12 @@ func test_a_ship_refuels_while_loading_up_to_the_cap_from_the_first_frame() -> v
 func test_loading_adds_the_load_and_pumps_out_fuel_above_the_cap() -> void:
 	# A Sparrow has 12 000 kg for fuel and Load; 7 160 kg of Load leaves 4 840 kg for fuel.
 	await start_loading([known_offer(2, 7000.0)])
+	set_time(10, 0)
+	# 3 s + 2 passengers + 7 tonnes: loading finishes at 10:24, and 90 s is 3 in-game hours.
 	await seconds(12.5)
 	check(lander().total_mass() == 22000.0, "the Load should bring the Sparrow to 22 000 kg, got %s" % lander().total_mass())
 	check(lander().fuel == 4840.0, "fuel above the cap should be pumped out, has %s kg" % lander().fuel)
-	check(message() == "Docked!\nLoaded! Deliver within 1:30\nFuel limited to 4 840 kg",
+	check(message() == "Docked!\nLoaded! Deliver by 13:24\nFuel limited to 4 840 kg",
 		"the loaded message should give the deadline and the fuel cap, got %s" % message())
 	await seconds(Lander.REFUEL_DELAY + 1.0)
 	check(lander().fuel == 4840.0, "refuelling should stop at the cap, has %s kg" % lander().fuel)
@@ -73,39 +80,56 @@ func test_loading_adds_the_load_and_pumps_out_fuel_above_the_cap() -> void:
 func test_after_loading_refuelling_resumes_up_to_the_cap() -> void:
 	await start_loading([known_offer(1, 0.0)])
 	lander().fuel = 0.0
-	# 3 s + 1 passenger.
+	set_time(10, 0)
+	# 3 s + 1 passenger: loading finishes at 10:08, and 90 s is 3 in-game hours.
 	await seconds(4.5)
 	check(economy().phase == Economy.Phase.DELIVERING, "loading should have finished")
 	var after_loading := lander().fuel
 	check(after_loading > 0.0 and after_loading < lander().ship_type.tank,
 		"the ship should have refuelled part of the Tank while loading, has %s kg" % after_loading)
-	check(message() == "Docked!\nLoaded! Deliver within 1:30\nRefueling…",
+	check(message() == "Docked!\nLoaded! Deliver by 13:08\nRefueling…",
 		"a light Load gives no fuel warning and refuelling goes on, got %s" % message())
 	await seconds(Lander.REFUEL_DELAY + 0.5)
 	check(lander().fuel > after_loading, "refuelling should carry on after loading, has %s kg" % lander().fuel)
-	check(message().ends_with("Loaded! Deliver within 1:30\nRefueling…"),
+	check(message().ends_with("Loaded! Deliver by 13:08\nRefueling…"),
 		"the loaded message should stay while refuelling, got %s" % message())
 
 
-func test_the_delivery_timer_counts_down_from_the_shortest_deadline_then_turns_red_and_counts_up() -> void:
+func test_the_hud_shows_the_shortest_deadline_as_a_local_time_then_turns_red_once_overdue() -> void:
 	var urgent := known_offer(1, 0.0)
 	urgent.deadline = 60.0
-	check(hud().delivery_text() == "", "no delivery timer before loading, got %s" % hud().delivery_text())
+	check(hud().delivery_text() == "", "no deadline before loading, got %s" % hud().delivery_text())
 	await start_loading([known_offer(1, 0.0), urgent])
-	check(hud().delivery_text() == "", "no delivery timer while loading, got %s" % hud().delivery_text())
-	# 3 s + 2 passengers.
+	set_time(14, 0)
+	check(hud().delivery_text() == "", "no deadline while loading, got %s" % hud().delivery_text())
+	# 3 s + 2 passengers: loading finishes at 14:10, and 60 s is 2 in-game hours.
 	await seconds(5.0)
 	await frames(1)
 	check(economy().phase == Economy.Phase.DELIVERING, "loading should have finished")
-	check(hud().delivery_text() == "DELIVERY 1:00", "the clock should start from the shortest deadline, got %s" % hud().delivery_text())
-	check(not hud().delivery_overdue(), "the timer should not be red while on time")
+	check(hud().delivery_text() == "DELIVER BY 16:10", "the shortest deadline as a local time, got %s" % hud().delivery_text())
+	check(not hud().delivery_overdue(), "the deadline should not be red while on time")
 	await seconds(1.5)
-	check(hud().delivery_text() == "DELIVERY 0:59", "the timer should count down, got %s" % hud().delivery_text())
+	check(hud().delivery_text() == "DELIVER BY 16:10", "the deadline time should stay put, got %s" % hud().delivery_text())
 	check_near(economy().delivery_time, 1.5, 0.05, "the delivery clock")
-	await seconds(71.0)
+	await seconds(58.0)
+	check(not hud().delivery_overdue(), "not overdue just before the deadline")
+	await seconds(1.0)
 	check(lander().state == Lander.State.DOCKED, "the ship should still be Docked")
-	check(hud().delivery_text() == "OVERDUE +0:12", "the timer should count up once overdue, got %s" % hud().delivery_text())
-	check(hud().delivery_overdue(), "the timer should be red once overdue")
+	check(hud().delivery_text() == "OVERDUE SINCE 16:10", "the deadline once overdue, got %s" % hud().delivery_text())
+	check(hud().delivery_overdue(), "the deadline should be red once overdue")
+
+
+func test_a_deadline_past_midnight_shows_plus_1_in_the_message_and_the_hud() -> void:
+	await start_loading([known_offer(1, 0.0)])
+	set_time(22, 0)
+	# 3 s + 1 passenger: loading finishes at 22:08, and 90 s is 3 in-game hours.
+	await seconds(4.5)
+	check(economy().phase == Economy.Phase.DELIVERING, "loading should have finished")
+	check(message() == "Docked!\nLoaded! Deliver by 01:08 +1",
+		"the loaded message should give the next-day deadline, got %s" % message())
+	check(hud().delivery_text() == "DELIVER BY 01:08 +1", "the HUD should give the next-day deadline, got %s" % hud().delivery_text())
+	await seconds(91.0)
+	check(hud().delivery_text() == "OVERDUE SINCE 01:08 +1", "overdue keeps the next-day mark, got %s" % hud().delivery_text())
 
 
 func test_docking_while_loaded_shows_no_popup_and_leaves_the_ship_free() -> void:
