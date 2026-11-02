@@ -76,6 +76,29 @@ func pad_visual_center_x() -> float:
 	return (left + right) / 2.0
 
 
+# The ground's visual.
+func ground() -> Polygon2D:
+	return main().get_node("Ground/Polygon2D")
+
+
+# One of the mountains' visuals.
+func mountain() -> Polygon2D:
+	for child in main().get_node("Mountains").get_children():
+		if child is Polygon2D:
+			return child
+	return null
+
+
+# A Polygon2D's colour as drawn: its colour tinted by its own and its ancestors' modulate.
+func shown_color(item: Polygon2D) -> Color:
+	var color := item.color * item.self_modulate
+	var node: Node = item
+	while node is CanvasItem:
+		color *= (node as CanvasItem).modulate
+		node = node.get_parent()
+	return color
+
+
 func message() -> String:
 	var label: Label = main().get_node("UI/Message")
 	return label.text if label.visible else ""

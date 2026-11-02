@@ -59,7 +59,7 @@ func test_return_opens_and_closes_an_offers_details_and_leaves_the_cursor_on_its
 	check(offers().details(5).is_empty(), "no details should show before Return")
 	await press(&"ui_accept")
 	var details := offers().details(5)
-	for expected: String in ["PASSENGERS 3", "CARGO 1 200 KG", "DEADLINE 1:30", "TRADER TEST TRADER", "VALUE €420", "ACCEPT"]:
+	for expected: String in ["PASSENGERS 3", "CARGO 1 200 KG", "DEADLINE 3H 00M", "TRADER TEST TRADER", "VALUE €420", "ACCEPT"]:
 		check(expected in details, "the details should show %s, show %s" % [expected, details])
 	check(offers().list.expanded_rows() == [5], "the details should open under the selected row, open %s" % [offers().list.expanded_rows()])
 	check(offers().list.selected_index() == 5 and not offers().on_accept(), "opening should leave the cursor on the row")

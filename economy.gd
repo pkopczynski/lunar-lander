@@ -33,7 +33,7 @@ const UNLOADING_TIME_PER_PASSENGER := 0.5
 const UNLOADING_TIME_PER_TONNE := 0.5
 
 const LOADING_TEXT := "Loading… %ds"
-const LOADED_TEXT := "Loaded! Deliver within %s"
+const LOADED_TEXT := "Loaded! Deliver by %s"
 const FUEL_LIMITED_TEXT := "Fuel limited to %s"
 const UNLOADING_TEXT := "Unloading… %ds"
 
@@ -55,9 +55,12 @@ var phase := Phase.NONE
 var loading_left := 0.0
 # Seconds since loading finished; stops when the ship lands on the pad.
 var delivery_time := 0.0
+# The local time when loading finished, in in-game minutes since that day's midnight.
+var loaded_at := 0.0
 var unloading_left := 0.0
 
 @onready var lander: Lander = $"../Lander"
+@onready var clock: PlanetClock = $"../PlanetClock"
 
 
 func _ready() -> void:
@@ -116,8 +119,9 @@ func finish_loading() -> void:
 		return
 	phase = Phase.DELIVERING
 	delivery_time = 0.0
+	loaded_at = clock.minutes
 	lander.finish_loading()
-	var status := LOADED_TEXT % TransportOffer.countdown(deadline())
+	var status := LOADED_TEXT % PlanetClock.local_time(deadline_at())
 	if lander.fuel_cap() < lander.ship_type.tank:
 		status += "\n" + FUEL_LIMITED_TEXT % Hud.format_kg(lander.fuel_cap())
 	lander.show_status(status)
@@ -161,6 +165,12 @@ func deadline() -> float:
 	for contract in contracts:
 		shortest = minf(shortest, contract.deadline)
 	return shortest
+
+
+# The flight deadline as a local time, in in-game minutes since the midnight before loading
+# finished: at or past PlanetClock.MINUTES_PER_DAY when it falls on the next day.
+func deadline_at() -> float:
+	return loaded_at + deadline() * PlanetClock.MINUTES_PER_SECOND
 
 
 # Seconds left to deliver; negative once overdue.

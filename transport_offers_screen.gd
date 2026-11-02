@@ -233,7 +233,7 @@ func details(row: int) -> PackedStringArray:
 # The offer's details as [label, text] pairs.
 static func detail_pairs(offer: TransportOffer) -> Array[Array]:
 	return [["PASSENGERS", str(offer.passengers)], ["CARGO", Office.kg(offer.cargo_mass)],
-		["DEADLINE", TransportOffer.countdown(offer.deadline)], ["TRADER", offer.trader.to_upper()],
+		["DEADLINE", PlanetClock.duration(offer.deadline)], ["TRADER", offer.trader.to_upper()],
 		["VALUE", Economy.eur(offer.reward())]]
 
 
@@ -308,7 +308,7 @@ func summary_parts() -> Array[Array]:
 		parts.append([FUEL_LIMITED_LABEL, kg_of(ship.fuel_cap_for(load_mass), ship.ship_type.tank),
 			Office.RED, Office.RED])
 	if not economy.contracts.is_empty():
-		parts.append(["DELIVER WITHIN", TransportOffer.countdown(economy.deadline()), Office.GREEN, Office.WHITE])
+		parts.append(["DELIVER WITHIN", PlanetClock.duration(economy.deadline()), Office.GREEN, Office.WHITE])
 		parts.append(["TOTAL VALUE", Economy.eur(total_value()), Office.GREEN, Office.WHITE])
 	return parts
 

@@ -21,8 +21,8 @@ const OVERDUE_COLOR := Color(1.0, 0.3, 0.3)
 const TIMER_FONT_SIZE := 24
 const TIMER_MARGIN := Vector2(24, 40)
 const TIMER_LINE_HEIGHT := 32.0
-const DELIVERY_PREFIX := "DELIVERY "
-const OVERDUE_PREFIX := "OVERDUE +"
+const DELIVERY_PREFIX := "DELIVER BY "
+const OVERDUE_PREFIX := "OVERDUE SINCE "
 
 # The payout that rises above the ship and fades.
 const PAYOUT_COLOR := Color(0.3, 1.0, 0.4)
@@ -109,15 +109,13 @@ func clock_text() -> String:
 	return "%s  %s" % [clock.location.name, clock.hhmm()]
 
 
-# DELIVERY 1:23 while delivering, OVERDUE +0:12 once late, "" otherwise.
+# The flight deadline as a local time while delivering: DELIVER BY 14:30, OVERDUE SINCE 14:30
+# once late (01:10 +1 on the next day), "" otherwise.
 func delivery_text() -> String:
 	if economy.phase != Economy.Phase.DELIVERING:
 		return ""
-	var left := economy.delivery_left()
-	if left >= 0.0:
-		return DELIVERY_PREFIX + TransportOffer.countdown(left)
-	# Whole overdue seconds, rounded down like the penalty.
-	return OVERDUE_PREFIX + TransportOffer.countdown(floorf(-left))
+	var prefix := OVERDUE_PREFIX if delivery_overdue() else DELIVERY_PREFIX
+	return prefix + PlanetClock.local_time(economy.deadline_at())
 
 
 func delivery_overdue() -> bool:
