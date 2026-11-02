@@ -4,7 +4,10 @@ extends Node2D
 const WORLD_WIDTH := 2000.0
 # Background drawn past the side edges, for windows wider than the world.
 const SIDE_OVERHANG := 1200.0
+# The Valley's ground; a location can lower it (the Mine's pit floor), keeping its depth.
+const GROUND_TOP_Y := 608.0
 const GROUND_BOTTOM_Y := 648.0
+const GROUND_DEPTH := GROUND_BOTTOM_Y - GROUND_TOP_Y
 # About 7 s of full thrust straight up from the pad.
 const BORDER_Y := -1660.0
 const SPACE_TOP_Y := -4260.0
@@ -82,6 +85,8 @@ var night_star_radii := PackedFloat32Array()
 
 @onready var mountains: StaticBody2D = $Mountains
 @onready var terrain: StaticBody2D = $Terrain
+@onready var ground: StaticBody2D = $Ground
+@onready var ground_visual: Polygon2D = $Ground/Polygon2D
 @onready var pad: Polygon2D = $Ground/Pad
 @onready var clock: PlanetClock = $PlanetClock
 @onready var lander: Lander = $Lander
@@ -101,7 +106,7 @@ func _ready() -> void:
 	])
 	clock.location_changed.connect(show_location)
 	show_location(location)
-	add_scenery($Ground/Polygon2D)
+	add_scenery(ground_visual)
 	show_sky()
 
 	var rng := RandomNumberGenerator.new()
@@ -152,9 +157,12 @@ func dim(visual: CanvasItem) -> void:
 	visual.self_modulate = Color.WHITE.darkened(sky.darkness)
 
 
-# Moves the surface to the clock's new location: its pad, and its terrain built afresh.
+# Moves the surface to the clock's new location: its ground's height (the pad sits on it), its
+# pad, and its terrain built afresh.
 func show_location(to: Location) -> void:
-	pad.position.x = to.pad_center_x - pad.get_parent().position.x
+	ground.position.y = to.ground_y + GROUND_DEPTH / 2.0
+	pad.position.x = to.pad_center_x - ground.position.x
+	queue_redraw()
 	for child in terrain.get_children():
 		terrain.remove_child(child)
 		child.queue_free()
@@ -167,6 +175,11 @@ func show_location(to: Location) -> void:
 		visual.color = TERRAIN_COLOR
 		terrain.add_child(visual)
 		add_scenery(visual)
+
+
+# The bottom of the current location's ground: the lowest the surface reaches.
+func ground_bottom() -> float:
+	return location.ground_y + GROUND_DEPTH
 
 
 func build_mountain(outline: PackedVector2Array) -> void:
@@ -210,6 +223,9 @@ func _draw() -> void:
 		Vector2(left, BORDER_Y), Vector2(right, BORDER_Y),
 		Vector2(right, GROUND_BOTTOM_Y), Vector2(left, GROUND_BOTTOM_Y),
 	]), PackedColorArray([Color.BLACK, Color.BLACK, sky.ground_color, sky.ground_color]))
+	# Down into the open-pit mine, below the Valley's ground, the sky keeps its ground colour.
+	if ground_bottom() > GROUND_BOTTOM_Y:
+		draw_rect(Rect2(left, GROUND_BOTTOM_Y, right - left, ground_bottom() - GROUND_BOTTOM_Y), sky.ground_color)
 	# Stars go behind the Backdrop; the ground and mountains, child nodes, cover them too.
 	for star in shown_stars():
 		draw_circle(star.position, star.radius, star.color)
@@ -221,8 +237,8 @@ func _draw() -> void:
 # a shadow of the sky behind it.
 func draw_ridge(top_edge: Array, darkening: float) -> void:
 	var outline := PackedVector2Array(top_edge)
-	outline.append(Vector2(outline[-1].x, GROUND_BOTTOM_Y))
-	outline.append(Vector2(outline[0].x, GROUND_BOTTOM_Y))
+	outline.append(Vector2(outline[-1].x, ground_bottom()))
+	outline.append(Vector2(outline[0].x, ground_bottom()))
 	var colors := PackedColorArray()
 	for point in outline:
 		colors.append(background_color(point.y).darkened(darkening))
@@ -230,4 +246,4 @@ func draw_ridge(top_edge: Array, darkening: float) -> void:
 
 
 func background_color(y: float) -> Color:
-	return Color.BLACK.lerp(sky.ground_color, inverse_lerp(BORDER_Y, GROUND_BOTTOM_Y, y))
+	return Color.BLACK.lerp(sky.ground_color, clampf(inverse_lerp(BORDER_Y, GROUND_BOTTOM_Y, y), 0.0, 1.0))

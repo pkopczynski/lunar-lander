@@ -1,12 +1,20 @@
 class_name Location
 extends RefCounted
 # The location table: every place on the planet the station can be above, with its pad and
-# terrain. The mountain side walls, ground, backdrop, deep space and station are shared.
+# terrain and its ground's height. The mountain side walls, backdrop, deep space and station
+# are shared.
+
+# The open-pit mine's benches step down from the Valley's ground level, three steps a side, the
+# last one onto the pit floor.
+const BENCH_STEP := 60.0
+const PIT_DEPTH := 3.0 * BENCH_STEP
 
 # Shown in the HUD.
 var name: String
 # The pad's centre, in world x.
 var pad_center_x: float
+# The top of the ground here, where the pad sits and ships land, in world y.
+var ground_y := World.GROUND_TOP_Y
 # Solid polygons added to the shared ground and mountains; touching them crashes the ship.
 var terrain: Array[PackedVector2Array] = []
 
@@ -24,22 +32,29 @@ static func valley() -> Location:
 	return location
 
 
-# An open pit: stepped benches on both sides down to a pit floor at ground level, wider steps on
-# the left, with the pad off-centre on the floor toward the right. Each side reaches into its
-# mountain and down to the ground's bottom, so the benches read as ground the pit is cut into.
+# An open-pit mine: stepped benches cut down into the ground on both sides to a pit floor below
+# the Valley's ground, wider steps on the left, with the pad off-centre on the pit floor toward
+# the right. Each side reaches under its mountain and down to the ground's bottom, so no sky
+# shows below the Valley's ground outside the open-pit mine.
 static func mine() -> Location:
 	var location := Location.new()
 	location.name = "MINE"
 	location.pad_center_x = 1300.0
-	var bottom := World.GROUND_BOTTOM_Y
+	location.ground_y = World.GROUND_TOP_Y + PIT_DEPTH
+	var top := World.GROUND_TOP_Y
+	var bottom := location.ground_y + World.GROUND_DEPTH
+	var left := -World.SIDE_OVERHANG
+	var right := World.WORLD_WIDTH + World.SIDE_OVERHANG
 	location.terrain = [
 		PackedVector2Array([
-			Vector2(100, 428), Vector2(450, 428), Vector2(450, 488), Vector2(650, 488),
-			Vector2(650, 548), Vector2(850, 548), Vector2(850, bottom), Vector2(100, bottom),
+			Vector2(left, top), Vector2(450, top), Vector2(450, top + BENCH_STEP),
+			Vector2(650, top + BENCH_STEP), Vector2(650, top + 2.0 * BENCH_STEP),
+			Vector2(850, top + 2.0 * BENCH_STEP), Vector2(850, bottom), Vector2(left, bottom),
 		]),
 		PackedVector2Array([
-			Vector2(1450, bottom), Vector2(1450, 548), Vector2(1550, 548), Vector2(1550, 488),
-			Vector2(1650, 488), Vector2(1650, 428), Vector2(1900, 428), Vector2(1900, bottom),
+			Vector2(1450, bottom), Vector2(1450, top + 2.0 * BENCH_STEP),
+			Vector2(1550, top + 2.0 * BENCH_STEP), Vector2(1550, top + BENCH_STEP),
+			Vector2(1650, top + BENCH_STEP), Vector2(1650, top), Vector2(right, top), Vector2(right, bottom),
 		]),
 	]
 	return location

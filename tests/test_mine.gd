@@ -93,7 +93,7 @@ func test_every_ship_type_can_fly_down_into_the_pit_and_land_on_the_mines_pad() 
 func test_touching_down_on_the_pit_floor_where_the_valleys_pad_would_be_crashes() -> void:
 	await choose_ship()
 	clock().move_to(Location.MINE)
-	place(Vector2(Location.VALLEY.pad_center_x, 580), Vector2(0, 20))
+	place(Vector2(Location.VALLEY.pad_center_x, Location.MINE.ground_y - 28.0), Vector2(0, 20))
 	await seconds(1.0)
 	check(message().begins_with("Crashed"),
 		"the Valley's pad spot isn't the Mine's pad, so touching down there should crash, got %s" % message())
@@ -102,8 +102,8 @@ func test_touching_down_on_the_pit_floor_where_the_valleys_pad_would_be_crashes(
 func test_touching_a_bench_crashes_and_the_valley_has_no_benches() -> void:
 	await choose_ship()
 	clock().move_to(Location.MINE)
-	# Gently onto the middle left bench, whose top is at y 488.
-	place(Vector2(550, 440), Vector2(0, 20))
+	# Gently onto the middle left bench, one step down from the Valley's ground.
+	place(Vector2(550, World.GROUND_TOP_Y + Location.BENCH_STEP - 48.0), Vector2(0, 20))
 	await seconds(1.5)
 	check(message().begins_with("Crashed"), "touching a bench should crash, got %s" % message())
 	clock().move_to(Location.VALLEY)
@@ -127,7 +127,7 @@ func test_landing_on_the_mines_pad_while_delivering_unloads_and_is_delivered_to_
 	await start_loading_at_the_mine()
 	await seconds(4.5)
 	check(economy().phase == Economy.Phase.DELIVERING, "loading should have finished")
-	place(Vector2(pad_x(), 580), Vector2(0, 20))
+	place(Vector2(pad_x(), Location.MINE.ground_y - 28.0), Vector2(0, 20))
 	await seconds(0.5)
 	check(lander().state == Lander.State.LANDED, "touching down on the Mine's pad should land, says %s" % message())
 	check(economy().phase == Economy.Phase.UNLOADING, "landing on the Mine's pad should start unloading")
@@ -156,3 +156,36 @@ func test_the_benches_dim_at_night_and_the_pad_doesnt() -> void:
 	var pad: Polygon2D = main().get_node("Ground/Pad")
 	check(shown_color(bench).v < bench.color.v * 0.8, "the benches should dim at night, shown %s" % shown_color(bench))
 	check(shown_color(pad) == pad.color, "the pad shouldn't dim, shown %s" % shown_color(pad))
+
+
+# The visible area of the world, as the camera shows it.
+func view() -> Rect2:
+	return main().get_viewport().get_canvas_transform().affine_inverse() * main().get_viewport_rect()
+
+
+func test_the_open_pit_mine_is_cut_into_the_ground_down_to_a_pit_floor_below_the_valleys() -> void:
+	await choose_ship()
+	place(Vector2(1000, 100))
+	await press(&"restart")
+	var valley_ground := lander().ground_top()
+	var valley_y := lander().position.y
+	clock().move_to(Location.MINE)
+	place(Vector2(1000, 100))
+	await press(&"restart")
+	await seconds(1.0)
+	check(lander().state == Lander.State.LANDED, "R at the Mine should land on the pad on the pit floor, says %s" % message())
+	check(lander().position.y > valley_y + 100.0,
+		"the Mine's pad should sit on a pit floor well below the Valley's ground, y %s vs %s" % [lander().position.y, valley_y])
+	var highest := INF
+	for child in main().get_node("Terrain").get_children():
+		if child is Polygon2D:
+			for point: Vector2 in (child as Polygon2D).polygon:
+				highest = minf(highest, point.y)
+	check(highest >= valley_ground - 0.01,
+		"no bench should rise above the Valley's ground (y %s), the highest reaches %s" % [valley_ground, highest])
+	var pad: Polygon2D = main().get_node("Ground/Pad")
+	check(view().has_point(pad.global_position), "the camera should show the pad on the pit floor, view %s, pad %s" % [view(), pad.global_position])
+	clock().move_to(Location.VALLEY)
+	place(Vector2(1000, 100))
+	await press(&"restart")
+	check_near(lander().position.y, valley_y, 0.01, "back at the Valley the pad should be at the Valley's ground again")
