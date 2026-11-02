@@ -25,7 +25,6 @@ const MAX_LANDING_HORIZONTAL_SPEED := 25.0
 const MAX_LANDING_ANGLE_DEG := 15.0
 const MAX_DOCKING_SPEED := 40.0
 
-const PAD_CENTER_X := World.WORLD_WIDTH / 2.0
 const PAD_WIDTH := 120.0
 const PAD_HEIGHT := 6.0
 
@@ -107,8 +106,8 @@ var refueling := false
 @onready var flame: Polygon2D = $Flame
 @onready var hull: CollisionPolygon2D = $CollisionPolygon2D
 @onready var camera: FollowCamera = $Camera
+@onready var world: World = $".."
 @onready var ground: StaticBody2D = $"../Ground"
-@onready var pad: Polygon2D = $"../Ground/Pad"
 @onready var station: Station = $"../Station"
 @onready var message: Label = $"../UI/Message"
 
@@ -116,12 +115,6 @@ var refueling := false
 func _ready() -> void:
 	rng.randomize()
 	start_docked(ShipType.SPARROW)
-	var half := PAD_WIDTH / 2.0
-	pad.position.x = PAD_CENTER_X - pad.get_parent().position.x
-	pad.polygon = PackedVector2Array([
-		Vector2(-half, -PAD_HEIGHT), Vector2(half, -PAD_HEIGHT),
-		Vector2(half, 0), Vector2(-half, 0),
-	])
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -156,7 +149,7 @@ func reset_to_pad() -> void:
 	for point in hull.polygon:
 		hull_bottom = maxf(hull_bottom, point.y)
 	enter(State.LANDED)
-	move_to(Vector2(PAD_CENTER_X, ground_top() - hull_bottom))
+	move_to(Vector2(pad_center_x(), ground_top() - hull_bottom))
 	landed_on_pad.emit()
 
 
@@ -391,10 +384,14 @@ func touched_only_ground() -> bool:
 	return true
 
 
+func pad_center_x() -> float:
+	return world.location.pad_center_x
+
+
 func is_safe_landing(impact_velocity: Vector2) -> bool:
 	# angle_difference() wraps to [-PI, PI], so e.g. 350° counts as 10° from upright.
 	var tilt := absf(angle_difference(0.0, rotation))
-	var on_pad := absf(position.x - PAD_CENTER_X) <= PAD_WIDTH / 2.0
+	var on_pad := absf(position.x - pad_center_x()) <= PAD_WIDTH / 2.0
 	return impact_velocity.y <= MAX_LANDING_VERTICAL_SPEED \
 		and absf(impact_velocity.x) <= MAX_LANDING_HORIZONTAL_SPEED \
 		and tilt <= deg_to_rad(MAX_LANDING_ANGLE_DEG) \

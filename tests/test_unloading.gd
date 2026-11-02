@@ -131,7 +131,7 @@ func test_landing_on_the_pad_without_a_load_works_as_before() -> void:
 func test_the_debug_pad_shortcut_delivers_even_after_a_crash_on_the_surface() -> void:
 	await start_loading([known_offer(1, 0.0)])
 	await seconds(4.5)
-	place(Vector2(Lander.PAD_CENTER_X + 400.0, 560), Vector2(0, 200))
+	place(Vector2(pad_x() + 400.0, 560), Vector2(0, 200))
 	await seconds(1.0)
 	check(lander().state == Lander.State.CRASHED, "the ship should crash on the Surface")
 	await deliver_by_shortcut()
@@ -196,7 +196,7 @@ func deliver_by_shortcut() -> void:
 
 # Flies the ship down onto the pad from just above it.
 func land_on_the_pad() -> void:
-	place(Vector2(Lander.PAD_CENTER_X, 580.0), Vector2(0, 20))
+	place(Vector2(pad_x(), 580.0), Vector2(0, 20))
 	for i in roundi(4.0 * PHYSICS_FPS):
 		if lander().state == Lander.State.LANDED:
 			break

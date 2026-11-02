@@ -36,6 +36,10 @@ func main() -> Node:
 	return tree.current_scene
 
 
+func world() -> World:
+	return main()
+
+
 func lander() -> Lander:
 	return main().get_node("Lander")
 
@@ -50,6 +54,22 @@ func economy() -> Economy:
 
 func station() -> Station:
 	return main().get_node("Station")
+
+
+# The current location's pad centre x.
+func pad_x() -> float:
+	return world().location.pad_center_x
+
+
+# The middle of the drawn pad, in world x.
+func pad_visual_center_x() -> float:
+	var pad: Polygon2D = main().get_node("Ground/Pad")
+	var left := INF
+	var right := -INF
+	for point in pad.polygon:
+		left = minf(left, pad.to_global(point).x)
+		right = maxf(right, pad.to_global(point).x)
+	return (left + right) / 2.0
 
 
 func message() -> String:
@@ -246,7 +266,7 @@ func top_climb_speed_to_the_border() -> float:
 # Height in px climbed in 1 s of full thrust from rest at pad altitude (full gravity).
 func climb_off_the_pad() -> float:
 	var ship := lander()
-	var start := Vector2(Lander.PAD_CENTER_X, 400.0)
+	var start := Vector2(pad_x(), 400.0)
 	place(start)
 	hold(&"ui_up")
 	await seconds(1.0)

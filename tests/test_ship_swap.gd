@@ -81,7 +81,7 @@ func declining_refuels_after_the_delay(action: StringName) -> void:
 
 func test_landing_on_the_pad_shows_no_office_popup() -> void:
 	await choose_ship()
-	place(Vector2(Lander.PAD_CENTER_X, 580), Vector2(0, 20))
+	place(Vector2(pad_x(), 580), Vector2(0, 20))
 	await seconds(4.0)
 	check(lander().state == Lander.State.LANDED, "the ship should be Landed on the pad")
 	check(office().popup == Office.PopupKind.NONE, "landing on the pad should not open the Enter-the-Office popup")
