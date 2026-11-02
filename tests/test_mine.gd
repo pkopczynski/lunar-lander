@@ -123,7 +123,7 @@ func test_the_debug_pad_shortcut_puts_the_ship_on_the_mines_pad() -> void:
 	check_near(lander().position.x, Location.MINE.pad_center_x, 0.5, "x at the Mine's pad centre")
 
 
-func test_landing_on_the_mines_pad_while_delivering_starts_unloading() -> void:
+func test_landing_on_the_mines_pad_while_delivering_unloads_and_is_delivered_to_the_mine() -> void:
 	await start_loading_at_the_mine()
 	await seconds(4.5)
 	check(economy().phase == Economy.Phase.DELIVERING, "loading should have finished")
@@ -131,6 +131,16 @@ func test_landing_on_the_mines_pad_while_delivering_starts_unloading() -> void:
 	await seconds(0.5)
 	check(lander().state == Lander.State.LANDED, "touching down on the Mine's pad should land, says %s" % message())
 	check(economy().phase == Economy.Phase.UNLOADING, "landing on the Mine's pad should start unloading")
+	await seconds(3.0)
+	check(economy().phase == Economy.Phase.NONE, "unloading should have finished")
+	await dock_in_spot()
+	await press(&"ui_left")
+	await press(&"ui_accept")
+	await wait_for_terminal()
+	await open_bank_account()
+	await press(&"ui_accept")
+	var details := office().bank_account.details(0)
+	check("DELIVERED TO MINE" in details, "a Mine delivery should show DELIVERED TO MINE, shows %s" % details)
 
 
 func test_the_benches_dim_at_night_and_the_pad_doesnt() -> void:
