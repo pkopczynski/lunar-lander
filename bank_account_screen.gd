@@ -81,16 +81,15 @@ func details(row: int) -> PackedStringArray:
 	return texts
 
 
-# How the payout was worked out, as [label, text] pairs. The deadline is the flight's, which
-# the penalty was counted against.
+# How the payout was worked out, as [label, text] pairs, times local. The deadline is the
+# flight's, which the penalty was counted against.
 static func detail_pairs(transaction: TransportOffer.Transaction) -> Array[Array]:
-	var overdue := transaction.overdue_seconds()
 	var penalty := Economy.eur(0)
-	if overdue > 0:
-		penalty = "%s (%d S OVERDUE)" % [Economy.eur(-transaction.penalty), overdue]
+	if transaction.overdue_seconds() > 0:
+		penalty = "%s (%d MIN OVERDUE)" % [Economy.eur(-transaction.penalty), transaction.overdue_minutes()]
 	return [["BASE VALUE", Economy.eur(transaction.reward)], ["PENALTY", penalty],
-		["PAYOUT", Economy.eur(transaction.payout)], ["DEADLINE", TransportOffer.countdown(transaction.deadline)],
-		["DELIVERED IN", TransportOffer.countdown(floorf(transaction.delivery_time))],
+		["PAYOUT", Economy.eur(transaction.payout)], ["DEADLINE", PlanetClock.local_time(transaction.deadline_at)],
+		["LANDED", PlanetClock.local_time(transaction.landed_at)], ["DELIVERED TO", transaction.delivered_to],
 		["SHIP", transaction.ship.to_upper()]]
 
 

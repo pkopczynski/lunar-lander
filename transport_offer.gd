@@ -54,12 +54,22 @@ class Transaction:
 	var payout: int
 	var deadline: float
 	var delivery_time: float
+	# The flight deadline and the landing as local times, in in-game minutes since the midnight
+	# before loading finished: at or past PlanetClock.MINUTES_PER_DAY on the next day.
+	var deadline_at: float
+	var landed_at: float
+	# The name of the location it was delivered to.
+	var delivered_to: String
 	# The name of the ship type that delivered it.
 	var ship: String
 
 	# Whole seconds overdue, rounded down like the red counter.
 	func overdue_seconds() -> int:
 		return maxi(floori(delivery_time - deadline), 0)
+
+	# The whole seconds overdue as in-game minutes.
+	func overdue_minutes() -> int:
+		return roundi(overdue_seconds() * PlanetClock.MINUTES_PER_SECOND)
 
 
 var number: int
