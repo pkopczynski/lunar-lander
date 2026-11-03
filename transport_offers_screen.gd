@@ -389,7 +389,7 @@ func draw(area: Rect2) -> void:
 				HORIZONTAL_ALIGNMENT_LEFT, color)
 			var countdown := PlanetClock.countdown(offer.time_left)
 			office.draw_text(countdown, baseline, Office.TEXT_SIZE, width, HORIZONTAL_ALIGNMENT_RIGHT,
-				Office.BLACK if selected else countdown_color(offer))
+				countdown_color(offer) if color == Office.GREEN else color)
 			office.draw_text(TransportOffer.KIND_LABELS[offer.kind()] + "   ", baseline, Office.TEXT_SIZE,
 				width - office.text_width(countdown, Office.TEXT_SIZE), HORIZONTAL_ALIGNMENT_RIGHT, color)
 		y += ROW_HEIGHT
