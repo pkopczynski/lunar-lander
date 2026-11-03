@@ -7,8 +7,6 @@ extends Node
 const MINUTES_PER_DAY := 1440
 # 120× real time: a whole day lasts 12 real minutes.
 const MINUTES_PER_SECOND := 2.0
-# A countdown shows whole in-game hours until this many real seconds are left, then minutes.
-const HOURS_COUNTDOWN_ABOVE := 30.0
 
 # The start periods: the parts of the day a mission can start in, each six hours long
 # from midnight (Night 00:00-05:59, Morning 06:00-11:59, Day 12:00-17:59, Evening 18:00-23:59).
@@ -104,10 +102,15 @@ static func duration(real_seconds: float) -> String:
 	return "%dH %02dM" % [whole / 60, whole % 60]
 
 
-# Real seconds left as an in-game countdown: whole hours (20H, 1H), then, once
-# HOURS_COUNTDOWN_ABOVE real seconds or fewer are left, minutes (60M, a started one counting).
+# Real seconds left as an in-game countdown, a started hour or minute counting as a whole one:
+# hours (20H … 2H) while more than an hour is left, then minutes (60M … 1M).
 static func countdown(real_seconds: float) -> String:
-	var minutes_left := real_seconds * MINUTES_PER_SECOND
-	if real_seconds > HOURS_COUNTDOWN_ABOVE:
-		return "%dH" % floori(minutes_left / 60.0)
-	return "%dM" % maxi(ceili(minutes_left), 0)
+	var minutes_left := maxi(ceili(real_seconds * MINUTES_PER_SECOND), 0)
+	if minutes_left > 60:
+		return "%dH" % ceili(minutes_left / 60.0)
+	return "%dM" % minutes_left
+
+
+# Whether a countdown of real seconds left is in its last in-game hour, counting minutes.
+static func in_last_hour(real_seconds: float) -> bool:
+	return real_seconds * MINUTES_PER_SECOND <= 60.0

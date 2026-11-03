@@ -10,22 +10,25 @@ func test_the_screen_lists_five_offers_whose_countdowns_run_while_the_office_is_
 	for row in rows:
 		check(countdown.search(row) != null, "a row should show number, title, kind and whole in-game hours, got %s" % row)
 	economy().put_offer(known_offer(1, 0.0, 31.25))
-	check(offers().rows()[-1].ends_with(" 1H"), "31.25 s is 62.5 in-game minutes, whole hours: %s" % offers().rows()[-1])
+	check(offers().rows()[-1].ends_with(" 2H"), "31.25 s is 62.5 in-game minutes, a started hour counting: %s" % offers().rows()[-1])
 	await seconds(2.0)
 	check(tree.paused, "the Office should keep the world paused")
 	check(offers().rows()[-1].ends_with(" 59M"), "the countdown should run while the Office is open, into minutes: %s" % offers().rows()[-1])
 
 
-func test_an_offer_counts_down_in_in_game_hours_then_minutes_for_its_last_30_seconds() -> void:
+func test_an_offer_counts_down_in_started_in_game_hours_then_red_minutes_for_its_last_hour() -> void:
 	await open_transport_offers()
 	economy().put_offer(known_offer(1, 0.0, 600.0))
 	check(offers().rows()[-1].ends_with(" 20H"), "600 s is 20 in-game hours: %s" % offers().rows()[-1])
+	check(TransportOffersScreen.countdown_color(economy().offers[-1]) == Office.WHITE, "hours should show white")
 	economy().offers[-1].time_left = 89.75
-	check(offers().rows()[-1].ends_with(" 2H"), "179.5 in-game minutes shows whole hours, 2H: %s" % offers().rows()[-1])
+	check(offers().rows()[-1].ends_with(" 3H"), "179.5 in-game minutes is in its third hour, 3H: %s" % offers().rows()[-1])
 	economy().offers[-1].time_left = 30.25
-	check(offers().rows()[-1].ends_with(" 1H"), "just over 30 s still shows hours: %s" % offers().rows()[-1])
+	check(offers().rows()[-1].ends_with(" 2H"), "just over an in-game hour still shows hours, 2H: %s" % offers().rows()[-1])
+	check(TransportOffersScreen.countdown_color(economy().offers[-1]) == Office.WHITE, "just over an hour should still be white")
 	economy().offers[-1].time_left = 30.0
 	check(offers().rows()[-1].ends_with(" 60M"), "30 s is 60 in-game minutes: %s" % offers().rows()[-1])
+	check(TransportOffersScreen.countdown_color(economy().offers[-1]) == Office.RED, "the last in-game hour should be red")
 	economy().offers[-1].time_left = 0.2
 	check(offers().rows()[-1].ends_with(" 1M"), "a started in-game minute counts as a whole one: %s" % offers().rows()[-1])
 

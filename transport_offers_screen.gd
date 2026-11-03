@@ -352,6 +352,11 @@ static func row_text(offer: TransportOffer) -> String:
 		PlanetClock.countdown(offer.time_left)]
 
 
+# An offer's time to accept: white, red in its last in-game hour.
+static func countdown_color(offer: TransportOffer) -> Color:
+	return Office.RED if PlanetClock.in_last_hour(offer.time_left) else Office.WHITE
+
+
 # Drawing
 
 func draw(area: Rect2) -> void:
@@ -382,8 +387,11 @@ func draw(area: Rect2) -> void:
 		if ExpandableList.line_fits(baseline.y, Office.TEXT_SIZE, column):
 			office.draw_text(offer.label(), baseline, Office.TEXT_SIZE, width,
 				HORIZONTAL_ALIGNMENT_LEFT, color)
-			office.draw_text("%s   %s" % [TransportOffer.KIND_LABELS[offer.kind()], PlanetClock.countdown(offer.time_left)],
-				baseline, Office.TEXT_SIZE, width, HORIZONTAL_ALIGNMENT_RIGHT, color)
+			var countdown := PlanetClock.countdown(offer.time_left)
+			office.draw_text(countdown, baseline, Office.TEXT_SIZE, width, HORIZONTAL_ALIGNMENT_RIGHT,
+				Office.BLACK if selected else countdown_color(offer))
+			office.draw_text(TransportOffer.KIND_LABELS[offer.kind()] + "   ", baseline, Office.TEXT_SIZE,
+				width - office.text_width(countdown, Office.TEXT_SIZE), HORIZONTAL_ALIGNMENT_RIGHT, color)
 		y += ROW_HEIGHT
 		var note := red_note(offer)
 		for line: Array in [[reason, Office.DIM_GREEN], [note, Office.RED]]:
