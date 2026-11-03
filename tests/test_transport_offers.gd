@@ -5,13 +5,32 @@ func test_the_screen_lists_five_offers_whose_countdowns_run_while_the_office_is_
 	await open_transport_offers()
 	var rows := offers().rows()
 	check(rows.size() == 5, "the screen should list 5 Transport offers, lists %s" % rows)
-	var countdown := RegEx.create_from_string("^#\\d{3} .+ (PASSENGERS|CARGO|PASSENGERS \\+ CARGO) \\d+:\\d{2}$")
+	# Every new offer is open for at least 180 s, 6 in-game hours.
+	var countdown := RegEx.create_from_string("^#\\d{3} .+ (PASSENGERS|CARGO|PASSENGERS \\+ CARGO) \\d+H$")
 	for row in rows:
-		check(countdown.search(row) != null, "a row should show number, title, kind and m:ss, got %s" % row)
-	var before := rows[0]
+		check(countdown.search(row) != null, "a row should show number, title, kind and whole in-game hours, got %s" % row)
+	economy().put_offer(known_offer(1, 0.0, 31.25))
+	check(offers().rows()[-1].ends_with(" 2H"), "31.25 s is 62.5 in-game minutes, a started hour counting: %s" % offers().rows()[-1])
 	await seconds(2.0)
 	check(tree.paused, "the Office should keep the world paused")
-	check(offers().rows()[0] != before, "the countdown should advance while the Office is open: %s, then %s" % [before, offers().rows()[0]])
+	check(offers().rows()[-1].ends_with(" 59M"), "the countdown should run while the Office is open, into minutes: %s" % offers().rows()[-1])
+
+
+func test_an_offer_counts_down_in_started_in_game_hours_then_red_minutes_for_its_last_hour() -> void:
+	await open_transport_offers()
+	economy().put_offer(known_offer(1, 0.0, 600.0))
+	check(offers().rows()[-1].ends_with(" 20H"), "600 s is 20 in-game hours: %s" % offers().rows()[-1])
+	check(TransportOffersScreen.countdown_color(economy().offers[-1]) == Office.WHITE, "hours should show white")
+	economy().offers[-1].time_left = 89.75
+	check(offers().rows()[-1].ends_with(" 3H"), "179.5 in-game minutes is in its third hour, 3H: %s" % offers().rows()[-1])
+	economy().offers[-1].time_left = 30.25
+	check(offers().rows()[-1].ends_with(" 2H"), "just over an in-game hour still shows hours, 2H: %s" % offers().rows()[-1])
+	check(TransportOffersScreen.countdown_color(economy().offers[-1]) == Office.WHITE, "just over an hour should still be white")
+	economy().offers[-1].time_left = 30.0
+	check(offers().rows()[-1].ends_with(" 60M"), "30 s is 60 in-game minutes: %s" % offers().rows()[-1])
+	check(TransportOffersScreen.countdown_color(economy().offers[-1]) == Office.RED, "the last in-game hour should be red")
+	economy().offers[-1].time_left = 0.2
+	check(offers().rows()[-1].ends_with(" 1M"), "a started in-game minute counts as a whole one: %s" % offers().rows()[-1])
 
 
 func test_an_offer_whose_time_runs_out_disappears_and_nothing_takes_its_place() -> void:
@@ -59,7 +78,7 @@ func test_return_opens_and_closes_an_offers_details_and_leaves_the_cursor_on_its
 	check(offers().details(5).is_empty(), "no details should show before Return")
 	await press(&"ui_accept")
 	var details := offers().details(5)
-	for expected: String in ["PASSENGERS 3", "CARGO 1 200 KG", "DEADLINE 1:30", "TRADER TEST TRADER", "VALUE €420", "ACCEPT"]:
+	for expected: String in ["PASSENGERS 3", "CARGO 1 200 KG", "DEADLINE 3H 00M", "TRADER TEST TRADER", "VALUE €420", "ACCEPT"]:
 		check(expected in details, "the details should show %s, show %s" % [expected, details])
 	check(offers().list.expanded_rows() == [5], "the details should open under the selected row, open %s" % [offers().list.expanded_rows()])
 	check(offers().list.selected_index() == 5 and not offers().on_accept(), "opening should leave the cursor on the row")

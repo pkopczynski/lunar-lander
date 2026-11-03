@@ -5,6 +5,8 @@ extends RefCounted
 # while the screen is showing.
 
 enum Column { OFFERS, CONTRACTS }
+# The mission rows, top to bottom: what START LOADING passes to the planet clock.
+enum MissionRow { DESTINATION, START_PERIOD }
 
 # Layout. LIST_SHARE is the share of the screen's width the offer list takes; the rest is
 # left for the Contracts.
@@ -27,6 +29,8 @@ const CONTRACTS_TEXT := "CONTRACTS"
 const FUEL_LIMITED_LABEL := "FUEL LIMITED:"
 const FUEL_LIMITED_NOTE := "FUEL LIMITED"
 const START_LOADING_TEXT := "START LOADING"
+const DESTINATION_LABEL := "DESTINATION"
+const START_PERIOD_LABEL := "START PERIOD"
 const REMOVE_TEXT := "X"
 const KG_SUFFIX := " KG"
 const OFFER_EXPIRED_TEXT := "OFFER EXPIRED"
@@ -41,8 +45,12 @@ var focus := Column.OFFERS
 var list: ExpandableList
 # The offer whose ARE YOU SURE? is showing, if any.
 var accepting: TransportOffer
-# The Contracts column's cursor: a Contract's index, or the Contracts' count for START LOADING.
-var contract_index := 0
+# The destination and start period START LOADING passes to the planet clock.
+var destination := Location.VALLEY
+var start_period := PlanetClock.StartPeriod.EVENING
+# The Contracts column's cursor, walking its stops top to bottom: each Contract, each mission
+# row, then START LOADING.
+var cursor := 0
 var notice_text := ""
 var notice_left := 0.0
 
@@ -79,7 +87,7 @@ func show_notice(text: String) -> void:
 func handle_input(event: InputEvent) -> bool:
 	if event.is_action_pressed("ui_right"):
 		if focus != Column.CONTRACTS:
-			contract_index = economy.contracts.size()
+			cursor = start_loading_stop()
 		focus = Column.CONTRACTS
 	elif event.is_action_pressed("ui_left"):
 		focus = Column.OFFERS
@@ -100,15 +108,18 @@ func handle_input(event: InputEvent) -> bool:
 	return true
 
 
-# Up/Down walk the Contracts, then START LOADING. Escape is left to the Office.
+# Up/Down walk the Contracts, the mission rows, then START LOADING. Return on a mission row
+# cycles its value. Escape is left to the Office.
 func handle_contracts_input(event: InputEvent) -> bool:
 	if event.is_action_pressed("ui_up"):
-		contract_index = maxi(contract_index - 1, 0)
+		cursor = maxi(cursor - 1, 0)
 	elif event.is_action_pressed("ui_down"):
-		contract_index = mini(contract_index + 1, economy.contracts.size())
+		cursor = mini(cursor + 1, start_loading_stop())
 	elif event.is_action_pressed("ui_accept"):
 		if selected_contract() != null:
 			office.show_popup(Office.PopupKind.REMOVE_CONTRACT, Office.Choice.NO)
+		elif on_mission_row():
+			cycle_mission_row(selected_mission_row())
 		elif start_loading_enabled():
 			office.start_loading()
 	else:
@@ -126,7 +137,28 @@ func confirm_accept() -> void:
 # Yes on REMOVE CONTRACT?: the cursor stays on a Contract while any are left.
 func confirm_remove() -> void:
 	economy.remove_contract(selected_contract())
-	contract_index = maxi(mini(contract_index, economy.contracts.size() - 1), 0)
+	cursor = start_loading_stop() if economy.contracts.is_empty() else mini(cursor, economy.contracts.size() - 1)
+
+
+# Each time the Office opens, the mission rows start on the here and now: the current
+# location and the start period holding the current local time.
+func reset_mission_rows(clock: PlanetClock) -> void:
+	destination = clock.location
+	start_period = clock.start_period()
+
+
+# Return on a mission row: its next value, wrapping.
+func cycle_mission_row(row: MissionRow) -> void:
+	match row:
+		MissionRow.DESTINATION:
+			destination = destination.next()
+		MissionRow.START_PERIOD:
+			start_period = posmod(start_period + 1, PlanetClock.StartPeriod.size()) as PlanetClock.StartPeriod
+
+
+# The cursor's stop on START LOADING, after the Contracts and the mission rows.
+func start_loading_stop() -> int:
+	return economy.contracts.size() + MissionRow.size()
 
 
 # The left column of the screen's area.
@@ -148,10 +180,47 @@ func fits(offer: TransportOffer) -> bool:
 
 # Observable state
 
-# The Contract under the Contracts column's cursor, or null on START LOADING.
+# The Contract under the Contracts column's cursor, or null on a mission row or START LOADING.
 func selected_contract() -> TransportOffer:
-	contract_index = mini(contract_index, economy.contracts.size())
-	return economy.contracts[contract_index] if contract_index < economy.contracts.size() else null
+	cursor = mini(cursor, start_loading_stop())
+	return economy.contracts[cursor] if cursor < economy.contracts.size() else null
+
+
+func on_mission_row() -> bool:
+	cursor = mini(cursor, start_loading_stop())
+	return cursor >= economy.contracts.size() and cursor < start_loading_stop()
+
+
+# The mission row under the Contracts column's cursor; only meaningful on_mission_row().
+func selected_mission_row() -> MissionRow:
+	return (cursor - economy.contracts.size()) as MissionRow
+
+
+# The label of the mission row under the Contracts column's cursor, or "".
+func selected_mission_line() -> String:
+	return mission_label(selected_mission_row()) if on_mission_row() else ""
+
+
+func on_start_loading() -> bool:
+	return focus == Column.CONTRACTS and selected_contract() == null and not on_mission_row()
+
+
+# The mission rows between the summary and START LOADING, e.g. DESTINATION MINE.
+func mission_lines() -> PackedStringArray:
+	var lines := PackedStringArray()
+	for row: MissionRow in MissionRow.values():
+		lines.append("%s %s" % [mission_label(row), mission_value(row)])
+	return lines
+
+
+static func mission_label(row: MissionRow) -> String:
+	return DESTINATION_LABEL if row == MissionRow.DESTINATION else START_PERIOD_LABEL
+
+
+func mission_value(row: MissionRow) -> String:
+	if row == MissionRow.DESTINATION:
+		return destination.name
+	return PlanetClock.StartPeriod.keys()[start_period]
 
 
 # The notice showing, such as OFFER EXPIRED, or "".
@@ -177,7 +246,7 @@ func details(row: int) -> PackedStringArray:
 # The offer's details as [label, text] pairs.
 static func detail_pairs(offer: TransportOffer) -> Array[Array]:
 	return [["PASSENGERS", str(offer.passengers)], ["CARGO", Office.kg(offer.cargo_mass)],
-		["DEADLINE", TransportOffer.countdown(offer.deadline)], ["TRADER", offer.trader.to_upper()],
+		["DEADLINE", PlanetClock.duration(offer.deadline)], ["TRADER", offer.trader.to_upper()],
 		["VALUE", Economy.eur(offer.reward())]]
 
 
@@ -252,7 +321,7 @@ func summary_parts() -> Array[Array]:
 		parts.append([FUEL_LIMITED_LABEL, kg_of(ship.fuel_cap_for(load_mass), ship.ship_type.tank),
 			Office.RED, Office.RED])
 	if not economy.contracts.is_empty():
-		parts.append(["DELIVER WITHIN", TransportOffer.countdown(economy.deadline()), Office.GREEN, Office.WHITE])
+		parts.append(["DELIVER WITHIN", PlanetClock.duration(economy.deadline()), Office.GREEN, Office.WHITE])
 		parts.append(["TOTAL VALUE", Economy.eur(total_value()), Office.GREEN, Office.WHITE])
 	return parts
 
@@ -280,7 +349,12 @@ static func kg_of(part: float, whole: float) -> String:
 
 static func row_text(offer: TransportOffer) -> String:
 	return "%s %s %s" % [offer.label(), TransportOffer.KIND_LABELS[offer.kind()],
-		TransportOffer.countdown(offer.time_left)]
+		PlanetClock.countdown(offer.time_left)]
+
+
+# An offer's time to accept: white, red in its last in-game hour.
+static func countdown_color(offer: TransportOffer) -> Color:
+	return Office.RED if PlanetClock.in_last_hour(offer.time_left) else Office.WHITE
 
 
 # Drawing
@@ -313,8 +387,11 @@ func draw(area: Rect2) -> void:
 		if ExpandableList.line_fits(baseline.y, Office.TEXT_SIZE, column):
 			office.draw_text(offer.label(), baseline, Office.TEXT_SIZE, width,
 				HORIZONTAL_ALIGNMENT_LEFT, color)
-			office.draw_text("%s   %s" % [TransportOffer.KIND_LABELS[offer.kind()], TransportOffer.countdown(offer.time_left)],
-				baseline, Office.TEXT_SIZE, width, HORIZONTAL_ALIGNMENT_RIGHT, color)
+			var countdown := PlanetClock.countdown(offer.time_left)
+			office.draw_text(countdown, baseline, Office.TEXT_SIZE, width, HORIZONTAL_ALIGNMENT_RIGHT,
+				countdown_color(offer) if color == Office.GREEN else color)
+			office.draw_text(TransportOffer.KIND_LABELS[offer.kind()] + "   ", baseline, Office.TEXT_SIZE,
+				width - office.text_width(countdown, Office.TEXT_SIZE), HORIZONTAL_ALIGNMENT_RIGHT, color)
 		y += ROW_HEIGHT
 		var note := red_note(offer)
 		for line: Array in [[reason, Office.DIM_GREEN], [note, Office.RED]]:
@@ -348,20 +425,19 @@ func draw_notice(bottom_left: Vector2) -> void:
 		-1, HORIZONTAL_ALIGNMENT_LEFT, Office.BLACK)
 
 
-# CONTRACTS and its list (each with a plain X at its right end), the summary, then START LOADING
-# (dimmed while there are no Contracts); the Contract row or button under the cursor is inverted.
+# CONTRACTS and its list (each with a plain X at its right end), the summary, the mission rows
+# (green label, white value), then START LOADING (dimmed while there are no Contracts); the
+# row or button under the cursor is inverted.
 func draw_contracts(area: Rect2) -> void:
 	var y := area.position.y
 	var lines := contract_lines()
 	var focused := focus == Column.CONTRACTS
 	for i in lines.size():
 		y += ROW_HEIGHT
-		var selected := i > 0 and focused and contract_index == i - 1
+		var selected := i > 0 and focused and cursor == i - 1
 		var color := Office.BLACK if selected else Office.GREEN
 		if selected:
-			# The whole row inverted, like a selected offer, its text sharing the baseline.
-			office.terminal.draw_rect(Rect2(area.position.x - ROW_PADDING, y - (ROW_HEIGHT + Office.TEXT_SIZE) / 2.0,
-				area.size.x + 2.0 * ROW_PADDING, ROW_HEIGHT), Office.GREEN)
+			draw_selected_row(area, y)
 		office.draw_text(lines[i], Vector2(area.position.x, y), Office.TEXT_SIZE, area.size.x - REMOVE_WIDTH,
 			HORIZONTAL_ALIGNMENT_LEFT, color)
 		if i == 0:
@@ -375,15 +451,30 @@ func draw_contracts(area: Rect2) -> void:
 		y += ROW_HEIGHT
 		office.draw_label_value(part[0], part[1], Vector2(area.position.x, y), Office.TEXT_SIZE, area.size.x, part[2],
 			part[3])
+	y += ROW_HEIGHT
+	for row: MissionRow in MissionRow.values():
+		y += ROW_HEIGHT
+		var selected := focused and on_mission_row() and selected_mission_row() == row
+		if selected:
+			draw_selected_row(area, y)
+		office.draw_label_value(mission_label(row), mission_value(row), Vector2(area.position.x, y), Office.TEXT_SIZE,
+			area.size.x, Office.BLACK if selected else Office.GREEN, Office.BLACK if selected else Office.WHITE)
 	var button := Rect2(Vector2(area.position.x, y + ROW_HEIGHT), START_LOADING_SIZE)
 	var lit := Office.GREEN if start_loading_enabled() else Office.DIM_GREEN
-	focused = focused and selected_contract() == null
+	focused = on_start_loading()
 	if focused:
 		office.terminal.draw_rect(button, lit)
 	else:
 		office.terminal.draw_rect(button, lit, false, Office.LINE_WIDTH)
 	office.draw_text(START_LOADING_TEXT, Vector2(button.position.x, button.get_center().y + Office.TEXT_SIZE / 2.0),
 		Office.TEXT_SIZE, button.size.x, HORIZONTAL_ALIGNMENT_CENTER, Office.BLACK if focused else lit)
+
+
+# The whole Contracts column row at baseline y inverted, like a selected offer, its text sharing
+# the baseline.
+func draw_selected_row(area: Rect2, y: float) -> void:
+	office.terminal.draw_rect(Rect2(area.position.x - ROW_PADDING, y - (ROW_HEIGHT + Office.TEXT_SIZE) / 2.0,
+		area.size.x + 2.0 * ROW_PADDING, ROW_HEIGHT), Office.GREEN)
 
 
 # Draws the details in two columns under the row, labels green and values white (both dimmed

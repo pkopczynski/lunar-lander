@@ -4,7 +4,7 @@ extends "res://tests/scene_test.gd"
 func test_lands_on_the_pad() -> void:
 	await choose_ship()
 	var ship := lander()
-	place(Vector2(Lander.PAD_CENTER_X, 580), Vector2(0, 20))
+	place(Vector2(pad_x(), 580), Vector2(0, 20))
 	await seconds(4.0)
 	check(ship.state == Lander.State.LANDED, "Sparrow should be landed")
 	check(message().begins_with("Landed!"), "message should say Landed!, got %s" % message())
@@ -136,7 +136,7 @@ func test_a_load_still_weighs_fully_on_thrust_and_gravity() -> void:
 	release(&"ui_up")
 	check_near(-ship.velocity.y, 107.1, 2.0, "speed after 1 s of thrust in deep space with a Load")
 	ship.fuel = ship.ship_type.tank
-	place(Vector2(Lander.PAD_CENTER_X, 400.0))
+	place(Vector2(pad_x(), 400.0))
 	await seconds(1.0)
 	check_near(ship.velocity.y, 72.0, 2.5, "falling speed after 1 s at pad altitude with a Load")
 

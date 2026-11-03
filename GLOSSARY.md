@@ -45,8 +45,28 @@ The brief, dramatic camera zoom-in when the ship crosses the border, easing back
 _Avoid_: Zoom pulse, dolly
 
 **Pad**:
-The marked spot on the ground where the ship can land.
+The marked spot on the ground where the ship can land. Every location has one, and landing on the one below delivers the contracts.
 _Avoid_: Landing zone, base
+
+**Location**:
+The place on the planet currently below the station, whose surface the ship flies down to: the Valley or the Mine. It changes when a mission starts, and by itself after the ship has spent two whole days in deep space, to the next one in turn.
+_Avoid_: Level, map, destination (that's the location chosen for a mission)
+
+**Valley**:
+The location the game started with: flat ground between the mountains, with the pad in the middle and the backdrop behind.
+_Avoid_: Mountains (that's the solid side walls), Tatras
+
+**Mine**:
+The open-pit mine location: stepped benches cut down into the ground, with the pad on the pit floor. Touching the benches crashes the ship.
+_Avoid_: Quarry, pit
+
+**Local time**:
+The planet's clock at the current location, shown in the HUD as HH:MM. A whole day lasts twelve real minutes. It runs whenever the office isn't showing, and carries on unchanged when the location changes. It decides how the sky looks, and nothing else.
+_Avoid_: Clock (on its own), game time, mission time
+
+**Start period**:
+The part of the day a mission starts in, chosen in the office: Morning, Day, Evening or Night, each six hours long. Starting loading sets the local time to a random minute within it.
+_Avoid_: Time of day, start time
 
 **Station**:
 The structure spanning the top of deep space and forming the world's ceiling. Inside is a maze leading to the parking spot. Touching any of its walls crashes the ship.
@@ -100,6 +120,14 @@ _Avoid_: Offer (on its own), job, mission
 A transport offer the player has accepted. All contracts accepted together are delivered in one flight. A contract stays accepted when transport offers expire or the player leaves the office; before loading, the player can remove it for good.
 _Avoid_: Order, accepted offer
 
+**Mission**:
+Everything from the start of loading until the player next enters the office: loading, the delivery flight, unloading and the way back. A mission has one destination, chosen in the office together with its start period.
+_Avoid_: Delivery (that's only the flight from loading to landing), trip, run (that's from restart to crash)
+
+**Destination**:
+The location chosen in the office for a mission. Starting loading takes the ship's surface there.
+_Avoid_: Target, location (that's wherever the surface is right now)
+
 **Deadline**:
 How long the player has to deliver a contract, counted from when loading finishes.
 _Avoid_: Time limit, expiry (that's how long a transport offer stays available)
@@ -121,7 +149,7 @@ What a contract pays into the bank account once unloaded: its reward less a pena
 _Avoid_: Reward (that's before the penalty), income, score
 
 **Transaction**:
-One line in the bank account per delivered contract: its payout, opening to show its reward, penalty, the flight's deadline it was settled against and the delivery time.
+One line in the bank account per delivered contract: its payout, opening to show its reward, penalty, the flight's deadline it was settled against and the landing, both as local times, and the location it was delivered to.
 _Avoid_: Receipt, entry, log
 
 **Load**:

@@ -54,12 +54,22 @@ class Transaction:
 	var payout: int
 	var deadline: float
 	var delivery_time: float
+	# The flight deadline and the landing as local times, in in-game minutes since the midnight
+	# before loading finished: at or past PlanetClock.MINUTES_PER_DAY on the next day.
+	var deadline_at: float
+	var landed_at: float
+	# The name of the location it was delivered to.
+	var delivered_to: String
 	# The name of the ship type that delivered it.
 	var ship: String
 
 	# Whole seconds overdue, rounded down like the red counter.
 	func overdue_seconds() -> int:
 		return maxi(floori(delivery_time - deadline), 0)
+
+	# The whole seconds overdue as in-game minutes.
+	func overdue_minutes() -> int:
+		return roundi(overdue_seconds() * PlanetClock.MINUTES_PER_SECOND)
 
 
 var number: int
@@ -105,24 +115,22 @@ func misfit_reason(seats_left: int, cargo_left: float) -> String:
 
 # What it pays when delivered after delivery_time against the flight's deadline, for each
 # whole second overdue. The passenger and cargo parts are penalised separately, each never
-# below €0.
-func settlement(flight_deadline: float, delivery_time: float) -> Transaction:
+# below €0. The local times and the location are only recorded, for the payout's breakdown.
+func settlement(flight_deadline: float, delivery_time: float, deadline_at: float, landed_at: float,
+		delivered_to: Location) -> Transaction:
 	var transaction := Transaction.new()
 	transaction.contract = self
 	transaction.deadline = flight_deadline
 	transaction.delivery_time = delivery_time
+	transaction.deadline_at = deadline_at
+	transaction.landed_at = landed_at
+	transaction.delivered_to = delivered_to.name
 	var overdue := transaction.overdue_seconds()
 	transaction.reward = reward()
 	transaction.penalty = mini(roundi(passenger_reward * PASSENGER_PENALTY_SHARE * overdue), passenger_reward) \
 		+ mini(roundi(cargo_reward * CARGO_PENALTY_SHARE * overdue), cargo_reward)
 	transaction.payout = transaction.reward - transaction.penalty
 	return transaction
-
-
-# Whole seconds as m:ss, counting a started second as a whole one.
-static func countdown(seconds_left: float) -> String:
-	var whole := maxi(ceili(seconds_left), 0)
-	return "%d:%02d" % [whole / 60, whole % 60]
 
 
 # A random offer of at most max_passengers (at least 1) and max_cargo (at least MIN_CARGO).

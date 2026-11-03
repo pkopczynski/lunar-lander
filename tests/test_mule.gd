@@ -77,12 +77,12 @@ func test_mule_lands_on_the_pad_with_the_sparrows_limits() -> void:
 	await choose_ship(ShipType.MULE)
 	var ship := lander()
 	# Hull bottom ~6 px above the pad.
-	place(Vector2(Lander.PAD_CENTER_X, 568), Vector2(0, 20))
+	place(Vector2(pad_x(), 568), Vector2(0, 20))
 	await seconds(4.0)
 	check(ship.state == Lander.State.LANDED, "a gentle Mule should land on the pad, says %s" % message())
 	await restart()
 	await choose_ship(ShipType.MULE)
-	place(Vector2(Lander.PAD_CENTER_X, 500), Vector2(0, Lander.MAX_LANDING_VERTICAL_SPEED + 30.0))
+	place(Vector2(pad_x(), 500), Vector2(0, Lander.MAX_LANDING_VERTICAL_SPEED + 30.0))
 	await seconds(2.0)
 	check(message().begins_with("Crashed"), "a hard Mule landing should crash, got %s" % message())
 

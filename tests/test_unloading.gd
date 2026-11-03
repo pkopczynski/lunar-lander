@@ -34,7 +34,7 @@ func test_a_mixed_contract_delivered_late_loses_2_percent_of_passengers_and_1_pe
 	await start_loading([offer])
 	# 3 s + 1 passenger + 1 tonne of loading, then 12.7 s overdue.
 	await seconds(5.0 + 10.0 + 12.7)
-	check(hud().delivery_text() == "OVERDUE +0:12", "the ship should be 12 s overdue, got %s" % hud().delivery_text())
+	check(hud().delivery_overdue(), "the ship should be overdue, got %s" % hud().delivery_text())
 	await deliver_by_shortcut()
 	check(hud().delivery_text() == "", "the delivery timer should go once the ship has landed, got %s" % hud().delivery_text())
 	# 2 s + 0.5 s + 0.5 s.
@@ -131,7 +131,7 @@ func test_landing_on_the_pad_without_a_load_works_as_before() -> void:
 func test_the_debug_pad_shortcut_delivers_even_after_a_crash_on_the_surface() -> void:
 	await start_loading([known_offer(1, 0.0)])
 	await seconds(4.5)
-	place(Vector2(Lander.PAD_CENTER_X + 400.0, 560), Vector2(0, 200))
+	place(Vector2(pad_x() + 400.0, 560), Vector2(0, 200))
 	await seconds(1.0)
 	check(lander().state == Lander.State.CRASHED, "the ship should crash on the Surface")
 	await deliver_by_shortcut()
@@ -196,7 +196,7 @@ func deliver_by_shortcut() -> void:
 
 # Flies the ship down onto the pad from just above it.
 func land_on_the_pad() -> void:
-	place(Vector2(Lander.PAD_CENTER_X, 580.0), Vector2(0, 20))
+	place(Vector2(pad_x(), 580.0), Vector2(0, 20))
 	for i in roundi(4.0 * PHYSICS_FPS):
 		if lander().state == Lander.State.LANDED:
 			break

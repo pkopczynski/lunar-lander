@@ -111,6 +111,7 @@ var bank_account: BankAccountScreen
 
 @onready var lander: Lander = $"../Lander"
 @onready var economy: Economy = $"../Economy"
+@onready var clock: PlanetClock = $"../PlanetClock"
 @onready var terminal: Control = $Terminal
 
 
@@ -219,6 +220,7 @@ func open() -> void:
 	visible = true
 	screen = Screen.MAIN
 	popup = PopupKind.NONE
+	transport_offers.reset_mission_rows(clock)
 	get_tree().paused = true
 	power_to(1.0)
 
@@ -232,9 +234,14 @@ func power_off(after_closing: Callable) -> void:
 		after_closing.call())
 
 
-# Loading starts over the flight view once the Terminal is off.
+# Loading starts over the flight view once the Terminal is off, and the mission starts at the
+# chosen destination in the chosen start period: the local time is re-rolled within it every time.
 func start_loading() -> void:
-	power_off(economy.start_loading)
+	var destination := transport_offers.destination
+	var period := transport_offers.start_period
+	power_off(func() -> void:
+		clock.start_mission(destination, period)
+		economy.start_loading())
 
 
 func power_to(target: float, done := Callable()) -> void:

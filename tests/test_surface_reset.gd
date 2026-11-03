@@ -19,7 +19,7 @@ func test_r_on_the_surface_teleports_to_the_pad_landed() -> void:
 	check(not office().showing, "R on the Surface should not open the Office")
 	check(ship.state == Lander.State.LANDED, "the ship should be Landed after the teleport")
 	check(not ship.in_deep_space, "the ship should still be on the Surface")
-	check_near(ship.position.x, Lander.PAD_CENTER_X, 0.5, "x at the pad centre")
+	check_near(ship.position.x, pad_x(), 0.5, "x at the pad centre")
 	check_near(ship.rotation, 0.0, 0.0001, "rotation (upright)")
 	check(ship.velocity == Vector2.ZERO, "velocity should be zero, got %s" % ship.velocity)
 	check(message().begins_with("Landed!"), "the message should say Landed!, got %s" % message())
@@ -47,7 +47,7 @@ func test_the_teleported_ship_rests_on_the_pad_and_can_lift_off() -> void:
 func test_r_after_a_crash_on_the_surface_teleports_to_the_pad() -> void:
 	await choose_ship()
 	var ship := lander()
-	place(Vector2(Lander.PAD_CENTER_X + 400.0, 560), Vector2(0, 200))
+	place(Vector2(pad_x() + 400.0, 560), Vector2(0, 200))
 	await seconds(1.0)
 	check(message().begins_with("Crashed"), "should have crashed, got %s" % message())
 	await press(&"restart")

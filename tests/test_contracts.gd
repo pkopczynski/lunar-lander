@@ -109,7 +109,7 @@ func test_the_summary_shows_passengers_cargo_and_start_loading() -> void:
 	check(not offers().start_loading_enabled(), "START LOADING should be disabled with no Contracts")
 	await accept(offer)
 	check(offers().summary() == PackedStringArray(["PASSENGERS 3/4", "CARGO 2 500/6 760 KG",
-		"DELIVER WITHIN 1:30", "TOTAL VALUE €420"]),
+		"DELIVER WITHIN 3H 00M", "TOTAL VALUE €420"]),
 		"the summary should count the Contract, got %s" % offers().summary())
 	check(offers().start_loading_enabled(), "START LOADING should be enabled with a Contract")
 
@@ -135,7 +135,7 @@ func test_no_fuel_warning_while_a_full_tank_still_fits() -> void:
 
 func test_the_summary_shows_the_shortest_deadline_and_the_total_value_of_the_contracts() -> void:
 	var quick := known_offer(1, 0.0)
-	quick.deadline = 90.0
+	quick.deadline = 75.0
 	var slow := known_offer(0, 1000.0)
 	slow.deadline = 160.0
 	slow.passenger_reward = 0
@@ -148,7 +148,7 @@ func test_the_summary_shows_the_shortest_deadline_and_the_total_value_of_the_con
 	await accept(slow)
 	await accept(quick)
 	var summary := offers().summary()
-	check("DELIVER WITHIN 1:30" in summary, "the shortest deadline of 1:30 and 2:40 should show, got %s" % summary)
+	check("DELIVER WITHIN 2H 30M" in summary, "the shorter deadline of 75 s and 160 s should show in in-game time, got %s" % summary)
 	check("TOTAL VALUE €1240" in summary, "€820 and €420 should add up to €1240, got %s" % summary)
 	check(offers().red_summary_lines().is_empty(), "neither line should be red, got %s" % offers().red_summary_lines())
 

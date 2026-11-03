@@ -7,6 +7,7 @@
 [ext_resource type="Script" path="res://camera.gd" id="5_camera"]
 [ext_resource type="Script" path="res://office.gd" id="6_office"]
 [ext_resource type="Script" path="res://economy.gd" id="7_economy"]
+[ext_resource type="Script" path="res://planet_clock.gd" id="8_planet_clock"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ground"]
 size = Vector2(4000, 40)
@@ -27,6 +28,11 @@ shape = SubResource("RectangleShape2D_ground")
 [node name="Pad" type="Polygon2D" parent="Ground"]
 position = Vector2(144, -20)
 color = Color(0.3, 0.8, 1, 1)
+
+[node name="PlanetClock" type="Node" parent="."]
+script = ExtResource("8_planet_clock")
+
+[node name="Terrain" type="StaticBody2D" parent="."]
 
 [node name="Mountains" type="StaticBody2D" parent="."]
 
