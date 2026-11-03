@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/pkopczynski/lunar-lander/compare/v0.2.0...v0.3.0) (2026-11-03)
+
+
+### Features
+
+* see the local time, fly to a new Mine and watch the sky change through the day ([#49](https://github.com/pkopczynski/lunar-lander/issues/49)) ([137d52b](https://github.com/pkopczynski/lunar-lander/commit/137d52b0dffa19cf5ab26d6d463a4e7fbd618ffd))
+
 ## [0.2.0](https://github.com/pkopczynski/lunar-lander/compare/v0.1.0...v0.2.0) (2026-10-31)
 
 
