@@ -21,8 +21,12 @@ Solid side walls of the lower surface. Touching them crashes the ship.
 _Avoid_: Side borders, cliffs
 
 **Backdrop**:
-The two Tatra-like mountain ridges drawn behind the surface. Scenery only: they have no collision.
-_Avoid_: Mountains (the solid side walls), background mountains, skyline
+The scenery drawn behind a location's surface, with no collision, each location its own: Tatra-like ridges behind the Valley, Himalaya-like peaks behind the Mine, a far skyline behind the Metropolis.
+_Avoid_: Mountains (the solid side walls), background mountains
+
+**Foreground**:
+Scenery drawn in front of the ship, with no collision. It may hide the ship, or the pad, for a moment as the view moves.
+_Avoid_: Overlay, front layer
 
 **Border band**:
 The strip around the border where gravity fades out. A ship too slow to cross is bounced back to the side it came from.
@@ -45,12 +49,16 @@ The brief, dramatic camera zoom-in when the ship crosses the border, easing back
 _Avoid_: Zoom pulse, dolly
 
 **Pad**:
-The marked spot on the ground where the ship can land. Every location has one, and landing on the one below delivers the contracts.
+The marked spot where the ship can land: on the ground, or on a rooftop in the Metropolis. Every location has one, and landing on the destination's pad delivers the contracts.
 _Avoid_: Landing zone, base
 
+**Beacon**:
+The pulsing lights on a pad's edges that show where it is, brightest at night. Scenery only: they have no collision.
+_Avoid_: Landing lights, marker
+
 **Location**:
-The place on the planet currently below the station, whose surface the ship flies down to: the Valley or the Mine. It changes when a mission starts, and by itself after the ship has spent two whole days in deep space, to the next one in turn.
-_Avoid_: Level, map, destination (that's the location chosen for a mission)
+The place on the planet currently below the station, whose surface the ship flies down to: the Valley, the Mine or the Metropolis. It changes when a mission starts, and by itself after the ship has spent two whole days in deep space, to the next one in turn.
+_Avoid_: Level, map, destination (that's where a contract is to be delivered)
 
 **Valley**:
 The location the game started with: flat ground between the mountains, with the pad in the middle and the backdrop behind.
@@ -59,6 +67,10 @@ _Avoid_: Mountains (that's the solid side walls), Tatras
 **Mine**:
 The open-pit mine location: stepped benches cut down into the ground, with the pad on the pit floor. Touching the benches crashes the ship.
 _Avoid_: Quarry, pit
+
+**Metropolis**:
+The futuristic city location: buildings of several heights, with the pad on a rooftop. Touching a solid building or the street crashes the ship.
+_Avoid_: City (on its own), downtown
 
 **Local time**:
 The planet's clock at the current location, shown in the HUD as HH:MM. A whole day lasts twelve real minutes. It runs whenever the office isn't showing, and carries on unchanged when the location changes. It decides how the sky looks, and nothing else.
@@ -113,19 +125,27 @@ _Avoid_: Respawn, change ship
 ## Transport
 
 **Transport offer**:
-A job on the terminal, not yet accepted: carry passengers, cargo or both from the station to the pad. It is only available for a limited time.
+A job on the terminal, not yet accepted: carry passengers, cargo or both from the station to its destination's pad. It is only available for a limited time.
 _Avoid_: Offer (on its own), job, mission
 
 **Contract**:
-A transport offer the player has accepted. All contracts accepted together are delivered in one flight. A contract stays accepted when transport offers expire or the player leaves the office; before loading, the player can remove it for good.
+A transport offer the player has accepted. All contracts accepted together share one destination and are delivered in one flight. A contract stays accepted when transport offers expire or the player leaves the office; before loading, the player can remove it, and it goes back to the transport offers.
 _Avoid_: Order, accepted offer
 
+**Cancellation**:
+Giving up all of a mission's contracts at once, back in the office after loading, for a cancellation fee instead of a payout.
+_Avoid_: Removing (that's dropping one contract before loading), abort, refund
+
 **Mission**:
-Everything from the start of loading until the player next enters the office: loading, the delivery flight, unloading and the way back. A mission has one destination, chosen in the office together with its start period.
+Everything from the start of loading until the player next enters the office: loading, the delivery flight, unloading and the way back. A mission has one destination and a start period chosen in the office.
 _Avoid_: Delivery (that's only the flight from loading to landing), trip, run (that's from restart to crash)
 
+**Free flight**:
+A mission with no contracts: the player picks its destination and start period in the office and flies wherever they like, with nothing to deliver.
+_Avoid_: Practice, sandbox, empty mission
+
 **Destination**:
-The location chosen in the office for a mission. Starting loading takes the ship's surface there.
+Where a mission goes: the location its contracts are to be delivered to, fixed when each transport offer appears, or, on a free flight, the location the player chose. Starting the mission takes the ship's surface there.
 _Avoid_: Target, location (that's wherever the surface is right now)
 
 **Deadline**:
@@ -141,11 +161,11 @@ Putting the load aboard at the parking spot, after the player accepts their cont
 _Avoid_: Boarding, embarking
 
 **Unloading**:
-Taking the load off on the pad, which starts by itself when the ship lands there with contracts aboard. The ship can refuel meanwhile but can't lift off until it finishes.
+Taking the load off on the destination's pad, which starts by itself when the ship lands there with contracts aboard. Landing on any other location's pad unloads too, but the contracts pay nothing. The ship can refuel meanwhile but can't lift off until it finishes.
 _Avoid_: Delivery (the whole flight), disembarking
 
 **Payout**:
-What a contract pays into the bank account once unloaded: its reward less a penalty for each whole second overdue, never below €0. Each contract is settled on its own.
+What a contract pays into the bank account once unloaded: its reward less a penalty for each whole second overdue, never below €0, and nothing at all when unloaded away from its destination. Each contract is settled on its own.
 _Avoid_: Reward (that's before the penalty), income, score
 
 **Transaction**:
