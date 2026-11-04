@@ -128,8 +128,11 @@ func handle_contracts_input(event: InputEvent) -> bool:
 
 
 # Yes on ARE YOU SURE?: the Economy checks again that the offer is still there and still fits.
+# The first Contract sets the destination.
 func confirm_accept() -> void:
-	if not economy.accept(accepting) and not accepting in economy.offers:
+	if economy.accept(accepting):
+		destination = economy.destination()
+	elif not accepting in economy.offers:
 		show_notice(OFFER_EXPIRED_TEXT)
 	accepting = null
 
@@ -140,20 +143,25 @@ func confirm_remove() -> void:
 	cursor = start_loading_stop() if economy.contracts.is_empty() else mini(cursor, economy.contracts.size() - 1)
 
 
-# Each time the Office opens, the mission rows start on the here and now: the current
-# location and the start period holding the current local time.
+# Each time the Office opens, the mission rows start on the here and now: the Contracts'
+# destination or else the current location, and the start period holding the current local time.
 func reset_mission_rows(clock: PlanetClock) -> void:
-	destination = clock.location
+	destination = economy.destination() if destination_locked() else clock.location
 	start_period = clock.start_period()
 
 
-# Return on a mission row: its next value, wrapping.
+# Return on a mission row: its next value, wrapping. DESTINATION stays on the Contracts'.
 func cycle_mission_row(row: MissionRow) -> void:
 	match row:
 		MissionRow.DESTINATION:
-			destination = destination.next()
+			if not destination_locked():
+				destination = destination.next()
 		MissionRow.START_PERIOD:
 			start_period = posmod(start_period + 1, PlanetClock.StartPeriod.size()) as PlanetClock.StartPeriod
+
+
+func destination_locked() -> bool:
+	return not economy.contracts.is_empty()
 
 
 # The cursor's stop on START LOADING, after the Contracts and the mission rows.
@@ -247,7 +255,7 @@ func details(row: int) -> PackedStringArray:
 static func detail_pairs(offer: TransportOffer) -> Array[Array]:
 	return [["PASSENGERS", str(offer.passengers)], ["CARGO", Office.kg(offer.cargo_mass)],
 		["DEADLINE", PlanetClock.duration(offer.deadline)], ["TRADER", offer.trader.to_upper()],
-		["VALUE", Economy.eur(offer.reward())]]
+		["VALUE", Economy.eur(offer.reward())], ["DESTINATION", offer.destination.name]]
 
 
 func rows() -> PackedStringArray:
@@ -348,7 +356,7 @@ static func kg_of(part: float, whole: float) -> String:
 
 
 static func row_text(offer: TransportOffer) -> String:
-	return "%s %s %s" % [offer.label(), TransportOffer.KIND_LABELS[offer.kind()],
+	return "%s %s %s %s" % [offer.label(), offer.destination.name, TransportOffer.KIND_LABELS[offer.kind()],
 		PlanetClock.countdown(offer.time_left)]
 
 
@@ -390,8 +398,11 @@ func draw(area: Rect2) -> void:
 			var countdown := PlanetClock.countdown(offer.time_left)
 			office.draw_text(countdown, baseline, Office.TEXT_SIZE, width, HORIZONTAL_ALIGNMENT_RIGHT,
 				countdown_color(offer) if color == Office.GREEN else color)
-			office.draw_text(TransportOffer.KIND_LABELS[offer.kind()] + "   ", baseline, Office.TEXT_SIZE,
-				width - office.text_width(countdown, Office.TEXT_SIZE), HORIZONTAL_ALIGNMENT_RIGHT, color)
+			var kind: String = TransportOffer.KIND_LABELS[offer.kind()] + "   "
+			var kind_width := width - office.text_width(countdown, Office.TEXT_SIZE)
+			office.draw_text(kind, baseline, Office.TEXT_SIZE, kind_width, HORIZONTAL_ALIGNMENT_RIGHT, color)
+			office.draw_text(offer.destination.name + "   ", baseline, Office.TEXT_SIZE,
+				kind_width - office.text_width(kind, Office.TEXT_SIZE), HORIZONTAL_ALIGNMENT_RIGHT, color)
 		y += ROW_HEIGHT
 		var note := red_note(offer)
 		for line: Array in [[reason, Office.DIM_GREEN], [note, Office.RED]]:

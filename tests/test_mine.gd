@@ -36,18 +36,15 @@ func test_return_cycles_valley_mine_and_wraps_without_moving_the_location() -> v
 	check(world().location == Location.VALLEY, "only START LOADING should apply the destination")
 
 
-# Accepts a passenger offer, picks the Mine on the DESTINATION row and presses START LOADING.
+# Accepts a passenger offer to the Mine, which sets the DESTINATION row, and presses START LOADING.
 func start_loading_at_the_mine() -> void:
 	var offer := known_offer(1, 0.0)
+	offer.destination = Location.MINE
 	economy().put_offer(offer)
 	await open_transport_offers()
 	await accept(offer)
+	check(offers().mission_lines()[0] == "DESTINATION MINE", "the Mine offer should set DESTINATION MINE")
 	await press(&"ui_right")
-	await up_to_destination()
-	await press(&"ui_accept")
-	check(offers().mission_lines()[0] == "DESTINATION MINE", "Return should pick the Mine")
-	await press(&"ui_down")
-	await press(&"ui_down")
 	await press(&"ui_accept")
 	await wait_for_terminal()
 	check(economy().phase == Economy.Phase.LOADING, "START LOADING should start loading")

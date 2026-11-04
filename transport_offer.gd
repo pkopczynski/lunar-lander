@@ -1,6 +1,7 @@
 class_name TransportOffer
 extends RefCounted
-# A Transport offer: a job to carry passengers, cargo or both from the station to the pad.
+# A Transport offer: a job to carry passengers, cargo or both from the station to its
+# destination's pad.
 # Once accepted it's a Contract, the same object. Holds its own settlement maths and the
 # random generator.
 
@@ -43,6 +44,7 @@ const TRADERS: Array[String] = ["Tycho Haulage", "Selene Mining", "Mare Logistic
 
 const NOT_ENOUGH_SEATS := "Not enough passenger seats"
 const OVERLOADED := "Overloaded"
+const OTHER_DESTINATION := "Other destination"
 
 
 # A delivered Contract's line in the Bank account, in euros, with the flight's deadline it was
@@ -83,6 +85,8 @@ var deadline: float
 var time_left: float
 var passenger_reward: int
 var cargo_reward: int
+# Where it's to be delivered, fixed when it appears.
+var destination := Location.VALLEY
 
 
 func kind() -> Kind:
@@ -104,8 +108,11 @@ func label() -> String:
 	return "#%03d %s" % [number, title.to_upper()]
 
 
-# Why it doesn't fit the seats and cargo left, or "" when it does.
-func misfit_reason(seats_left: int, cargo_left: float) -> String:
+# Why it doesn't fit the mission's destination (null for any) and the seats and cargo left, or ""
+# when it does.
+func misfit_reason(seats_left: int, cargo_left: float, mission_destination: Location = null) -> String:
+	if mission_destination != null and destination != mission_destination:
+		return OTHER_DESTINATION
 	if passengers > seats_left:
 		return NOT_ENOUGH_SEATS
 	if cargo_mass > cargo_left:
@@ -158,4 +165,5 @@ static func generate(rng: RandomNumberGenerator, offer_number: int, max_passenge
 	var scale := pow(REFERENCE_DEADLINE / offer.deadline, URGENCY_EXPONENT) * rng.randf_range(MIN_LUCK, MAX_LUCK)
 	offer.passenger_reward = roundi(PASSENGER_REWARD * offer.passengers * scale)
 	offer.cargo_reward = roundi(CARGO_REWARD_PER_TONNE * offer.cargo_mass / 1000.0 * scale)
+	offer.destination = Location.ALL[rng.randi_range(0, Location.ALL.size() - 1)]
 	return offer

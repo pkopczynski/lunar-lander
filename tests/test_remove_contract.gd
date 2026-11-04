@@ -119,6 +119,18 @@ func test_a_removed_contract_goes_back_to_the_offers_with_its_number_in_number_o
 		"its row should keep its number, lists %s" % offers().rows())
 
 
+func test_a_removed_contract_comes_back_with_its_destination() -> void:
+	var offer := known_offer(1, 0.0)
+	offer.destination = Location.MINE
+	only_offers([offer])
+	await open_transport_offers()
+	await accept(offer)
+	await remove_the_only_contract()
+	check(offer in economy().offers, "the removed Contract should be back in the offers")
+	check(offer.destination == Location.MINE, "it should still go to the Mine")
+	check(" MINE " in offers().rows()[0], "its row should still show MINE, lists %s" % offers().rows())
+
+
 func test_a_removed_contract_comes_back_with_the_time_left_it_had_when_accepted() -> void:
 	var offer := known_offer(1, 0.0, 500.0)
 	only_offers([offer])

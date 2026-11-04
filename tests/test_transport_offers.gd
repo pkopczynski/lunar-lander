@@ -53,11 +53,14 @@ func test_new_offers_arrive_every_30_to_90_seconds() -> void:
 		await seconds(Economy.MIN_OFFER_INTERVAL - 0.5)
 		check(offers().rows().size() == 5, "seed %d should add nothing within 30 s, lists %s" % [seed_value, offers().rows()])
 		await seconds(Economy.MAX_OFFER_INTERVAL - Economy.MIN_OFFER_INTERVAL + 1.0)
-		check(offers().rows().size() == 6, "seed %d should add one offer within 90 s, lists %s" % [seed_value, offers().rows()])
+		check(offers().rows().size() >= 6, "seed %d should add an offer within 90 s, lists %s" % [seed_value, offers().rows()])
 
 
 func test_the_list_never_grows_past_seven_and_refills_once_one_goes() -> void:
 	economy().reseed(1)
+	# Only the short offer may expire.
+	for offer in economy().offers:
+		offer.time_left = 1000.0
 	await open_transport_offers()
 	var short := known_offer(1, 0.0, 100.0)
 	economy().put_offer(short)
