@@ -53,7 +53,7 @@ The marked spot where the ship can land: on the ground, or on a rooftop in the M
 _Avoid_: Landing zone, base
 
 **Beacon**:
-The pulsing lights on a pad's edges that show where it is, brightest at night. Scenery only: they have no collision.
+The pulsing lights on a pad's edges that show where it is. Never dimmed by the sky's darkness; their glow is faint by day and strongest at night. Scenery only: they have no collision.
 _Avoid_: Landing lights, marker
 
 **Location**:
