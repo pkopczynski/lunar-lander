@@ -149,8 +149,8 @@ func crash_in_deep_space() -> void:
 	check(lander().in_deep_space, "the crash should be in deep space")
 
 
-# Flies the ship into the parking spot from free flight, which docks it (and
-# opens the Enter-the-Office popup).
+# Flies the ship into the parking spot from free flight, which docks it, and waits
+# past the leveling (so the Enter-the-Office popup is open).
 func dock_in_spot() -> void:
 	place(station().parking_spot.get_center())
 	await seconds(0.5)
