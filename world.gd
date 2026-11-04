@@ -91,6 +91,8 @@ var night_star_radii := PackedFloat32Array()
 var deep_star_layer := MeshInstance2D.new()
 var night_star_layer := MeshInstance2D.new()
 var backdrop := Node2D.new()
+# The pad's Beacon; a child of the pad, so it follows it to every location.
+var beacon := Beacon.new()
 
 @onready var mountains: StaticBody2D = $Mountains
 @onready var terrain: StaticBody2D = $Terrain
@@ -114,6 +116,7 @@ func _ready() -> void:
 		Vector2(-half, -Lander.PAD_HEIGHT), Vector2(half, -Lander.PAD_HEIGHT),
 		Vector2(half, 0), Vector2(-half, 0),
 	])
+	pad.add_child(beacon)
 	clock.location_changed.connect(show_location)
 	show_location(location)
 	add_scenery(ground_visual)
@@ -166,6 +169,7 @@ func show_sky() -> void:
 		dim(visual)
 	night_star_layer.modulate.a = sky.star_brightness
 	night_star_layer.visible = sky.star_brightness > 0.0
+	beacon.show_sky(sky)
 	queue_redraw()
 	backdrop.queue_redraw()
 
@@ -302,6 +306,54 @@ func deep_space_stars() -> Array[Star]:
 		if star_alphas[i] > 0.0:
 			stars.append(Star.new(star_positions[i], star_radii[i], Color(1, 1, 1, star_alphas[i])))
 	return stars
+
+
+# Which part of the scene a decor piece belongs to. Only the Beacon exists so far.
+enum DecorLayer { BACKDROP, PARALLAX, FOREGROUND, BEACON }
+# What a decor piece is within its layer: a light, or the glow around one.
+enum DecorPart { LIGHT, GLOW }
+
+
+# One decor piece as drawn: its layer and part, whether it has a collider, its colour as drawn
+# (tinted by its own and its ancestors' modulate) and where it appears on screen.
+class Decor:
+	var layer: DecorLayer
+	var part: DecorPart
+	var has_collider: bool
+	var color: Color
+	var screen_area: Rect2
+
+
+# Every decor piece the World draws, as it appears on screen for a camera centred on
+# camera_center at zoom (the viewport's centre is the camera's). Read-only, for tests.
+func shown_decor(camera_center: Vector2, zoom: float) -> Array[Decor]:
+	var pieces: Array[Decor] = []
+	for light in beacon.lights:
+		pieces.append(decor(light, DecorLayer.BEACON, DecorPart.LIGHT, camera_center, zoom))
+	for glow in beacon.glows:
+		pieces.append(decor(glow, DecorLayer.BEACON, DecorPart.GLOW, camera_center, zoom))
+	return pieces
+
+
+func decor(visual: Polygon2D, layer: DecorLayer, part: DecorPart, camera_center: Vector2, zoom: float) -> Decor:
+	var piece := Decor.new()
+	piece.layer = layer
+	piece.part = part
+	# A Polygon2D is never itself a collider; it would have one only through a child.
+	piece.has_collider = visual.get_children().any(
+		func(child: Node) -> bool: return child is CollisionObject2D or child is CollisionShape2D or child is CollisionPolygon2D)
+	piece.color = visual.color * visual.self_modulate
+	var node: Node = visual
+	while node is CanvasItem:
+		piece.color *= (node as CanvasItem).modulate
+		node = node.get_parent()
+	var screen_center := get_viewport_rect().size / 2.0
+	var area := Rect2()
+	for i in visual.polygon.size():
+		var on_screen := (visual.to_global(visual.polygon[i]) - camera_center) * zoom + screen_center
+		area = Rect2(on_screen, Vector2.ZERO) if i == 0 else area.expand(on_screen)
+	piece.screen_area = area
+	return piece
 
 
 func _draw() -> void:
