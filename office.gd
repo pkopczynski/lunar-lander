@@ -266,7 +266,7 @@ func close() -> void:
 	get_tree().paused = false
 
 
-# Docking asks whether to enter the Office, over the flight view. The ship is held
+# Docking asks whether to enter the Office, over the flight view, once the ship is upright. The ship is held
 # until the ship is released: by No here, or by leaving the Office. A loaded ship gets
 # no popup: all Contracts go in one flight.
 func ask_to_enter() -> void:

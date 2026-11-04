@@ -54,6 +54,8 @@ const SOFT_WALL_WIDTH := 150.0
 const SOFT_WALL_DAMPING := 8.0
 const SOFT_WALL_PUSH := 300.0
 
+# Docked in the parking spot by flying in, once the ship has finished easing upright.
+# Lifting off before then cancels it.
 signal docked_at_station
 # Landed on the pad, by a real landing or the debug pad shortcut.
 signal landed_on_pad
@@ -409,7 +411,7 @@ func land() -> void:
 func dock() -> void:
 	enter(State.DOCKED)
 	settle()
-	docked_at_station.emit()
+	level_tween.tween_callback(docked_at_station.emit)
 
 
 # Freezes the ship in whatever state it's in until release() or the next state.
