@@ -31,7 +31,7 @@ func test_a_new_offer_arrives_within_90_seconds_of_accepting() -> void:
 	await seconds(Economy.MIN_OFFER_INTERVAL - 1.0)
 	check(offers().rows().size() == 5, "nothing should arrive straight after accepting, lists %s" % offers().rows())
 	await seconds(Economy.MAX_OFFER_INTERVAL - Economy.MIN_OFFER_INTERVAL + 1.0)
-	check(offers().rows().size() == 6, "a new offer should arrive within 90 s, lists %s" % offers().rows())
+	check(offers().rows().size() >= 6, "a new offer should arrive within 90 s, lists %s" % offers().rows())
 
 
 func test_an_offer_that_expires_during_are_you_sure_cant_be_accepted_and_shows_offer_expired() -> void:

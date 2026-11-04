@@ -106,16 +106,16 @@ func test_the_hud_shows_the_shortest_deadline_as_a_local_time_then_turns_red_onc
 	await seconds(5.0)
 	await frames(1)
 	check(economy().phase == Economy.Phase.DELIVERING, "loading should have finished")
-	check(hud().delivery_text() == "DELIVER BY 16:10", "the shortest deadline as a local time, got %s" % hud().delivery_text())
+	check(hud().delivery_text() == "VALLEY BY 16:10", "the shortest deadline as a local time, got %s" % hud().delivery_text())
 	check(not hud().delivery_overdue(), "the deadline should not be red while on time")
 	await seconds(1.5)
-	check(hud().delivery_text() == "DELIVER BY 16:10", "the deadline time should stay put, got %s" % hud().delivery_text())
+	check(hud().delivery_text() == "VALLEY BY 16:10", "the deadline time should stay put, got %s" % hud().delivery_text())
 	check_near(economy().delivery_time, 1.5, 0.05, "the delivery clock")
 	await seconds(58.0)
 	check(not hud().delivery_overdue(), "not overdue just before the deadline")
 	await seconds(1.0)
 	check(lander().state == Lander.State.DOCKED, "the ship should still be Docked")
-	check(hud().delivery_text() == "OVERDUE SINCE 16:10", "the deadline once overdue, got %s" % hud().delivery_text())
+	check(hud().delivery_text() == "VALLEY OVERDUE SINCE 16:10", "the deadline once overdue, got %s" % hud().delivery_text())
 	check(hud().delivery_overdue(), "the deadline should be red once overdue")
 
 
@@ -127,9 +127,9 @@ func test_a_deadline_past_midnight_reads_as_a_plain_time_in_the_message_and_the_
 	check(economy().phase == Economy.Phase.DELIVERING, "loading should have finished")
 	check(message() == "Docked!\nLoaded! Deliver by 01:08",
 		"the loaded message should give the next-day deadline with no day mark, got %s" % message())
-	check(hud().delivery_text() == "DELIVER BY 01:08", "the HUD should give the next-day deadline with no day mark, got %s" % hud().delivery_text())
+	check(hud().delivery_text() == "VALLEY BY 01:08", "the HUD should give the next-day deadline with no day mark, got %s" % hud().delivery_text())
 	await seconds(91.0)
-	check(hud().delivery_text() == "OVERDUE SINCE 01:08", "overdue shows the plain time too, got %s" % hud().delivery_text())
+	check(hud().delivery_text() == "VALLEY OVERDUE SINCE 01:08", "overdue shows the plain time too, got %s" % hud().delivery_text())
 
 
 func test_docking_while_loaded_shows_no_popup_and_leaves_the_ship_free() -> void:

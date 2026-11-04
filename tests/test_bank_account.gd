@@ -129,7 +129,9 @@ func test_the_details_name_the_location_delivered_to() -> void:
 	location.name = "ELSEWHERE"
 	location.pad_center_x = 600.0
 	clock().move_to(location)
-	await deliver([known_offer(1, 0.0)], 5.0)
+	var offer := known_offer(1, 0.0)
+	offer.destination = location
+	await deliver([offer], 5.0)
 	await open_bank_account()
 	await press(&"ui_accept")
 	check("DELIVERED TO ELSEWHERE" in bank().details(0), "the ship landed at ELSEWHERE, shows %s" % bank().details(0))

@@ -165,6 +165,11 @@ func finish_unloading() -> void:
 	paid_out.emit(total)
 
 
+# Where the Contracts are to be delivered: they all share one destination. Null without any.
+func destination() -> Location:
+	return null if contracts.is_empty() else contracts[0].destination
+
+
 # The shortest deadline among the Contracts: they're all delivered in one flight.
 func deadline() -> float:
 	var shortest := INF
@@ -241,7 +246,7 @@ func closest_to_expiring() -> TransportOffer:
 
 # Why the ship can't take this offer on top of the Contracts, or "" when it can.
 func misfit_reason(offer: TransportOffer) -> String:
-	return offer.misfit_reason(seats_left(), cargo_left())
+	return offer.misfit_reason(seats_left(), cargo_left(), destination())
 
 
 func seats_left() -> int:
