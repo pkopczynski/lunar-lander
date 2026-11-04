@@ -39,7 +39,7 @@ func _process(delta: float) -> void:
 	eased_zoom = lerpf(eased_zoom, target, 1.0 - exp(-ZOOM_EASE_SPEED * delta))
 	zoom = Vector2.ONE * eased_zoom * punch_factor
 	fit_side_limits()
-	limit_bottom = int(lander.world.ground_bottom())
+	limit_bottom = int(lander.world.lowest_point())
 
 	shake_left = maxf(shake_left - delta, 0.0)
 	offset = Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * SHAKE_STRENGTH * shake_left / SHAKE_TIME

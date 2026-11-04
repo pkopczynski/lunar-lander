@@ -14,6 +14,14 @@ var name: String
 var pad_center_x: float
 # The top of the ground here, where the pad sits and ships land, in world y.
 var ground_y := World.GROUND_TOP_Y
+# How wide the ground (the landing surface) is, centred on the pad; by default it spans the whole
+# world. Narrowed, ships beside it fall past its height onto whatever terrain lies below.
+var ground_width := INF
+# The lowest the surface reaches here, in world y: the camera's bottom limit, and how far down
+# the sky fills. By default the ground's bottom.
+var lowest_y := NAN:
+	get:
+		return ground_y + World.GROUND_DEPTH if is_nan(lowest_y) else lowest_y
 # Solid polygons added to the shared ground and mountains; touching them crashes the ship.
 var terrain: Array[PackedVector2Array] = []
 
