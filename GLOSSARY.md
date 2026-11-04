@@ -231,7 +231,7 @@ The ship is resting on the pad after a safe touchdown.
 _Avoid_: Touched down, parked
 
 **Docked**:
-The ship is resting inside the parking spot. This is the deep-space counterpart of Landed. From docking until the player declines to enter the office or leaves it, a Docked ship is held: it ignores the controls and doesn't refuel. During loading it also ignores the controls, but refuels.
+The ship is resting inside the parking spot. This is the deep-space counterpart of Landed. From the moment the office popup shows (once the ship has finished easing upright after docking) until the player declines to enter the office or leaves it, a Docked ship is held: it ignores the controls and doesn't refuel. During loading it also ignores the controls, but refuels.
 _Avoid_: Parked, landed (in deep space)
 
 **Crashed**:
