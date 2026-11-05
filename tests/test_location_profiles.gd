@@ -2,12 +2,14 @@ extends "res://tests/scene_test.gd"
 # Each destination's location profile shapes the Transport offers generated for it.
 
 const SAMPLE := 1000
+# Average pay is compared over pools from several seeds, so no single lucky pool decides it.
+const PAY_SEEDS := [1, 2, 3, 4, 5]
 
 
 # SAMPLE offers from one seeded generator, as the Economy draws them, grouped by destination.
-func sample_by_destination() -> Dictionary:
+func sample_by_destination(pool_seed := 62) -> Dictionary:
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 62
+	rng.seed = pool_seed
 	var by_destination := {}
 	for location in Location.ALL:
 		by_destination[location] = []
@@ -82,19 +84,29 @@ func average_reward(offers: Array) -> float:
 	return total / float(offers.size())
 
 
-func test_mine_offers_pay_more_than_valley_offers_on_average() -> void:
-	var by_destination := sample_by_destination()
-	var valley := average_reward(by_destination[Location.VALLEY])
-	var mine := average_reward(by_destination[Location.MINE])
-	check(mine > valley, "the Mine should pay more on average than the Valley: Mine €%.0f, Valley €%.0f" % [mine, valley])
+# In every pool, the Mine's average pay beats the Valley's by at least this share (its offers are
+# the heaviest to fly).
+const MINE_PAY_MARGIN := 0.05
+
+
+func test_mine_offers_pay_clearly_more_than_valley_offers_on_average() -> void:
+	for pool_seed: int in PAY_SEEDS:
+		var by_destination := sample_by_destination(pool_seed)
+		var valley := average_reward(by_destination[Location.VALLEY])
+		var mine := average_reward(by_destination[Location.MINE])
+		check(mine >= valley * (1.0 + MINE_PAY_MARGIN),
+			"seed %d: the Mine should pay clearly more on average than the Valley: Mine €%.0f, Valley €%.0f"
+			% [pool_seed, mine, valley])
 
 
 func test_metropolis_offers_pay_more_than_valley_offers_on_average() -> void:
-	var by_destination := sample_by_destination()
-	var valley := average_reward(by_destination[Location.VALLEY])
-	var metropolis := average_reward(by_destination[Location.METROPOLIS])
-	check(metropolis > valley,
-		"the Metropolis should pay more on average than the Valley: Metropolis €%.0f, Valley €%.0f" % [metropolis, valley])
+	for pool_seed: int in PAY_SEEDS:
+		var by_destination := sample_by_destination(pool_seed)
+		var valley := average_reward(by_destination[Location.VALLEY])
+		var metropolis := average_reward(by_destination[Location.METROPOLIS])
+		check(metropolis > valley,
+			"seed %d: the Metropolis should pay more on average than the Valley: Metropolis €%.0f, Valley €%.0f"
+			% [pool_seed, metropolis, valley])
 
 
 func test_titles_come_from_the_destinations_own_list() -> void:

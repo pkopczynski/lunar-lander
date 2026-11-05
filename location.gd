@@ -128,7 +128,7 @@ static func mine() -> Location:
 	location.kind_weights = PackedFloat32Array([0.1, 0.6, 0.3])
 	location.max_passengers = 4
 	location.min_cargo = 3000.0
-	location.reward_factor = 1.35
+	location.reward_factor = 1.6
 	location.titles = {
 		TransportOffer.Kind.PASSENGERS: ["Mining shift", "Blasting crew", "Maintenance crew"],
 		TransportOffer.Kind.CARGO: ["Drill bits", "Spare parts", "Industrial supplies", "Conveyor parts",
