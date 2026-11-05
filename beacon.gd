@@ -11,8 +11,6 @@ const GLOW_RADIUS := 16.0
 # The glow's opacity by day and at full night, blended by the sky's darkness.
 const GLOW_DAY_ALPHA := 0.12
 const GLOW_NIGHT_ALPHA := 0.45
-# The sky's darkness at full night (its night keyframes).
-const NIGHT_DARKNESS := 0.6
 # One slow pulse, light and glow together, between PULSE_MIN and full opacity.
 const PULSE_PERIOD := 2.4
 const PULSE_MIN := 0.55
@@ -49,9 +47,8 @@ func pulse(delta: float) -> void:
 
 # Strengthens the glow with the sky's darkness; the lights themselves are never dimmed.
 func show_sky(sky: SkyLook) -> void:
-	var night := clampf(sky.darkness / NIGHT_DARKNESS, 0.0, 1.0)
 	for glow in glows:
-		glow.self_modulate.a = lerpf(GLOW_DAY_ALPHA, GLOW_NIGHT_ALPHA, night)
+		glow.self_modulate.a = lerpf(GLOW_DAY_ALPHA, GLOW_NIGHT_ALPHA, sky.night())
 
 
 func disc(at: Vector2, radius: float, color: Color) -> Polygon2D:

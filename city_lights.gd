@@ -131,6 +131,5 @@ func show_sky(sky: SkyLook) -> void:
 
 # How bright city lights are under a sky: faint by day, full at night, as a modulate.
 static func brightness(sky: SkyLook) -> Color:
-	var night := clampf(sky.darkness / Beacon.NIGHT_DARKNESS, 0.0, 1.0)
-	var level := lerpf(DAY_BRIGHTNESS, 1.0, night)
+	var level := lerpf(DAY_BRIGHTNESS, 1.0, sky.night())
 	return Color(level, level, level)

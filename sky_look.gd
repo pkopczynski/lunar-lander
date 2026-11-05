@@ -11,13 +11,15 @@ const PALE_YELLOW := Color(0.95, 0.9, 0.62)
 const BLUE := Color(0.35, 0.6, 0.95)
 # Today's evening orange, exactly.
 const ORANGE := Color(0.9, 0.4, 0.1)
+# How much the scenery is darkened at full night (the night keyframes).
+const NIGHT_DARKNESS := 0.6
 # Named like a constant: GDScript can't build objects in a const, so never reassign it.
 static var KEYFRAMES: Array[Keyframe] = [
-	Keyframe.new(3 * 60.0, NAVY, 0.6),
+	Keyframe.new(3 * 60.0, NAVY, NIGHT_DARKNESS),
 	Keyframe.new(7 * 60.0 + 30.0, PALE_YELLOW, 0.1),
 	Keyframe.new(13 * 60.0, BLUE, 0.0),
 	Keyframe.new(19 * 60.0, ORANGE, 0.0),
-	Keyframe.new(23 * 60.0, NAVY, 0.6),
+	Keyframe.new(23 * 60.0, NAVY, NIGHT_DARKNESS),
 ]
 
 # Surface stars fade in through the late evening and out at dawn, capped faint.
@@ -48,6 +50,12 @@ var ground_color: Color
 var darkness: float
 # How bright the surface's night stars are, 0-1 (0 by day).
 var star_brightness: float
+
+
+# How far into the night the sky is, for the lights and looks that fade in with it: 0 by day (no
+# darkness), 1 from full night's darkness on.
+func night() -> float:
+	return clampf(darkness / NIGHT_DARKNESS, 0.0, 1.0)
 
 
 # The sky at a local time, in in-game minutes since midnight.

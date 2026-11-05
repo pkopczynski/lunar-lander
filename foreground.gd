@@ -117,6 +117,5 @@ func build(from: Array[Silhouette], bottom_y: float, anchor: Vector2) -> void:
 
 
 func show_sky(sky: SkyLook) -> void:
-	var night := clampf(sky.darkness / Beacon.NIGHT_DARKNESS, 0.0, 1.0)
 	for piece in pieces:
-		piece.self_modulate = Color.WHITE.darkened(NIGHT_DARKENING * night)
+		piece.self_modulate = Color.WHITE.darkened(NIGHT_DARKENING * sky.night())
