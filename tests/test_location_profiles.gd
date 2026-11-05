@@ -7,7 +7,7 @@ const SAMPLE := 1000
 # SAMPLE offers from one seeded generator, as the Economy draws them, grouped by destination.
 func sample_by_destination() -> Dictionary:
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 59
+	rng.seed = 62
 	var by_destination := {}
 	for location in Location.ALL:
 		by_destination[location] = []
@@ -27,6 +27,7 @@ func test_each_destinations_offers_mix_passengers_cargo_and_both_by_its_weights(
 	var expected := {
 		Location.VALLEY: [1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0],
 		Location.MINE: [0.1, 0.6, 0.3],
+		Location.METROPOLIS: [0.6, 0.1, 0.3],
 	}
 	for location: Location in expected:
 		var offers: Array = by_destination[location]
@@ -35,11 +36,11 @@ func test_each_destinations_offers_mix_passengers_cargo_and_both_by_its_weights(
 				"%s: share of %s offers" % [location.name, TransportOffer.KIND_LABELS[kind]])
 
 
-func test_offers_go_to_the_valley_and_the_mine_by_their_pool_shares() -> void:
+func test_offers_go_to_the_valley_the_mine_and_the_metropolis_by_their_pool_shares() -> void:
 	var by_destination := sample_by_destination()
-	# 40% to 30%, split between the two locations there are.
-	check_near(by_destination[Location.VALLEY].size() / float(SAMPLE), 4.0 / 7.0, 0.05, "Valley share of offers")
-	check_near(by_destination[Location.MINE].size() / float(SAMPLE), 3.0 / 7.0, 0.05, "Mine share of offers")
+	check_near(by_destination[Location.VALLEY].size() / float(SAMPLE), 0.4, 0.05, "Valley share of offers")
+	check_near(by_destination[Location.MINE].size() / float(SAMPLE), 0.3, 0.05, "Mine share of offers")
+	check_near(by_destination[Location.METROPOLIS].size() / float(SAMPLE), 0.3, 0.05, "Metropolis share of offers")
 
 
 func test_mine_offers_carry_at_most_four_passengers_and_at_least_3000_kg() -> void:
@@ -65,6 +66,15 @@ func test_every_offer_fits_the_largest_ship_types_seats_and_maximum_capacity() -
 	check(seen_passengers.has(1) and seen_passengers.has(10), "Valley offers should range from 1 to 10 passengers")
 
 
+func test_metropolis_offers_carry_up_to_ten_passengers_and_at_most_3000_kg() -> void:
+	var seen_passengers := {}
+	for offer: TransportOffer in sample_by_destination()[Location.METROPOLIS]:
+		check(offer.cargo_mass == 0.0 or (offer.cargo_mass >= 500.0 and offer.cargo_mass <= 3000.0),
+			"Metropolis offer #%03d has %.0f kg of cargo" % [offer.number, offer.cargo_mass])
+		seen_passengers[offer.passengers] = true
+	check(seen_passengers.has(1) and seen_passengers.has(10), "Metropolis offers should range from 1 to 10 passengers")
+
+
 func average_reward(offers: Array) -> float:
 	var total := 0
 	for offer: TransportOffer in offers:
@@ -77,6 +87,14 @@ func test_mine_offers_pay_more_than_valley_offers_on_average() -> void:
 	var valley := average_reward(by_destination[Location.VALLEY])
 	var mine := average_reward(by_destination[Location.MINE])
 	check(mine > valley, "the Mine should pay more on average than the Valley: Mine €%.0f, Valley €%.0f" % [mine, valley])
+
+
+func test_metropolis_offers_pay_more_than_valley_offers_on_average() -> void:
+	var by_destination := sample_by_destination()
+	var valley := average_reward(by_destination[Location.VALLEY])
+	var metropolis := average_reward(by_destination[Location.METROPOLIS])
+	check(metropolis > valley,
+		"the Metropolis should pay more on average than the Valley: Metropolis €%.0f, Valley €%.0f" % [metropolis, valley])
 
 
 func test_titles_come_from_the_destinations_own_list() -> void:
@@ -92,6 +110,11 @@ func test_titles_come_from_the_destinations_own_list() -> void:
 		check(mine_words.any(func(word: String) -> bool: return word in offer.title.to_lower()),
 			"Mine title '%s' should be Mine work" % offer.title)
 		check(not "tourist" in offer.title.to_lower(), "no tourists go to the Mine: '%s'" % offer.title)
+	var metropolis_words := ["tourist", "corporate", "business", "conference", "shift", "mail", "shop", "electronics",
+		"restaurant", "office", "film", "hotel", "expo"]
+	for offer: TransportOffer in by_destination[Location.METROPOLIS]:
+		check(metropolis_words.any(func(word: String) -> bool: return word in offer.title.to_lower()),
+			"Metropolis title '%s' should be city work" % offer.title)
 
 
 func test_deadlines_and_expiry_stay_the_same_everywhere() -> void:

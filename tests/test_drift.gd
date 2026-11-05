@@ -116,4 +116,4 @@ func test_the_count_starts_over_after_each_change() -> void:
 	await seconds(PlanetClock.DRIFT_MINUTES / PlanetClock.MINUTES_PER_SECOND - 2.0)
 	check(world().location == Location.MINE, "the count should have started over at the change, so it should still be the Mine")
 	await seconds(3.0)
-	check(world().location == Location.VALLEY, "another 48 h above the Border should move it on, wrapping to the Valley")
+	check(world().location == Location.METROPOLIS, "another 48 h above the Border should move it on to the Metropolis")
