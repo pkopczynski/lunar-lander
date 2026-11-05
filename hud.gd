@@ -113,14 +113,14 @@ func clock_text() -> String:
 # MINE OVERDUE SINCE 14:30 once late, "" otherwise. The time alone is clear enough, so a
 # next-day one has no +1.
 func delivery_text() -> String:
-	if economy.phase != Economy.Phase.DELIVERING:
+	if not economy.mission_under_way():
 		return ""
 	var text := OVERDUE_TEXT if delivery_overdue() else DELIVERY_TEXT
 	return text % [economy.destination().name, PlanetClock.time_of_day(economy.deadline_at())]
 
 
 func delivery_overdue() -> bool:
-	return economy.phase == Economy.Phase.DELIVERING and economy.delivery_left() < 0.0
+	return economy.mission_under_way() and economy.delivery_left() < 0.0
 
 
 func draw_fuel(inner: Rect2) -> void:

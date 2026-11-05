@@ -11,22 +11,20 @@ const GLOW_RADIUS := 16.0
 # The glow's opacity by day and at full night, blended by the sky's darkness.
 const GLOW_DAY_ALPHA := 0.12
 const GLOW_NIGHT_ALPHA := 0.45
-# The sky's darkness at full night (its night keyframes).
-const NIGHT_DARKNESS := 0.6
 # One slow pulse, light and glow together, between PULSE_MIN and full opacity.
 const PULSE_PERIOD := 2.4
 const PULSE_MIN := 0.55
 # Sides of the polygon each light and glow is drawn as.
 const SIDES := 16
 
-# The pieces World.shown_decor() lists, lights first.
+# The lights and their glows as drawn.
 var lights: Array[Polygon2D] = []
 var glows: Array[Polygon2D] = []
 var pulse_time := 0.0
 
 
 func _ready() -> void:
-	for edge in [-Lander.PAD_WIDTH / 2.0, Lander.PAD_WIDTH / 2.0]:
+	for edge: float in [-Lander.PAD_WIDTH / 2.0, Lander.PAD_WIDTH / 2.0]:
 		# Each light stands on the pad's top, at its edge.
 		var at := Vector2(edge, -Lander.PAD_HEIGHT - LIGHT_RADIUS)
 		var glow := disc(at, GLOW_RADIUS, LIGHT_COLOR)
@@ -49,17 +47,20 @@ func pulse(delta: float) -> void:
 
 # Strengthens the glow with the sky's darkness; the lights themselves are never dimmed.
 func show_sky(sky: SkyLook) -> void:
-	var night := clampf(sky.darkness / NIGHT_DARKNESS, 0.0, 1.0)
 	for glow in glows:
-		glow.self_modulate.a = lerpf(GLOW_DAY_ALPHA, GLOW_NIGHT_ALPHA, night)
+		glow.self_modulate.a = lerpf(GLOW_DAY_ALPHA, GLOW_NIGHT_ALPHA, sky.night())
+
+
+# The lights, then their glows, for World.shown_decor().
+func listed_decor() -> Array[World.Listing]:
+	var listed := World.listings(lights, World.DecorLayer.BEACON, World.DecorPart.LIGHT)
+	listed.append_array(World.listings(glows, World.DecorLayer.BEACON, World.DecorPart.GLOW))
+	return listed
 
 
 func disc(at: Vector2, radius: float, color: Color) -> Polygon2D:
-	var points := PackedVector2Array()
-	for side in SIDES:
-		points.append(at + Vector2.from_angle(TAU * side / SIDES) * radius)
 	var visual := Polygon2D.new()
-	visual.polygon = points
+	visual.polygon = DecorKit.disc(at, radius, SIDES)
 	visual.color = color
 	add_child(visual)
 	return visual

@@ -5,7 +5,7 @@ extends RefCounted
 # while the screen is showing.
 
 enum Column { OFFERS, CONTRACTS }
-# The mission rows, top to bottom: what START LOADING passes to the planet clock.
+# The mission rows, top to bottom: what the start button passes to the planet clock.
 enum MissionRow { DESTINATION, START_PERIOD }
 
 # Layout. LIST_SHARE is the share of the screen's width the offer list takes; the rest is
@@ -18,7 +18,7 @@ const DETAIL_COLUMNS := 2
 const ACCEPT_SIZE := Vector2(120, 32)
 # The ACCEPT button with its padding above and below, at the bottom of open details.
 const ACCEPT_SPAN := ACCEPT_SIZE.y + 4.0 * ROW_PADDING
-const START_LOADING_SIZE := Vector2(200, 32)
+const START_BUTTON_SIZE := Vector2(200, 32)
 # The room kept at a Contract's right end for its X.
 const REMOVE_WIDTH := 24.0
 const NOTICE_PADDING := Vector2(8, 4)
@@ -47,11 +47,11 @@ var focus := Column.OFFERS
 var list: ExpandableList
 # The offer whose ARE YOU SURE? is showing, if any.
 var accepting: TransportOffer
-# The destination and start period START LOADING passes to the planet clock.
+# The destination and start period the start button passes to the planet clock.
 var destination := Location.VALLEY
 var start_period := PlanetClock.StartPeriod.EVENING
 # The Contracts column's cursor, walking its stops top to bottom: each Contract, each mission
-# row, then START LOADING.
+# row, then the start button.
 var cursor := 0
 var notice_text := ""
 var notice_left := 0.0
@@ -89,7 +89,7 @@ func show_notice(text: String) -> void:
 func handle_input(event: InputEvent) -> bool:
 	if event.is_action_pressed("ui_right"):
 		if focus != Column.CONTRACTS:
-			cursor = start_loading_stop()
+			cursor = start_button_stop()
 		focus = Column.CONTRACTS
 	elif event.is_action_pressed("ui_left"):
 		focus = Column.OFFERS
@@ -110,14 +110,14 @@ func handle_input(event: InputEvent) -> bool:
 	return true
 
 
-# Up/Down walk the Contracts, the mission rows, then START LOADING. Return on a mission row
-# cycles its value; on a Contract it asks to remove it, except once loaded. Escape is left to
-# the Office.
+# Up/Down walk the Contracts, the mission rows, then the start button (START, START LOADING or
+# CANCEL MISSION). Return on a mission row cycles its value; on a Contract it asks to remove it,
+# except once loaded. Escape is left to the Office.
 func handle_contracts_input(event: InputEvent) -> bool:
 	if event.is_action_pressed("ui_up"):
 		cursor = maxi(cursor - 1, 0)
 	elif event.is_action_pressed("ui_down"):
-		cursor = mini(cursor + 1, start_loading_stop())
+		cursor = mini(cursor + 1, start_button_stop())
 	elif event.is_action_pressed("ui_accept"):
 		if selected_contract() != null:
 			if not economy.mission_under_way():
@@ -146,13 +146,13 @@ func confirm_accept() -> void:
 # Yes on REMOVE CONTRACT?: the cursor stays on a Contract while any are left.
 func confirm_remove() -> void:
 	economy.remove_contract(selected_contract())
-	cursor = start_loading_stop() if economy.contracts.is_empty() else mini(cursor, economy.contracts.size() - 1)
+	cursor = start_button_stop() if economy.contracts.is_empty() else mini(cursor, economy.contracts.size() - 1)
 
 
 # Yes on CANCEL MISSION?: every Contract is given up for its fee, leaving the cursor on START.
 func confirm_cancel() -> void:
 	economy.cancel_mission()
-	cursor = start_loading_stop()
+	cursor = start_button_stop()
 
 
 # Each time the Office opens, the mission rows start on the here and now: the Contracts'
@@ -176,8 +176,9 @@ func destination_locked() -> bool:
 	return not economy.contracts.is_empty()
 
 
-# The cursor's stop on START LOADING, after the Contracts and the mission rows.
-func start_loading_stop() -> int:
+# The cursor's stop on the start button (START, START LOADING or CANCEL MISSION), after the
+# Contracts and the mission rows.
+func start_button_stop() -> int:
 	return economy.contracts.size() + MissionRow.size()
 
 
@@ -200,15 +201,15 @@ func fits(offer: TransportOffer) -> bool:
 
 # Observable state
 
-# The Contract under the Contracts column's cursor, or null on a mission row or START LOADING.
+# The Contract under the Contracts column's cursor, or null on a mission row or the start button.
 func selected_contract() -> TransportOffer:
-	cursor = mini(cursor, start_loading_stop())
+	cursor = mini(cursor, start_button_stop())
 	return economy.contracts[cursor] if cursor < economy.contracts.size() else null
 
 
 func on_mission_row() -> bool:
-	cursor = mini(cursor, start_loading_stop())
-	return cursor >= economy.contracts.size() and cursor < start_loading_stop()
+	cursor = mini(cursor, start_button_stop())
+	return cursor >= economy.contracts.size() and cursor < start_button_stop()
 
 
 # The mission row under the Contracts column's cursor; only meaningful on_mission_row().
@@ -221,11 +222,11 @@ func selected_mission_line() -> String:
 	return mission_label(selected_mission_row()) if on_mission_row() else ""
 
 
-func on_start_loading() -> bool:
+func on_start_button() -> bool:
 	return focus == Column.CONTRACTS and selected_contract() == null and not on_mission_row()
 
 
-# The mission rows between the summary and START LOADING, e.g. DESTINATION MINE.
+# The mission rows between the summary and the start button, e.g. DESTINATION MINE.
 func mission_lines() -> PackedStringArray:
 	var lines := PackedStringArray()
 	for row: MissionRow in MissionRow.values():
@@ -486,8 +487,8 @@ func draw_contracts(area: Rect2) -> void:
 			draw_selected_row(area, y)
 		office.draw_label_value(mission_label(row), mission_value(row), Vector2(area.position.x, y), Office.TEXT_SIZE,
 			area.size.x, Office.BLACK if selected else Office.GREEN, Office.BLACK if selected else Office.WHITE)
-	var button := Rect2(Vector2(area.position.x, y + ROW_HEIGHT), START_LOADING_SIZE)
-	focused = on_start_loading()
+	var button := Rect2(Vector2(area.position.x, y + ROW_HEIGHT), START_BUTTON_SIZE)
+	focused = on_start_button()
 	if focused:
 		office.terminal.draw_rect(button, Office.GREEN)
 	else:

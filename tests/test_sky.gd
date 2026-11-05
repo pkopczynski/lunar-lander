@@ -151,3 +151,12 @@ func test_deep_space_stars_are_the_same_at_every_hour() -> void:
 		var shown := world().shown_stars().map(star_key)
 		var missing := deep.filter(func(star: World.Star) -> bool: return not shown.has(star_key(star)))
 		check(missing.is_empty(), "at %02d:00 every deep-space star should show as at 13:00, %d differ" % [hour, missing.size()])
+
+
+func test_night_lights_fade_in_from_none_by_day_to_full_at_night() -> void:
+	check_near(SkyLook.at(13 * 60).night(), 0.0, 0.001, "night at 13:00")
+	check_near(SkyLook.at(19 * 60).night(), 0.0, 0.001, "night at 19:00")
+	check_near(SkyLook.at(3 * 60).night(), 1.0, 0.001, "night at 03:00")
+	check_near(SkyLook.at(23 * 60).night(), 1.0, 0.001, "night at 23:00")
+	# At 07:30 the scenery is darkened 0.1 of the night's 0.6.
+	check_near(SkyLook.at(7 * 60 + 30).night(), 1.0 / 6.0, 0.001, "night at 07:30")

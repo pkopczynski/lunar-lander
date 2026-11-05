@@ -166,33 +166,34 @@ static func generate(rng: RandomNumberGenerator, offer_number: int, max_passenge
 		max_cargo: float) -> TransportOffer:
 	var shares := PackedFloat32Array()
 	for location in Location.ALL:
-		shares.append(location.pool_share)
+		shares.append(location.profile.pool_share)
 	var destination: Location = Location.ALL[rng.rand_weighted(shares)]
-	var most_passengers := mini(destination.max_passengers, max_passengers)
-	var most_cargo := minf(destination.max_cargo, max_cargo)
-	var weights := destination.kind_weights.duplicate()
-	if most_passengers < destination.min_passengers:
+	var profile := destination.profile
+	var most_passengers := mini(profile.max_passengers, max_passengers)
+	var most_cargo := minf(profile.max_cargo, max_cargo)
+	var weights := profile.kind_weights.duplicate()
+	if most_passengers < profile.min_passengers:
 		weights[Kind.PASSENGERS] = 0.0
 		weights[Kind.MIXED] = 0.0
-	if most_cargo < destination.min_cargo:
+	if most_cargo < profile.min_cargo:
 		weights[Kind.CARGO] = 0.0
 		weights[Kind.MIXED] = 0.0
 	var offer_kind := rng.rand_weighted(weights) as Kind
 	var offer := TransportOffer.new()
 	offer.number = offer_number
 	offer.destination = destination
-	var titles: Array = destination.titles[offer_kind]
+	var titles: Array = profile.titles[offer_kind]
 	offer.title = titles[rng.randi_range(0, titles.size() - 1)]
 	offer.trader = TRADERS[rng.randi_range(0, TRADERS.size() - 1)]
 	if offer_kind != Kind.CARGO:
-		offer.passengers = rng.randi_range(destination.min_passengers, most_passengers)
+		offer.passengers = rng.randi_range(profile.min_passengers, most_passengers)
 	if offer_kind != Kind.PASSENGERS:
-		offer.cargo_mass = rng.randi_range(ceili(destination.min_cargo / CARGO_STEP),
+		offer.cargo_mass = rng.randi_range(ceili(profile.min_cargo / CARGO_STEP),
 			floori(most_cargo / CARGO_STEP)) * CARGO_STEP
 	offer.deadline = rng.randi_range(MIN_DEADLINE, MAX_DEADLINE)
 	offer.time_left = rng.randi_range(MIN_EXPIRY, MAX_EXPIRY)
 	var scale := pow(REFERENCE_DEADLINE / offer.deadline, URGENCY_EXPONENT) \
-		* rng.randf_range(MIN_LUCK, MAX_LUCK) * destination.reward_factor
+		* rng.randf_range(MIN_LUCK, MAX_LUCK) * profile.reward_factor
 	offer.passenger_reward = roundi(PASSENGER_REWARD * offer.passengers * scale)
 	offer.cargo_reward = roundi(CARGO_REWARD_PER_TONNE * offer.cargo_mass / 1000.0 * scale)
 	return offer

@@ -34,6 +34,55 @@ const METROPOLIS_FACADES: Array[Rect2] = [
 	Rect2(270, 380, 140, 400), Rect2(640, 280, 168, 500), Rect2(1120, 590, 260, 190),
 	Rect2(1412, 600, 108, 180), Rect2(1572, 680, 166, 100),
 ]
+# The Metropolis's neon signs: the bar each lights on a building's face, and its colour.
+const NEON_ORANGE := Color(1.0, 0.6, 0.15)
+const NEON_PINK := Color(1.0, 0.2, 0.8)
+const NEON_CYAN := Color(0.2, 0.95, 1.0)
+const METROPOLIS_NEON_SIGNS := [
+	[Rect2(290, 352, 110, 10), NEON_ORANGE], [Rect2(614, 300, 10, 130), NEON_PINK],
+	[Rect2(1130, 562, 240, 10), NEON_CYAN], [Rect2(1530, 610, 8, 90), NEON_PINK],
+]
+# The Metropolis's flying vehicles: where each is as designed and its speed in px/s (negative:
+# leftwards). Tuning, expected to change in playtests.
+const METROPOLIS_VEHICLES := [
+	[Vector2(300, 180), 45.0], [Vector2(1500, 120), -60.0], [Vector2(900, 330), 30.0], [Vector2(-400, 240), -38.0],
+]
+
+# Location profiles (see Profile): what the Transport offers to each location are like. Kind
+# weights are passengers only, cargo only and both. Tuning, expected to change in playtests.
+# The Valley: every kind alike, varied passengers and supplies, the base pay.
+const VALLEY_POOL_SHARE := 0.4
+const VALLEY_TITLES: Dictionary[TransportOffer.Kind, Array] = {
+	TransportOffer.Kind.PASSENGERS: ["Tourist party", "Crew rotation", "Survey team", "Medical staff",
+		"School trip"],
+	TransportOffer.Kind.CARGO: ["Hydroponics kit", "Water ice", "General supplies", "Spare parts",
+		"Mail and parcels"],
+	TransportOffer.Kind.MIXED: ["Tourists and luggage", "Field camp", "Relief mission", "Science outpost",
+		"Settlers and supplies"],
+}
+# The Mine: heavy cargo and small crews, paying well above the Valley for the heavy loads.
+const MINE_POOL_SHARE := 0.3
+const MINE_KIND_WEIGHTS: Array[float] = [0.1, 0.6, 0.3]
+const MINE_MAX_PASSENGERS := 4
+const MINE_MIN_CARGO := 3000.0
+const MINE_REWARD_FACTOR := 1.6
+const MINE_TITLES: Dictionary[TransportOffer.Kind, Array] = {
+	TransportOffer.Kind.PASSENGERS: ["Mining shift", "Blasting crew", "Maintenance crew"],
+	TransportOffer.Kind.CARGO: ["Drill bits", "Spare parts", "Industrial supplies", "Conveyor parts",
+		"Heavy tools"],
+	TransportOffer.Kind.MIXED: ["Drill crew and rig", "Repair team", "Crane crew and parts"],
+}
+# The Metropolis: mostly passengers, with light cargo only.
+const METROPOLIS_POOL_SHARE := 0.3
+const METROPOLIS_KIND_WEIGHTS: Array[float] = [0.6, 0.1, 0.3]
+const METROPOLIS_MAX_CARGO := 3000.0
+const METROPOLIS_REWARD_FACTOR := 1.35
+const METROPOLIS_TITLES: Dictionary[TransportOffer.Kind, Array] = {
+	TransportOffer.Kind.PASSENGERS: ["Tourist group", "Corporate team", "Business delegation",
+		"Conference guests", "Shift workers"],
+	TransportOffer.Kind.CARGO: ["Mail and parcels", "Shop supplies", "Electronics", "Restaurant supplies"],
+	TransportOffer.Kind.MIXED: ["Office move", "Film crew and kit", "Hotel guests", "Pop-up shop", "Expo team"],
+}
 
 # Shown in the HUD.
 var name: String
@@ -65,21 +114,8 @@ var warning_lights := PackedVector2Array()
 # The distant vehicles flying in its sky behind the buildings; by default none.
 var vehicles: Array[Vehicles.Vehicle] = []
 
-# The location profile: what the Transport offers to it are like.
-# Its weight in the pool: offers go to each location in proportion to their shares.
-var pool_share := 1.0
-# How often its offers are passengers only, cargo only or both, indexed by TransportOffer.Kind.
-var kind_weights := PackedFloat32Array([1.0, 1.0, 1.0])
-# Passengers and cargo (kg) per offer; each also capped by the largest ship type's seats and
-# maximum capacity.
-var min_passengers := 1
-var max_passengers := 1000
-var min_cargo := 500.0
-var max_cargo := INF
-# Its offers' titles, by TransportOffer.Kind.
-var titles := {}
-# Its offers' rewards are multiplied by this.
-var reward_factor := 1.0
+# Its location profile: what the Transport offers to it are like.
+var profile := Profile.new()
 
 # Named like constants: GDScript can't build objects in a const, so never reassign these.
 static var VALLEY := valley()
@@ -87,6 +123,24 @@ static var MINE := mine()
 static var METROPOLIS := metropolis()
 # In drift order: the location after the last one is the first.
 static var ALL: Array[Location] = [VALLEY, MINE, METROPOLIS]
+
+
+# A location profile: what the Transport offers to a location are like.
+class Profile:
+	# Its weight in the pool: offers go to each location in proportion to their shares.
+	var pool_share := 1.0
+	# How often its offers are passengers only, cargo only or both, indexed by TransportOffer.Kind.
+	var kind_weights := PackedFloat32Array([1.0, 1.0, 1.0])
+	# Passengers and cargo (kg) per offer; each also capped by the largest ship type's seats and
+	# maximum capacity.
+	var min_passengers := 1
+	var max_passengers := 1000
+	var min_cargo := 500.0
+	var max_cargo := INF
+	# Its offers' titles, by TransportOffer.Kind.
+	var titles: Dictionary[TransportOffer.Kind, Array] = {}
+	# Its offers' rewards are multiplied by this.
+	var reward_factor := 1.0
 
 
 # The location after this one in drift order, wrapping to the first.
@@ -100,15 +154,8 @@ static func valley() -> Location:
 	location.pad_center_x = World.WORLD_WIDTH / 2.0
 	location.clouds = Clouds.valley()
 	location.foreground = Foreground.valley()
-	location.pool_share = 0.4
-	location.titles = {
-		TransportOffer.Kind.PASSENGERS: ["Tourist party", "Crew rotation", "Survey team", "Medical staff",
-			"School trip"],
-		TransportOffer.Kind.CARGO: ["Hydroponics kit", "Water ice", "General supplies", "Spare parts",
-			"Mail and parcels"],
-		TransportOffer.Kind.MIXED: ["Tourists and luggage", "Field camp", "Relief mission", "Science outpost",
-			"Settlers and supplies"],
-	}
+	location.profile.pool_share = VALLEY_POOL_SHARE
+	location.profile.titles = VALLEY_TITLES
 	return location
 
 
@@ -124,17 +171,12 @@ static func mine() -> Location:
 	location.ground_y = World.GROUND_TOP_Y + PIT_DEPTH
 	location.backdrop = Backdrop.mine()
 	location.foreground = Foreground.mine()
-	location.pool_share = 0.3
-	location.kind_weights = PackedFloat32Array([0.1, 0.6, 0.3])
-	location.max_passengers = 4
-	location.min_cargo = 3000.0
-	location.reward_factor = 1.35
-	location.titles = {
-		TransportOffer.Kind.PASSENGERS: ["Mining shift", "Blasting crew", "Maintenance crew"],
-		TransportOffer.Kind.CARGO: ["Drill bits", "Spare parts", "Industrial supplies", "Conveyor parts",
-			"Heavy tools"],
-		TransportOffer.Kind.MIXED: ["Drill crew and rig", "Repair team", "Crane crew and parts"],
-	}
+	location.profile.pool_share = MINE_POOL_SHARE
+	location.profile.kind_weights = PackedFloat32Array(MINE_KIND_WEIGHTS)
+	location.profile.max_passengers = MINE_MAX_PASSENGERS
+	location.profile.min_cargo = MINE_MIN_CARGO
+	location.profile.reward_factor = MINE_REWARD_FACTOR
+	location.profile.titles = MINE_TITLES
 	var top := World.GROUND_TOP_Y
 	var bottom := location.ground_y + World.GROUND_DEPTH
 	var left := -World.SIDE_OVERHANG
@@ -162,34 +204,23 @@ static func metropolis() -> Location:
 	var location := Location.new()
 	location.name = "METROPOLIS"
 	location.pad_center_x = 1250.0
-	location.pool_share = 0.3
-	location.kind_weights = PackedFloat32Array([0.6, 0.1, 0.3])
-	location.max_cargo = 3000.0
-	location.reward_factor = 1.35
-	location.titles = {
-		TransportOffer.Kind.PASSENGERS: ["Tourist group", "Corporate team", "Business delegation",
-			"Conference guests", "Shift workers"],
-		TransportOffer.Kind.CARGO: ["Mail and parcels", "Shop supplies", "Electronics", "Restaurant supplies"],
-		TransportOffer.Kind.MIXED: ["Office move", "Film crew and kit", "Hotel guests", "Pop-up shop", "Expo team"],
-	}
+	location.profile.pool_share = METROPOLIS_POOL_SHARE
+	location.profile.kind_weights = PackedFloat32Array(METROPOLIS_KIND_WEIGHTS)
+	location.profile.max_cargo = METROPOLIS_MAX_CARGO
+	location.profile.reward_factor = METROPOLIS_REWARD_FACTOR
+	location.profile.titles = METROPOLIS_TITLES
 	location.backdrop = Backdrop.skyline()
 	location.foreground = Foreground.metropolis()
 	location.windows = CityLights.windows_on(METROPOLIS_FACADES)
-	location.neon_signs = [
-		CityLights.Sign.new(Rect2(290, 352, 110, 10), Color(1.0, 0.6, 0.15)),
-		CityLights.Sign.new(Rect2(614, 300, 10, 130), Color(1.0, 0.2, 0.8)),
-		CityLights.Sign.new(Rect2(1130, 562, 240, 10), Color(0.2, 0.95, 1.0)),
-		CityLights.Sign.new(Rect2(1530, 610, 8, 90), Color(1.0, 0.2, 0.8)),
-	]
+	for neon in METROPOLIS_NEON_SIGNS:
+		location.neon_signs.append(CityLights.Sign.new(neon[0], neon[1]))
 	# On the towers' and the lower roof's corners, and the antenna's tip.
 	location.warning_lights = PackedVector2Array([
 		Vector2(414, 325), Vector2(606, 255), Vector2(814, 255),
 		Vector2(PAD_BUILDING_LEFT + ANTENNA_WIDTH / 2.0, ANTENNA_TOP_Y - CityLights.WARNING_RADIUS), Vector2(1554, 575),
 	])
-	location.vehicles = [
-		Vehicles.Vehicle.new(Vector2(300, 180), 45.0), Vehicles.Vehicle.new(Vector2(1500, 120), -60.0),
-		Vehicles.Vehicle.new(Vector2(900, 330), 30.0), Vehicles.Vehicle.new(Vector2(-400, 240), -38.0),
-	]
+	for vehicle in METROPOLIS_VEHICLES:
+		location.vehicles.append(Vehicles.Vehicle.new(vehicle[0], vehicle[1]))
 	location.ground_y = ROOF_Y
 	location.ground_width = PAD_ROOF_WIDTH
 	location.lowest_y = STREET_Y + World.GROUND_DEPTH

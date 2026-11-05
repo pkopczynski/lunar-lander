@@ -323,30 +323,34 @@ class Decor:
 	var screen_area: Rect2
 
 
+# One decor piece as its module lists it (each decor module's listed_decor()): its visual (a
+# Polygon2D or MeshInstance2D), layer and part.
+class Listing:
+	var visual: Node2D
+	var layer: DecorLayer
+	var part: DecorPart
+
+	func _init(piece: Node2D, in_layer: DecorLayer, as_part: DecorPart) -> void:
+		visual = piece
+		layer = in_layer
+		part = as_part
+
+
+# The listings of pieces, all in one layer and part.
+static func listings(pieces: Array, layer: DecorLayer, part: DecorPart) -> Array[Listing]:
+	var listed: Array[Listing] = []
+	for piece: Node2D in pieces:
+		listed.append(Listing.new(piece, layer, part))
+	return listed
+
+
 # Every decor piece the World draws, as it appears on screen for a camera centred on
 # camera_center at zoom (the viewport's centre is the camera's). Read-only, for tests.
 func shown_decor(camera_center: Vector2, zoom: float) -> Array[Decor]:
 	var pieces: Array[Decor] = []
-	for ridge in backdrop.ridges:
-		pieces.append(decor(ridge, DecorLayer.BACKDROP, DecorPart.RIDGE, camera_center, zoom))
-	for cloud in clouds.pieces:
-		pieces.append(decor(cloud, DecorLayer.PARALLAX, DecorPart.CLOUD, camera_center, zoom))
-	for hull in vehicles.hulls:
-		pieces.append(decor(hull, DecorLayer.PARALLAX, DecorPart.VEHICLE, camera_center, zoom))
-	for light in beacon.lights:
-		pieces.append(decor(light, DecorLayer.BEACON, DecorPart.LIGHT, camera_center, zoom))
-	for glow in beacon.glows:
-		pieces.append(decor(glow, DecorLayer.BEACON, DecorPart.GLOW, camera_center, zoom))
-	for silhouette in foreground.pieces:
-		pieces.append(decor(silhouette, DecorLayer.FOREGROUND, DecorPart.SILHOUETTE, camera_center, zoom))
-	if city_lights.windows.mesh:
-		pieces.append(decor(city_lights.windows, DecorLayer.LIGHTS, DecorPart.WINDOWS, camera_center, zoom))
-	for neon in city_lights.signs:
-		pieces.append(decor(neon, DecorLayer.LIGHTS, DecorPart.NEON, camera_center, zoom))
-	for light in city_lights.warning_lights:
-		pieces.append(decor(light, DecorLayer.LIGHTS, DecorPart.WARNING_LIGHT, camera_center, zoom))
-	for light in vehicles.lights:
-		pieces.append(decor(light, DecorLayer.LIGHTS, DecorPart.VEHICLE_LIGHT, camera_center, zoom))
+	for module in [backdrop, clouds, vehicles, beacon, foreground, city_lights]:
+		for listing: Listing in module.listed_decor():
+			pieces.append(decor(listing.visual, listing.layer, listing.part, camera_center, zoom))
 	return pieces
 
 

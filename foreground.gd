@@ -92,31 +92,27 @@ static func mine() -> Array[Silhouette]:
 		Silhouette.new(MINE_RIGHT_CONVEYOR, MINE_SCROLL)]
 
 
-# The silhouettes as drawn, the pieces World.shown_decor() lists.
+# The silhouettes as drawn.
 var pieces: Array[Polygon2D] = []
 
 
 # Builds the Foreground afresh, each silhouette closing down past bottom_y in its own layer
 # anchored on anchor.
 func build(from: Array[Silhouette], bottom_y: float, anchor: Vector2) -> void:
-	for layer in get_children():
-		remove_child(layer)
-		layer.queue_free()
+	DecorKit.clear(self)
 	pieces.clear()
 	for silhouette in from:
-		var outline := silhouette.top_edge.duplicate()
-		outline.append(Vector2(outline[-1].x, bottom_y + BOTTOM_MARGIN))
-		outline.append(Vector2(outline[0].x, bottom_y + BOTTOM_MARGIN))
-		var layer := AnchoredParallax.new(silhouette.scroll_scale, anchor)
-		add_child(layer)
-		var visual := Polygon2D.new()
-		visual.polygon = outline
+		var outline := DecorKit.closed_down(silhouette.top_edge, bottom_y + BOTTOM_MARGIN)
+		var visual := DecorKit.add_in_layer(self, outline, silhouette.scroll_scale, anchor)
 		visual.color = COLOR
-		layer.add_child(visual)
 		pieces.append(visual)
 
 
+# The silhouettes, for World.shown_decor().
+func listed_decor() -> Array[World.Listing]:
+	return World.listings(pieces, World.DecorLayer.FOREGROUND, World.DecorPart.SILHOUETTE)
+
+
 func show_sky(sky: SkyLook) -> void:
-	var night := clampf(sky.darkness / Beacon.NIGHT_DARKNESS, 0.0, 1.0)
 	for piece in pieces:
-		piece.self_modulate = Color.WHITE.darkened(NIGHT_DARKENING * night)
+		piece.self_modulate = Color.WHITE.darkened(NIGHT_DARKENING * sky.night())

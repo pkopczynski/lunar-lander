@@ -125,7 +125,7 @@ func test_a_contract_cant_be_removed_during_the_mission() -> void:
 
 # Return on CANCEL MISSION, then Left to Yes and Return.
 func cancel() -> void:
-	check(offers().on_start_loading() and offers().start_text() == "CANCEL MISSION",
+	check(offers().on_start_button() and offers().start_text() == "CANCEL MISSION",
 		"the cursor should be on CANCEL MISSION")
 	await press(&"ui_accept")
 	await press(&"ui_left")
@@ -143,7 +143,7 @@ func deliver_and_open_offers(contracts: Array) -> void:
 	check(office().showing, "Yes should enter the Office")
 	await open_transport_offers()
 	await press(&"ui_right")
-	check(offers().on_start_loading(), "Right should put the cursor on the button under the mission rows")
+	check(offers().on_start_button(), "Right should put the cursor on the button under the mission rows")
 
 
 # Loads the Contracts, then undocks and flies on, delivering.
