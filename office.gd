@@ -276,7 +276,7 @@ func close() -> void:
 # until the ship is released: by No here, or by leaving the Office. A delivering ship is asked
 # too, so the mission can be cancelled.
 func ask_to_enter() -> void:
-	if not economy.phase in [Economy.Phase.NONE, Economy.Phase.DELIVERING]:
+	if economy.phase != Economy.Phase.NONE and not economy.mission_under_way():
 		return
 	lander.hold()
 	visible = true
