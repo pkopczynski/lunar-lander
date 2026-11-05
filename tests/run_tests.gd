@@ -52,6 +52,8 @@ func run() -> void:
 			if problems.is_empty():
 				passed += 1
 				print("PASS  ", label)
+				for note: String in test.pending_notes:
+					print("        pending: ", note)
 			else:
 				failed.append(label)
 				print("FAIL  ", label)
