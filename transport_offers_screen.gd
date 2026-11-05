@@ -29,6 +29,7 @@ const CONTRACTS_TEXT := "CONTRACTS"
 const FUEL_LIMITED_LABEL := "FUEL LIMITED:"
 const FUEL_LIMITED_NOTE := "FUEL LIMITED"
 const START_LOADING_TEXT := "START LOADING"
+const START_TEXT := "START"
 const DESTINATION_LABEL := "DESTINATION"
 const START_PERIOD_LABEL := "START PERIOD"
 const REMOVE_TEXT := "X"
@@ -120,8 +121,8 @@ func handle_contracts_input(event: InputEvent) -> bool:
 			office.show_popup(Office.PopupKind.REMOVE_CONTRACT, Office.Choice.NO)
 		elif on_mission_row():
 			cycle_mission_row(selected_mission_row())
-		elif start_loading_enabled():
-			office.start_loading()
+		else:
+			office.start_mission()
 	else:
 		return false
 	return true
@@ -346,8 +347,9 @@ func limits_fuel(load_mass: float) -> bool:
 	return ship.fuel_cap_for(load_mass) < ship.ship_type.tank
 
 
-func start_loading_enabled() -> bool:
-	return not economy.contracts.is_empty()
+# The button under the mission rows: START LOADING with Contracts, START (a free flight) without.
+func start_text() -> String:
+	return START_TEXT if economy.contracts.is_empty() else START_LOADING_TEXT
 
 
 # Two masses as 2 500/8 000 KG.
@@ -437,7 +439,7 @@ func draw_notice(bottom_left: Vector2) -> void:
 
 
 # CONTRACTS and its list (each with a plain X at its right end), the summary, the mission rows
-# (green label, white value), then START LOADING (dimmed while there are no Contracts); the
+# (green label, white value), then START LOADING (START without Contracts); the
 # row or button under the cursor is inverted.
 func draw_contracts(area: Rect2) -> void:
 	var y := area.position.y
@@ -471,14 +473,13 @@ func draw_contracts(area: Rect2) -> void:
 		office.draw_label_value(mission_label(row), mission_value(row), Vector2(area.position.x, y), Office.TEXT_SIZE,
 			area.size.x, Office.BLACK if selected else Office.GREEN, Office.BLACK if selected else Office.WHITE)
 	var button := Rect2(Vector2(area.position.x, y + ROW_HEIGHT), START_LOADING_SIZE)
-	var lit := Office.GREEN if start_loading_enabled() else Office.DIM_GREEN
 	focused = on_start_loading()
 	if focused:
-		office.terminal.draw_rect(button, lit)
+		office.terminal.draw_rect(button, Office.GREEN)
 	else:
-		office.terminal.draw_rect(button, lit, false, Office.LINE_WIDTH)
-	office.draw_text(START_LOADING_TEXT, Vector2(button.position.x, button.get_center().y + Office.TEXT_SIZE / 2.0),
-		Office.TEXT_SIZE, button.size.x, HORIZONTAL_ALIGNMENT_CENTER, Office.BLACK if focused else lit)
+		office.terminal.draw_rect(button, Office.GREEN, false, Office.LINE_WIDTH)
+	office.draw_text(start_text(), Vector2(button.position.x, button.get_center().y + Office.TEXT_SIZE / 2.0),
+		Office.TEXT_SIZE, button.size.x, HORIZONTAL_ALIGNMENT_CENTER, Office.BLACK if focused else Office.GREEN)
 
 
 # The whole Contracts column row at baseline y inverted, like a selected offer, its text sharing
