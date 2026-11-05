@@ -5,7 +5,7 @@ extends Node2D
 # the sky. Each ridge is one Polygon2D filled with the background gradient, darkened, so it reads
 # as a shadow of the sky behind it, in its own parallax layer anchored on the pad.
 
-# Tatra-like ridges, behind the Valley and (for now) the Metropolis. Only the top edge is listed; each
+# Tatra-like ridges, behind the Valley. Only the top edge is listed; each
 # ridge closes down to the location's lowest point. Most of it sits between the mountains, which
 # cover its ends.
 # The farther ridge: jagged granite High Tatra peaks, tallest near Rysy.
@@ -31,26 +31,6 @@ const TATRA_NEAR := [
 	Vector2(1530, 305), Vector2(1555, 300), Vector2(1590, 320), Vector2(1650, 345),
 	Vector2(1720, 330), Vector2(1800, 350), Vector2(1880, 370), Vector2(World.WORLD_WIDTH + World.SIDE_OVERHANG, 380),
 ]
-# The Metropolis's far skyline, in two depths: each a list of blocks left to right, [right x, roof
-# y], the first starting at the world's left side overhang and the last reaching its right one.
-# Flat roofs and straight walls, staying below the mountain tops; the nearer one a little lower.
-const SKYLINE_FAR := [
-	[-200, 360], [-60, 300], [40, 340], [130, 285], [210, 320], [300, 250], [360, 300], [470, 270],
-	[540, 330], [610, 235], [680, 290], [790, 310], [860, 255], [960, 330], [1040, 280], [1120, 245],
-	[1210, 300], [1300, 270], [1380, 320], [1460, 240], [1540, 290], [1640, 265], [1720, 330], [1800, 275],
-	[1900, 310], [2050, 260], [2400, 330], [World.WORLD_WIDTH + World.SIDE_OVERHANG, 300],
-]
-const SKYLINE_NEAR := [
-	[-100, 420], [80, 380], [190, 430], [280, 360], [380, 410], [450, 345], [560, 395], [650, 370],
-	[730, 420], [830, 350], [920, 400], [990, 330], [1080, 385], [1170, 420], [1260, 360], [1350, 405],
-	[1450, 340], [1520, 395], [1610, 370], [1700, 430], [1790, 365], [1880, 410], [2100, 380],
-	[World.WORLD_WIDTH + World.SIDE_OVERHANG, 420],
-]
-const SKYLINE_FAR_DARKENING := 0.1
-const SKYLINE_NEAR_DARKENING := 0.2
-# Tuning, expected to change in playtests.
-const SKYLINE_FAR_SCROLL := Vector2(0.55, 0.97)
-const SKYLINE_NEAR_SCROLL := Vector2(0.7, 0.98)
 # How much darker than the background behind it each Tatra ridge is.
 const TATRA_FAR_DARKENING := 0.08
 const TATRA_NEAR_DARKENING := 0.16
@@ -58,6 +38,32 @@ const TATRA_NEAR_DARKENING := 0.16
 # ridges barely rise into the sky as the ship climbs. Tuning, expected to change in playtests.
 const TATRA_FAR_SCROLL := Vector2(0.6, 0.97)
 const TATRA_NEAR_SCROLL := Vector2(0.75, 0.98)
+# The Metropolis's far skyline, in two depths: each a list of blocks left to right, each
+# Vector2(right x, roof y), the first starting at the world's left side overhang and the last
+# reaching its right one. Flat roofs and straight walls, staying below the mountain tops; the
+# nearer one a little lower.
+const SKYLINE_FAR: Array[Vector2] = [
+	Vector2(-200, 360), Vector2(-60, 300), Vector2(40, 340), Vector2(130, 285), Vector2(210, 320),
+	Vector2(300, 250), Vector2(360, 300), Vector2(470, 270), Vector2(540, 330), Vector2(610, 235),
+	Vector2(680, 290), Vector2(790, 310), Vector2(860, 255), Vector2(960, 330), Vector2(1040, 280),
+	Vector2(1120, 245), Vector2(1210, 300), Vector2(1300, 270), Vector2(1380, 320), Vector2(1460, 240),
+	Vector2(1540, 290), Vector2(1640, 265), Vector2(1720, 330), Vector2(1800, 275), Vector2(1900, 310),
+	Vector2(2050, 260), Vector2(2400, 330), Vector2(World.WORLD_WIDTH + World.SIDE_OVERHANG, 300),
+]
+const SKYLINE_NEAR: Array[Vector2] = [
+	Vector2(-100, 420), Vector2(80, 380), Vector2(190, 430), Vector2(280, 360), Vector2(380, 410),
+	Vector2(450, 345), Vector2(560, 395), Vector2(650, 370), Vector2(730, 420), Vector2(830, 350),
+	Vector2(920, 400), Vector2(990, 330), Vector2(1080, 385), Vector2(1170, 420), Vector2(1260, 360),
+	Vector2(1350, 405), Vector2(1450, 340), Vector2(1520, 395), Vector2(1610, 370), Vector2(1700, 430),
+	Vector2(1790, 365), Vector2(1880, 410), Vector2(2100, 380),
+	Vector2(World.WORLD_WIDTH + World.SIDE_OVERHANG, 420),
+]
+# How much darker than the background behind it each depth is, and how fast it scrolls. Tuning,
+# expected to change in playtests.
+const SKYLINE_FAR_DARKENING := 0.1
+const SKYLINE_NEAR_DARKENING := 0.2
+const SKYLINE_FAR_SCROLL := Vector2(0.55, 0.97)
+const SKYLINE_NEAR_SCROLL := Vector2(0.7, 0.98)
 # The Mine's Backdrop, farther first, with stronger parallax than the Tatras' (each layer slower).
 # Tuning, expected to change in playtests.
 # The farther ridge: tall, jagged Himalaya-like peaks towering above the mountain tops, the
@@ -144,15 +150,15 @@ static func skyline() -> Array[Ridge]:
 		Ridge.new(skyline_edge(SKYLINE_NEAR), SKYLINE_NEAR_DARKENING, SKYLINE_NEAR_SCROLL)]
 
 
-# The top edge of a row of blocks ([right x, roof y] each, left to right), from the world's left
-# side overhang: each roof flat, with a straight wall down or up to the next.
-static func skyline_edge(blocks: Array) -> Array:
-	var edge := []
+# The top edge of a row of blocks (each Vector2(right x, roof y), left to right), from the world's
+# left side overhang: each roof flat, with a straight wall down or up to the next.
+static func skyline_edge(blocks: Array[Vector2]) -> Array[Vector2]:
+	var edge: Array[Vector2] = []
 	var left := -World.SIDE_OVERHANG
 	for block in blocks:
-		edge.append(Vector2(left, block[1]))
-		edge.append(Vector2(block[0], block[1]))
-		left = block[0]
+		edge.append(Vector2(left, block.y))
+		edge.append(block)
+		left = block.x
 	return edge
 
 
