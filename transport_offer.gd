@@ -12,7 +12,6 @@ const MIN_EXPIRY := 180
 const MAX_EXPIRY := 600
 const MIN_DEADLINE := 60
 const MAX_DEADLINE := 180
-const MIN_CARGO := 500
 const CARGO_STEP := 100
 # Rewards at the reference deadline, scaled by (REFERENCE_DEADLINE / deadline)^URGENCY_EXPONENT,
 # then by a random factor between MIN_LUCK and MAX_LUCK.
@@ -33,11 +32,6 @@ const KIND_LABELS := {
 	Kind.PASSENGERS: "PASSENGERS",
 	Kind.CARGO: "CARGO",
 	Kind.MIXED: "PASSENGERS + CARGO",
-}
-const TITLES := {
-	Kind.PASSENGERS: ["Crew rotation", "Mining shift", "Survey team", "Medical staff", "Tourist party"],
-	Kind.CARGO: ["Mining supplies", "Water ice", "Spare parts", "Hydroponics kit", "Ore samples"],
-	Kind.MIXED: ["Field camp", "Relief mission", "Drill crew and rig", "Science outpost", "Repair team"],
 }
 const TRADERS: Array[String] = ["Tycho Haulage", "Selene Mining", "Mare Logistics", "Copernicus Labs",
 	"Kepler Supply", "Apollo Freight", "Regolith & Sons", "Crater Works"]
@@ -108,7 +102,7 @@ func reward() -> int:
 	return passenger_reward + cargo_reward
 
 
-# Its number and title, as #004 MINING SUPPLIES.
+# Its number and title, as #004 INDUSTRIAL SUPPLIES.
 func label() -> String:
 	return "#%03d %s" % [number, title.to_upper()]
 
@@ -150,30 +144,39 @@ func settlement(flight_deadline: float, delivery_time: float, deadline_at: float
 	return transaction
 
 
-# A random offer of at most max_passengers (at least 1) and max_cargo (at least MIN_CARGO).
+# A random offer: its destination drawn by pool share, the rest from that location's profile,
+# with at most max_passengers and max_cargo (the largest ship type's).
 static func generate(rng: RandomNumberGenerator, offer_number: int, max_passengers: int,
 		max_cargo: float) -> TransportOffer:
-	var kinds: Array[Kind] = []
-	if max_passengers >= 1:
-		kinds.append(Kind.PASSENGERS)
-	if max_cargo >= MIN_CARGO:
-		kinds.append(Kind.CARGO)
-	if kinds.size() == 2:
-		kinds.append(Kind.MIXED)
-	var offer_kind: Kind = kinds[rng.randi_range(0, kinds.size() - 1)]
+	var shares := PackedFloat32Array()
+	for location in Location.ALL:
+		shares.append(location.pool_share)
+	var destination: Location = Location.ALL[rng.rand_weighted(shares)]
+	var most_passengers := mini(destination.max_passengers, max_passengers)
+	var most_cargo := minf(destination.max_cargo, max_cargo)
+	var weights := destination.kind_weights.duplicate()
+	if most_passengers < destination.min_passengers:
+		weights[Kind.PASSENGERS] = 0.0
+		weights[Kind.MIXED] = 0.0
+	if most_cargo < destination.min_cargo:
+		weights[Kind.CARGO] = 0.0
+		weights[Kind.MIXED] = 0.0
+	var offer_kind := rng.rand_weighted(weights) as Kind
 	var offer := TransportOffer.new()
 	offer.number = offer_number
-	var titles: Array = TITLES[offer_kind]
+	offer.destination = destination
+	var titles: Array = destination.titles[offer_kind]
 	offer.title = titles[rng.randi_range(0, titles.size() - 1)]
 	offer.trader = TRADERS[rng.randi_range(0, TRADERS.size() - 1)]
 	if offer_kind != Kind.CARGO:
-		offer.passengers = rng.randi_range(1, max_passengers)
+		offer.passengers = rng.randi_range(destination.min_passengers, most_passengers)
 	if offer_kind != Kind.PASSENGERS:
-		offer.cargo_mass = rng.randi_range(MIN_CARGO / CARGO_STEP, floori(max_cargo / CARGO_STEP)) * CARGO_STEP
+		offer.cargo_mass = rng.randi_range(ceili(destination.min_cargo / CARGO_STEP),
+			floori(most_cargo / CARGO_STEP)) * CARGO_STEP
 	offer.deadline = rng.randi_range(MIN_DEADLINE, MAX_DEADLINE)
 	offer.time_left = rng.randi_range(MIN_EXPIRY, MAX_EXPIRY)
-	var scale := pow(REFERENCE_DEADLINE / offer.deadline, URGENCY_EXPONENT) * rng.randf_range(MIN_LUCK, MAX_LUCK)
+	var scale := pow(REFERENCE_DEADLINE / offer.deadline, URGENCY_EXPONENT) \
+		* rng.randf_range(MIN_LUCK, MAX_LUCK) * destination.reward_factor
 	offer.passenger_reward = roundi(PASSENGER_REWARD * offer.passengers * scale)
 	offer.cargo_reward = roundi(CARGO_REWARD_PER_TONNE * offer.cargo_mass / 1000.0 * scale)
-	offer.destination = Location.ALL[rng.randi_range(0, Location.ALL.size() - 1)]
 	return offer

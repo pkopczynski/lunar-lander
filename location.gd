@@ -27,6 +27,22 @@ var terrain: Array[PackedVector2Array] = []
 # The ridges behind the surface, farther first, with no collision; by default the Tatra-like ones.
 var backdrop: Array[Backdrop.Ridge] = Backdrop.tatras()
 
+# The location profile: what the Transport offers to it are like.
+# Its weight in the pool: offers go to each location in proportion to their shares.
+var pool_share := 1.0
+# How often its offers are passengers only, cargo only or both, indexed by TransportOffer.Kind.
+var kind_weights := PackedFloat32Array([1.0, 1.0, 1.0])
+# Passengers and cargo (kg) per offer; each also capped by the largest ship type's seats and
+# maximum capacity.
+var min_passengers := 1
+var max_passengers := 1000
+var min_cargo := 500.0
+var max_cargo := INF
+# Its offers' titles, by TransportOffer.Kind.
+var titles := {}
+# Its offers' rewards are multiplied by this.
+var reward_factor := 1.0
+
 # Named like constants: GDScript can't build objects in a const, so never reassign these.
 static var VALLEY := valley()
 static var MINE := mine()
@@ -43,6 +59,15 @@ static func valley() -> Location:
 	var location := Location.new()
 	location.name = "VALLEY"
 	location.pad_center_x = World.WORLD_WIDTH / 2.0
+	location.pool_share = 0.4
+	location.titles = {
+		TransportOffer.Kind.PASSENGERS: ["Tourist party", "Crew rotation", "Survey team", "Medical staff",
+			"School trip"],
+		TransportOffer.Kind.CARGO: ["Hydroponics kit", "Water ice", "General supplies", "Spare parts",
+			"Mail and parcels"],
+		TransportOffer.Kind.MIXED: ["Tourists and luggage", "Field camp", "Relief mission", "Science outpost",
+			"Settlers and supplies"],
+	}
 	return location
 
 
@@ -55,6 +80,17 @@ static func mine() -> Location:
 	location.name = "MINE"
 	location.pad_center_x = 1300.0
 	location.ground_y = World.GROUND_TOP_Y + PIT_DEPTH
+	location.pool_share = 0.3
+	location.kind_weights = PackedFloat32Array([0.1, 0.6, 0.3])
+	location.max_passengers = 4
+	location.min_cargo = 3000.0
+	location.reward_factor = 1.35
+	location.titles = {
+		TransportOffer.Kind.PASSENGERS: ["Mining shift", "Blasting crew", "Maintenance crew"],
+		TransportOffer.Kind.CARGO: ["Drill bits", "Spare parts", "Industrial supplies", "Conveyor parts",
+			"Heavy tools"],
+		TransportOffer.Kind.MIXED: ["Drill crew and rig", "Repair team", "Crane crew and parts"],
+	}
 	var top := World.GROUND_TOP_Y
 	var bottom := location.ground_y + World.GROUND_DEPTH
 	var left := -World.SIDE_OVERHANG

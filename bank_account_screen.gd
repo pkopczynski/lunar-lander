@@ -63,7 +63,7 @@ func lines() -> PackedStringArray:
 	return PackedStringArray([Economy.PILOT, "%s %s" % [BALANCE_LABEL, Economy.eur(economy.balance)]])
 
 
-# Newest first, e.g. #004 MINING SUPPLIES  CARGO  €544.
+# Newest first, e.g. #004 INDUSTRIAL SUPPLIES  CARGO  €544.
 func rows() -> PackedStringArray:
 	var texts := PackedStringArray()
 	for transaction in economy.transactions:
