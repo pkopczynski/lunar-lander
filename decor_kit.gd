@@ -45,3 +45,21 @@ static func add_in_layer(parent: Node, outline: PackedVector2Array, scroll: Vect
 	visual.polygon = outline
 	layer.add_child(visual)
 	return visual
+
+
+# A parent's parallax layers, one per depth, all anchored on one point: at() gives the layer for a
+# scroll scale, adding it to the parent the first time that depth is asked for.
+class Depths:
+	var parent: Node
+	var anchor: Vector2
+	var layers: Dictionary[Vector2, AnchoredParallax] = {}
+
+	func _init(to: Node, at: Vector2) -> void:
+		parent = to
+		anchor = at
+
+	func at(scroll: Vector2) -> AnchoredParallax:
+		if not layers.has(scroll):
+			layers[scroll] = AnchoredParallax.new(scroll, anchor)
+			parent.add_child(layers[scroll])
+		return layers[scroll]

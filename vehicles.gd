@@ -1,7 +1,8 @@
 class_name Vehicles
 extends Node2D
 # A location's distant flying vehicles: small hulls crossing its sky behind the buildings, each with
-# a light, in one parallax layer anchored on the pad that moves more slowly than the world. Each one
+# a light, in parallax layers anchored on the pad that move more slowly than the world (one per
+# depth: each vehicle has its own scroll scale, by default SCROLL). Each one
 # wraps around from one side to the other well outside the view. No collider. Moving a vehicle only
 # changes its position, so nothing is redrawn as they fly. The hulls dim with the sky like the
 # scenery; their lights are never dimmed and grow brighter as it darkens (see CityLights).
@@ -17,15 +18,17 @@ const LIGHT_OFFSET := Vector2(9, -1)
 const SIDES := 8
 
 
-# One vehicle: where it is as designed (with the camera on the pad, before it flies) and its speed
-# in px/s, rightwards (negative: leftwards).
+# One vehicle: where it is as designed (with the camera on the pad, before it flies), its speed
+# in px/s, rightwards (negative: leftwards), and its depth (its parallax layer's scroll scale).
 class Vehicle:
 	var start: Vector2
 	var speed: float
+	var scroll: Vector2
 
-	func _init(at: Vector2, px_per_s: float) -> void:
+	func _init(at: Vector2, px_per_s: float, scroll_scale := SCROLL) -> void:
 		start = at
 		speed = px_per_s
+		scroll = scroll_scale
 
 
 # The hulls and their lights as drawn.
@@ -36,7 +39,7 @@ var designed_x := PackedFloat32Array()
 var flown := 0.0
 
 
-# Builds the vehicles afresh, in a layer anchored on anchor.
+# Builds the vehicles afresh, each depth in its own layer anchored on anchor.
 func build(from: Array[Vehicle], anchor: Vector2) -> void:
 	DecorKit.clear(self)
 	hulls.clear()
@@ -44,8 +47,7 @@ func build(from: Array[Vehicle], anchor: Vector2) -> void:
 	speeds.clear()
 	designed_x.clear()
 	flown = 0.0
-	var layer := AnchoredParallax.new(SCROLL, anchor)
-	add_child(layer)
+	var layers := DecorKit.Depths.new(self, anchor)
 	for vehicle in from:
 		var hull := Polygon2D.new()
 		# Flying leftwards, the hull faces left.
@@ -53,7 +55,7 @@ func build(from: Array[Vehicle], anchor: Vector2) -> void:
 		hull.scale.x = signf(vehicle.speed) if vehicle.speed != 0.0 else 1.0
 		hull.color = HULL_COLOR
 		hull.position = vehicle.start
-		layer.add_child(hull)
+		layers.at(vehicle.scroll).add_child(hull)
 		var light := Polygon2D.new()
 		light.polygon = DecorKit.disc(LIGHT_OFFSET, LIGHT_RADIUS, SIDES)
 		light.color = LIGHT_COLOR
