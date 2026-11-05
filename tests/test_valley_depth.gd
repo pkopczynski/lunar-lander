@@ -93,12 +93,41 @@ func test_ridges_move_more_slowly_than_the_world_and_the_foreground_faster() -> 
 const SHIP_ROOM := 40.0
 
 
+# How far to either side of the pad the edge of solid terrain counts as near it, in world px.
+const TERRAIN_EDGE_REACH := 250.0
+const TERRAIN_EDGE_STEP := 5.0
+
+
+# Points along the edge of the solid surface near the pad: the outlines of the location's terrain
+# (and the top of its ground) within TERRAIN_EDGE_REACH to either side of the pad and from
+# Foreground.FAIR_HEIGHT above its top down to the ground's top.
+func terrain_edge_near_pad() -> PackedVector2Array:
+	var near := Rect2(pad_top() + Vector2(-TERRAIN_EDGE_REACH, -Foreground.FAIR_HEIGHT),
+		Vector2(2.0 * TERRAIN_EDGE_REACH, Foreground.FAIR_HEIGHT + Lander.PAD_HEIGHT + 0.01))
+	var outlines: Array[PackedVector2Array] = world().location.terrain.duplicate()
+	var half_ground := minf(TERRAIN_EDGE_REACH, world().location.ground_width / 2.0)
+	var ground_y := world().location.ground_y
+	outlines.append(PackedVector2Array([Vector2(pad_x() - half_ground, ground_y), Vector2(pad_x() + half_ground, ground_y)]))
+	var points := PackedVector2Array()
+	for outline in outlines:
+		for i in outline.size():
+			var from := outline[i]
+			var to := outline[(i + 1) % outline.size()]
+			var steps := maxi(1, ceili(from.distance_to(to) / TERRAIN_EDGE_STEP))
+			for step in steps + 1:
+				var point := from.lerp(to, float(step) / steps)
+				if near.has_point(point):
+					points.append(point)
+	return points
+
+
 # Checks that, with the camera following the ship anywhere in the last Foreground.FAIR_HEIGHT above
-# the pad (a little to either side too), no Foreground piece covers the pad or the ship, at the
-# widest zoom, the surface zoom and the zoom punch.
+# the pad (a little to either side too), no Foreground piece covers the pad, the ship or the edge
+# of solid terrain near the pad, at the widest zoom, the surface zoom and the zoom punch.
 func check_foreground_is_fair(where: String) -> void:
 	var screen_center := world().get_viewport_rect().size / 2.0
 	var half_pad := Lander.PAD_WIDTH / 2.0
+	var edge := terrain_edge_near_pad()
 	for zoom in [0.85, FollowCamera.SURFACE_ZOOM, FollowCamera.SURFACE_ZOOM * FollowCamera.PUNCH_ZOOM]:
 		for height in [0.0, Foreground.FAIR_HEIGHT / 2.0, Foreground.FAIR_HEIGHT]:
 			for side in [-half_pad, 0.0, half_pad]:
@@ -113,6 +142,12 @@ func check_foreground_is_fair(where: String) -> void:
 					check(not piece.screen_area.intersects(ship_area),
 						"at the %s a Foreground piece %s covers the ship %s, camera %s above the pad at zoom %s"
 						% [where, piece.screen_area, ship_area, height, zoom])
+					for point in edge:
+						var on_screen: Vector2 = (point - camera) * zoom + screen_center
+						if piece.screen_area.has_point(on_screen):
+							check(false, "at the %s a Foreground piece %s covers the terrain's edge at %s, camera %s above the pad at zoom %s"
+								% [where, piece.screen_area, point, height, zoom])
+							break
 
 
 func test_the_foreground_never_covers_the_pad_or_the_ship_in_the_last_of_the_approach() -> void:
@@ -223,3 +258,72 @@ func test_the_layers_cover_the_view_at_every_zoom_and_on_wide_windows() -> void:
 	clock().move_to(Location.METROPOLIS)
 	await frames(1)
 	check_layers_cover_the_view("Metropolis")
+
+
+# The Mine's depth: the same rules as the Valley's, with stronger parallax.
+
+func scroll_scales(layer: World.DecorLayer) -> Array[Vector2]:
+	var scales: Array[Vector2] = []
+	for piece in pieces_in(layer):
+		scales.append(piece.scroll_scale)
+	return scales
+
+
+func test_the_mines_parallax_is_stronger_than_the_valleys() -> void:
+	await choose_ship()
+	var valley_backdrop := scroll_scales(World.DecorLayer.BACKDROP)
+	var valley_foreground := scroll_scales(World.DecorLayer.FOREGROUND)
+	clock().move_to(Location.MINE)
+	await frames(1)
+	var mine_backdrop := scroll_scales(World.DecorLayer.BACKDROP)
+	var mine_foreground := scroll_scales(World.DecorLayer.FOREGROUND)
+	check(not mine_foreground.is_empty(), "the Mine should have a Foreground")
+	# Each Backdrop layer, farthest to nearest, moves more slowly than the Valley's; the farthest
+	# and the nearest are compared in both directions.
+	for axis in 2:
+		var valley_min: float = valley_backdrop.map(func(s: Vector2) -> float: return s[axis]).min()
+		var valley_max: float = valley_backdrop.map(func(s: Vector2) -> float: return s[axis]).max()
+		var mine_min: float = mine_backdrop.map(func(s: Vector2) -> float: return s[axis]).min()
+		var mine_max: float = mine_backdrop.map(func(s: Vector2) -> float: return s[axis]).max()
+		check(mine_min < valley_min, "the Mine's farthest layer should be slower than the Valley's on axis %d: %s vs %s" % [axis, mine_min, valley_min])
+		check(mine_max < valley_max, "the Mine's nearest Backdrop layer should be slower than the Valley's on axis %d: %s vs %s" % [axis, mine_max, valley_max])
+		var valley_fastest: float = valley_foreground.map(func(s: Vector2) -> float: return s[axis]).max()
+		for scale in mine_foreground:
+			check(scale[axis] > valley_fastest, "the Mine's Foreground should be faster than the Valley's on axis %d: %s vs %s" % [axis, scale[axis], valley_fastest])
+
+
+func test_the_mines_foreground_never_covers_the_pad_the_ship_or_the_benches_near_it() -> void:
+	await choose_ship()
+	clock().move_to(Location.MINE)
+	await frames(1)
+	check(terrain_edge_near_pad().size() > 10, "the Mine's benches right of the pad should count as terrain near it")
+	check_foreground_is_fair("Mine")
+
+
+func test_the_mines_foreground_is_darker_than_all_other_scenery_at_every_hour() -> void:
+	await choose_ship()
+	clock().move_to(Location.MINE)
+	await frames(1)
+	await check_foreground_is_darkest("Mine")
+
+
+# The crane's arm is only fair if it's never hidden: wherever the camera is over the Mine, the
+# Foreground stays below it on screen.
+func test_the_mines_foreground_never_hides_the_crane_arm() -> void:
+	await choose_ship()
+	clock().move_to(Location.MINE)
+	await frames(1)
+	var screen_center := world().get_viewport_rect().size / 2.0
+	var arm_bottom := 0.0
+	for point: Vector2 in Location.CRANE:
+		if point.x > 400.0:
+			arm_bottom = maxf(arm_bottom, point.y)
+	for zoom in [0.85, FollowCamera.SURFACE_ZOOM, FollowCamera.SURFACE_ZOOM * FollowCamera.PUNCH_ZOOM]:
+		for x in [200.0, 600.0, 1000.0, pad_x(), 1800.0]:
+			for y in [World.BORDER_Y, 0.0, 400.0, pad_top().y]:
+				var camera := Vector2(x, y)
+				var arm_bottom_on_screen: float = (arm_bottom - y) * zoom + screen_center.y
+				for piece in pieces_in(World.DecorLayer.FOREGROUND, camera, zoom):
+					check(piece.screen_area.position.y > arm_bottom_on_screen,
+						"a Mine Foreground piece %s should stay below the crane arm (screen y %s), camera %s at zoom %s"
+						% [piece.screen_area, arm_bottom_on_screen, camera, zoom])

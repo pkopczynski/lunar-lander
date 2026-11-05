@@ -110,6 +110,7 @@ static func mine() -> Location:
 	location.pad_center_x = 1300.0
 	location.ground_y = World.GROUND_TOP_Y + PIT_DEPTH
 	location.backdrop = Backdrop.mine()
+	location.foreground = Foreground.mine()
 	location.pool_share = 0.3
 	location.kind_weights = PackedFloat32Array([0.1, 0.6, 0.3])
 	location.max_passengers = 4
