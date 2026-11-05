@@ -65,21 +65,8 @@ var warning_lights := PackedVector2Array()
 # The distant vehicles flying in its sky behind the buildings; by default none.
 var vehicles: Array[Vehicles.Vehicle] = []
 
-# The location profile: what the Transport offers to it are like.
-# Its weight in the pool: offers go to each location in proportion to their shares.
-var pool_share := 1.0
-# How often its offers are passengers only, cargo only or both, indexed by TransportOffer.Kind.
-var kind_weights := PackedFloat32Array([1.0, 1.0, 1.0])
-# Passengers and cargo (kg) per offer; each also capped by the largest ship type's seats and
-# maximum capacity.
-var min_passengers := 1
-var max_passengers := 1000
-var min_cargo := 500.0
-var max_cargo := INF
-# Its offers' titles, by TransportOffer.Kind.
-var titles := {}
-# Its offers' rewards are multiplied by this.
-var reward_factor := 1.0
+# Its location profile: what the Transport offers to it are like.
+var profile := Profile.new()
 
 # Named like constants: GDScript can't build objects in a const, so never reassign these.
 static var VALLEY := valley()
@@ -87,6 +74,24 @@ static var MINE := mine()
 static var METROPOLIS := metropolis()
 # In drift order: the location after the last one is the first.
 static var ALL: Array[Location] = [VALLEY, MINE, METROPOLIS]
+
+
+# A location profile: what the Transport offers to a location are like.
+class Profile:
+	# Its weight in the pool: offers go to each location in proportion to their shares.
+	var pool_share := 1.0
+	# How often its offers are passengers only, cargo only or both, indexed by TransportOffer.Kind.
+	var kind_weights := PackedFloat32Array([1.0, 1.0, 1.0])
+	# Passengers and cargo (kg) per offer; each also capped by the largest ship type's seats and
+	# maximum capacity.
+	var min_passengers := 1
+	var max_passengers := 1000
+	var min_cargo := 500.0
+	var max_cargo := INF
+	# Its offers' titles, by TransportOffer.Kind.
+	var titles: Dictionary[TransportOffer.Kind, Array] = {}
+	# Its offers' rewards are multiplied by this.
+	var reward_factor := 1.0
 
 
 # The location after this one in drift order, wrapping to the first.
@@ -100,8 +105,8 @@ static func valley() -> Location:
 	location.pad_center_x = World.WORLD_WIDTH / 2.0
 	location.clouds = Clouds.valley()
 	location.foreground = Foreground.valley()
-	location.pool_share = 0.4
-	location.titles = {
+	location.profile.pool_share = 0.4
+	location.profile.titles = {
 		TransportOffer.Kind.PASSENGERS: ["Tourist party", "Crew rotation", "Survey team", "Medical staff",
 			"School trip"],
 		TransportOffer.Kind.CARGO: ["Hydroponics kit", "Water ice", "General supplies", "Spare parts",
@@ -124,12 +129,12 @@ static func mine() -> Location:
 	location.ground_y = World.GROUND_TOP_Y + PIT_DEPTH
 	location.backdrop = Backdrop.mine()
 	location.foreground = Foreground.mine()
-	location.pool_share = 0.3
-	location.kind_weights = PackedFloat32Array([0.1, 0.6, 0.3])
-	location.max_passengers = 4
-	location.min_cargo = 3000.0
-	location.reward_factor = 1.6
-	location.titles = {
+	location.profile.pool_share = 0.3
+	location.profile.kind_weights = PackedFloat32Array([0.1, 0.6, 0.3])
+	location.profile.max_passengers = 4
+	location.profile.min_cargo = 3000.0
+	location.profile.reward_factor = 1.6
+	location.profile.titles = {
 		TransportOffer.Kind.PASSENGERS: ["Mining shift", "Blasting crew", "Maintenance crew"],
 		TransportOffer.Kind.CARGO: ["Drill bits", "Spare parts", "Industrial supplies", "Conveyor parts",
 			"Heavy tools"],
@@ -162,11 +167,11 @@ static func metropolis() -> Location:
 	var location := Location.new()
 	location.name = "METROPOLIS"
 	location.pad_center_x = 1250.0
-	location.pool_share = 0.3
-	location.kind_weights = PackedFloat32Array([0.6, 0.1, 0.3])
-	location.max_cargo = 3000.0
-	location.reward_factor = 1.35
-	location.titles = {
+	location.profile.pool_share = 0.3
+	location.profile.kind_weights = PackedFloat32Array([0.6, 0.1, 0.3])
+	location.profile.max_cargo = 3000.0
+	location.profile.reward_factor = 1.35
+	location.profile.titles = {
 		TransportOffer.Kind.PASSENGERS: ["Tourist group", "Corporate team", "Business delegation",
 			"Conference guests", "Shift workers"],
 		TransportOffer.Kind.CARGO: ["Mail and parcels", "Shop supplies", "Electronics", "Restaurant supplies"],
