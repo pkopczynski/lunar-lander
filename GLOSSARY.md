@@ -72,6 +72,10 @@ _Avoid_: Quarry, pit
 The futuristic city location: buildings of several heights, with the pad on a rooftop. Touching a solid building or the street crashes the ship.
 _Avoid_: City (on its own), downtown
 
+**Location profile**:
+What a location's transport offers are like: its share of the pool, how often they carry passengers, cargo or both, how many passengers and how much cargo, their titles, and how well they pay compared with the Valley.
+_Avoid_: Offer table, difficulty
+
 **Local time**:
 The planet's clock at the current location, shown in the HUD as HH:MM. A whole day lasts twelve real minutes. It runs whenever the office isn't showing, and carries on unchanged when the location changes. It decides how the sky looks, and nothing else.
 _Avoid_: Clock (on its own), game time, mission time
