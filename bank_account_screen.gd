@@ -82,15 +82,21 @@ func details(row: int) -> PackedStringArray:
 
 
 # How the payout was worked out, as [label, text] pairs, times local. The deadline is the
-# flight's, which the penalty was counted against.
+# flight's, which the penalty was counted against. A wrong destination replaces the penalty
+# and names the destination after where it was delivered.
 static func detail_pairs(transaction: TransportOffer.Transaction) -> Array[Array]:
-	var penalty := Economy.eur(0)
-	if transaction.overdue_seconds() > 0:
-		penalty = "%s (%d MIN OVERDUE)" % [Economy.eur(-transaction.penalty), transaction.overdue_minutes()]
-	return [["BASE VALUE", Economy.eur(transaction.reward)], ["PENALTY", penalty],
+	var deduction := ["PENALTY", Economy.eur(0)]
+	if transaction.wrong_destination():
+		deduction = ["WRONG DESTINATION", Economy.eur(-transaction.penalty)]
+	elif transaction.overdue_seconds() > 0:
+		deduction[1] = "%s (%d MIN OVERDUE)" % [Economy.eur(-transaction.penalty), transaction.overdue_minutes()]
+	var pairs: Array[Array] = [["BASE VALUE", Economy.eur(transaction.reward)], deduction,
 		["PAYOUT", Economy.eur(transaction.payout)], ["DEADLINE", PlanetClock.local_time(transaction.deadline_at)],
-		["LANDED", PlanetClock.local_time(transaction.landed_at)], ["DELIVERED TO", transaction.delivered_to],
-		["SHIP", transaction.ship.to_upper()]]
+		["LANDED", PlanetClock.local_time(transaction.landed_at)], ["DELIVERED TO", transaction.delivered_to]]
+	if transaction.wrong_destination():
+		pairs.append(["DESTINATION", transaction.destination])
+	pairs.append(["SHIP", transaction.ship.to_upper()])
+	return pairs
 
 
 # The row's right-hand part: the kind and the payout.
