@@ -189,6 +189,11 @@ func build(from: Array[Ridge], bottom_y: float, anchor: Vector2) -> void:
 		darkenings.append(ridge.darkening)
 
 
+# The ridges, for World.shown_decor().
+func listed_decor() -> Array[World.Listing]:
+	return World.listings(ridges, World.DecorLayer.BACKDROP, World.DecorPart.RIDGE)
+
+
 # Fills each ridge with the background gradient (background_color: a world y to its colour),
 # darkened.
 func show_sky(background_color: Callable) -> void:

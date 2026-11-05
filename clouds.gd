@@ -49,7 +49,7 @@ static func valley() -> Array[Cloud]:
 	return clouds
 
 
-# The clouds as drawn, the pieces World.shown_decor() lists.
+# The clouds as drawn.
 var pieces: Array[Polygon2D] = []
 var layer: AnchoredParallax
 # How far the wind has carried the clouds since they were built, in px.
@@ -78,6 +78,11 @@ func _process(delta: float) -> void:
 	drift += WIND_SPEED * delta
 	for i in pieces.size():
 		pieces[i].position.x = DecorKit.wrapped_x(designed_x[i] + drift)
+
+
+# The clouds, for World.shown_decor().
+func listed_decor() -> Array[World.Listing]:
+	return World.listings(pieces, World.DecorLayer.PARALLAX, World.DecorPart.CLOUD)
 
 
 # Tints each cloud from the background gradient behind it (background_color: a world y to its

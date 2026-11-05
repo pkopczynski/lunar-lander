@@ -54,7 +54,7 @@ static func windows_on(facades: Array[Rect2]) -> Array[Rect2]:
 	return windows
 
 
-# The pieces World.shown_decor() lists.
+# The lights as drawn.
 var windows := MeshInstance2D.new()
 var signs: Array[Polygon2D] = []
 var warning_lights: Array[Polygon2D] = []
@@ -122,6 +122,17 @@ func blink(delta: float) -> void:
 	for i in warning_lights.size():
 		var phase := fposmod(blink_time + i * BLINK_STAGGER, BLINK_PERIOD)
 		warning_lights[i].modulate.a = 1.0 if phase < BLINK_PERIOD / 2.0 else BLINK_OFF_ALPHA
+
+
+# The windows (one mesh, when there are any), the neon signs and the warning lights, for
+# World.shown_decor().
+func listed_decor() -> Array[World.Listing]:
+	var listed: Array[World.Listing] = []
+	if windows.mesh:
+		listed.append(World.Listing.new(windows, World.DecorLayer.LIGHTS, World.DecorPart.WINDOWS))
+	listed.append_array(World.listings(signs, World.DecorLayer.LIGHTS, World.DecorPart.NEON))
+	listed.append_array(World.listings(warning_lights, World.DecorLayer.LIGHTS, World.DecorPart.WARNING_LIGHT))
+	return listed
 
 
 # Brightens every light with the sky's darkness; they're never dimmed.

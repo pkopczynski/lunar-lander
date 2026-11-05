@@ -92,7 +92,7 @@ static func mine() -> Array[Silhouette]:
 		Silhouette.new(MINE_RIGHT_CONVEYOR, MINE_SCROLL)]
 
 
-# The silhouettes as drawn, the pieces World.shown_decor() lists.
+# The silhouettes as drawn.
 var pieces: Array[Polygon2D] = []
 
 
@@ -106,6 +106,11 @@ func build(from: Array[Silhouette], bottom_y: float, anchor: Vector2) -> void:
 		var visual := DecorKit.add_in_layer(self, outline, silhouette.scroll_scale, anchor)
 		visual.color = COLOR
 		pieces.append(visual)
+
+
+# The silhouettes, for World.shown_decor().
+func listed_decor() -> Array[World.Listing]:
+	return World.listings(pieces, World.DecorLayer.FOREGROUND, World.DecorPart.SILHOUETTE)
 
 
 func show_sky(sky: SkyLook) -> void:

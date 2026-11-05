@@ -17,7 +17,7 @@ const PULSE_MIN := 0.55
 # Sides of the polygon each light and glow is drawn as.
 const SIDES := 16
 
-# The pieces World.shown_decor() lists, lights first.
+# The lights and their glows as drawn.
 var lights: Array[Polygon2D] = []
 var glows: Array[Polygon2D] = []
 var pulse_time := 0.0
@@ -49,6 +49,13 @@ func pulse(delta: float) -> void:
 func show_sky(sky: SkyLook) -> void:
 	for glow in glows:
 		glow.self_modulate.a = lerpf(GLOW_DAY_ALPHA, GLOW_NIGHT_ALPHA, sky.night())
+
+
+# The lights, then their glows, for World.shown_decor().
+func listed_decor() -> Array[World.Listing]:
+	var listed := World.listings(lights, World.DecorLayer.BEACON, World.DecorPart.LIGHT)
+	listed.append_array(World.listings(glows, World.DecorLayer.BEACON, World.DecorPart.GLOW))
+	return listed
 
 
 func disc(at: Vector2, radius: float, color: Color) -> Polygon2D:

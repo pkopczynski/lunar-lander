@@ -28,7 +28,7 @@ class Vehicle:
 		speed = px_per_s
 
 
-# The hulls and their lights as drawn, the pieces World.shown_decor() lists.
+# The hulls and their lights as drawn.
 var hulls: Array[Polygon2D] = []
 var lights: Array[Polygon2D] = []
 var speeds := PackedFloat32Array()
@@ -68,6 +68,13 @@ func _process(delta: float) -> void:
 	flown += delta
 	for i in hulls.size():
 		hulls[i].position.x = DecorKit.wrapped_x(designed_x[i] + speeds[i] * flown)
+
+
+# The hulls, behind the surface, then their lights, for World.shown_decor().
+func listed_decor() -> Array[World.Listing]:
+	var listed := World.listings(hulls, World.DecorLayer.PARALLAX, World.DecorPart.VEHICLE)
+	listed.append_array(World.listings(lights, World.DecorLayer.LIGHTS, World.DecorPart.VEHICLE_LIGHT))
+	return listed
 
 
 # Dims the hulls with the sky's darkness, as the scenery is, and brightens their lights.
