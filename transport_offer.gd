@@ -60,10 +60,15 @@ class Transaction:
 	# before loading finished: at or past PlanetClock.MINUTES_PER_DAY on the next day.
 	var deadline_at: float
 	var landed_at: float
-	# The name of the location it was delivered to.
+	# The names of the location it was delivered to and of its destination.
 	var delivered_to: String
+	var destination: String
 	# The name of the ship type that delivered it.
 	var ship: String
+
+	# Landed on another location's pad (drift took the destination away): it pays nothing.
+	func wrong_destination() -> bool:
+		return delivered_to != destination
 
 	# Whole seconds overdue, rounded down like the red counter.
 	func overdue_seconds() -> int:
@@ -122,7 +127,8 @@ func misfit_reason(seats_left: int, cargo_left: float, mission_destination: Loca
 
 # What it pays when delivered after delivery_time against the flight's deadline, for each
 # whole second overdue. The passenger and cargo parts are penalised separately, each never
-# below €0. The local times and the location are only recorded, for the payout's breakdown.
+# below €0. Delivered anywhere but its destination, it pays €0 instead, its whole reward lost.
+# The local times and the location are only recorded, for the payout's breakdown.
 func settlement(flight_deadline: float, delivery_time: float, deadline_at: float, landed_at: float,
 		delivered_to: Location) -> Transaction:
 	var transaction := Transaction.new()
@@ -132,10 +138,14 @@ func settlement(flight_deadline: float, delivery_time: float, deadline_at: float
 	transaction.deadline_at = deadline_at
 	transaction.landed_at = landed_at
 	transaction.delivered_to = delivered_to.name
+	transaction.destination = destination.name
 	var overdue := transaction.overdue_seconds()
 	transaction.reward = reward()
-	transaction.penalty = mini(roundi(passenger_reward * PASSENGER_PENALTY_SHARE * overdue), passenger_reward) \
-		+ mini(roundi(cargo_reward * CARGO_PENALTY_SHARE * overdue), cargo_reward)
+	if transaction.wrong_destination():
+		transaction.penalty = transaction.reward
+	else:
+		transaction.penalty = mini(roundi(passenger_reward * PASSENGER_PENALTY_SHARE * overdue), passenger_reward) \
+			+ mini(roundi(cargo_reward * CARGO_PENALTY_SHARE * overdue), cargo_reward)
 	transaction.payout = transaction.reward - transaction.penalty
 	return transaction
 
