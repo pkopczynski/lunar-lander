@@ -62,6 +62,8 @@ var deep_star_layer := MeshInstance2D.new()
 var night_star_layer := MeshInstance2D.new()
 # The current location's Backdrop, clouds and Foreground, built afresh by show_location().
 var backdrop := Backdrop.new()
+# The current location's Moons, drawn behind its clouds and Backdrop.
+var moons := Moons.new()
 var clouds := Clouds.new()
 var foreground := Foreground.new()
 # The current location's city lights, drawn over its buildings.
@@ -97,9 +99,9 @@ func _ready() -> void:
 	clock.location_changed.connect(show_location)
 	show_location(location)
 	add_scenery(ground_visual)
-	# Drawn over the gradient and under everything in the scene: the stars, the clouds, then the
-	# Backdrop. The Foreground is drawn over everything, the ship included.
-	var layers: Array[CanvasItem] = [deep_star_layer, night_star_layer, clouds, backdrop, vehicles]
+	# Drawn over the gradient and under everything in the scene: the stars, the Moons, the clouds,
+	# then the Backdrop. The Foreground is drawn over everything, the ship included.
+	var layers: Array[CanvasItem] = [deep_star_layer, night_star_layer, moons, clouds, backdrop, vehicles]
 	for i in layers.size():
 		add_child(layers[i])
 		move_child(layers[i], i)
@@ -151,6 +153,7 @@ func show_sky() -> void:
 	night_star_layer.visible = sky.star_brightness > 0.0
 	beacon.show_sky(sky)
 	backdrop.show_sky(background_color)
+	moons.show_sky(sky)
 	clouds.show_sky(sky, background_color)
 	foreground.show_sky(sky)
 	city_lights.show_sky(sky)
@@ -179,6 +182,8 @@ func show_location(to: Location) -> void:
 	var anchor := Vector2(to.pad_center_x, to.ground_y - Lander.PAD_HEIGHT)
 	backdrop.build(to.backdrop, to.lowest_y, anchor)
 	backdrop.show_sky(background_color)
+	moons.build(to.moons, anchor)
+	moons.show_sky(sky)
 	clouds.build(to.clouds, anchor)
 	clouds.show_sky(sky, background_color)
 	foreground.build(to.foreground, to.lowest_y, anchor)
@@ -306,8 +311,8 @@ func deep_space_stars() -> Array[Star]:
 enum DecorLayer { BACKDROP, PARALLAX, FOREGROUND, BEACON, LIGHTS }
 # What a decor piece is within its layer: a light, the glow around one, a ridge, a cloud, a
 # silhouette, one of a city's lights (all its windows, one mesh; a neon sign; a warning light; a
-# flying vehicle's light) or a flying vehicle.
-enum DecorPart { LIGHT, GLOW, RIDGE, CLOUD, SILHOUETTE, WINDOWS, NEON, WARNING_LIGHT, VEHICLE_LIGHT, VEHICLE }
+# flying vehicle's light), a flying vehicle or a Moon.
+enum DecorPart { LIGHT, GLOW, RIDGE, CLOUD, SILHOUETTE, WINDOWS, NEON, WARNING_LIGHT, VEHICLE_LIGHT, VEHICLE, MOON }
 
 
 # One decor piece as drawn: its layer and part, whether it has a collider, its colour as drawn
@@ -348,7 +353,7 @@ static func listings(pieces: Array, layer: DecorLayer, part: DecorPart) -> Array
 # camera_center at zoom (the viewport's centre is the camera's). Read-only, for tests.
 func shown_decor(camera_center: Vector2, zoom: float) -> Array[Decor]:
 	var pieces: Array[Decor] = []
-	for module in [backdrop, clouds, vehicles, beacon, foreground, city_lights]:
+	for module in [backdrop, moons, clouds, vehicles, beacon, foreground, city_lights]:
 		for listing: Listing in module.listed_decor():
 			pieces.append(decor(listing.visual, listing.layer, listing.part, camera_center, zoom))
 	return pieces
