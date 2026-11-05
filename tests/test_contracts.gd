@@ -106,12 +106,12 @@ func test_the_summary_shows_passengers_cargo_and_start_loading() -> void:
 	await open_transport_offers()
 	check(offers().summary() == PackedStringArray(["PASSENGERS 0/4", "CARGO 0/7 000 KG"]),
 		"an empty Sparrow's summary, got %s" % offers().summary())
-	check(not offers().start_loading_enabled(), "START LOADING should be disabled with no Contracts")
+	check(offers().start_text() == "START", "with no Contracts the button should read START")
 	await accept(offer)
 	check(offers().summary() == PackedStringArray(["PASSENGERS 3/4", "CARGO 2 500/6 760 KG",
 		"DELIVER WITHIN 3H 00M", "TOTAL VALUE €420"]),
 		"the summary should count the Contract, got %s" % offers().summary())
-	check(offers().start_loading_enabled(), "START LOADING should be enabled with a Contract")
+	check(offers().start_text() == "START LOADING", "with a Contract the button should read START LOADING")
 
 
 func test_the_summary_warns_fuel_limited_when_the_load_leaves_less_room_than_a_full_tank() -> void:
@@ -160,9 +160,6 @@ func test_right_and_left_move_focus_between_the_offers_and_start_loading() -> vo
 	await select_row(2)
 	await press(&"ui_right")
 	check(offers().focus == TransportOffersScreen.Column.CONTRACTS, "Right should move focus to the Contracts column")
-	await press(&"ui_accept")
-	check(office().showing and office().screen == Office.Screen.TRANSPORT_OFFERS,
-		"START LOADING with no Contracts should do nothing")
 	await press(&"ui_down")
 	await press(&"ui_left")
 	check(offers().focus == TransportOffersScreen.Column.OFFERS, "Left should move focus back to the offers")

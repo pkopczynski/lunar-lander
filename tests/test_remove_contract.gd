@@ -171,7 +171,7 @@ func test_a_removed_contract_goes_back_past_seven_and_no_offer_arrives_until_few
 		"one new offer should arrive once fewer than 7 are listed, lists %s" % offers().rows())
 
 
-func test_removing_the_last_contract_dims_start_loading() -> void:
+func test_removing_the_last_contract_turns_start_loading_into_start() -> void:
 	var offer := known_offer(1, 0.0)
 	await accept_and_focus_contracts([offer])
 	await up_to_last_contract()
@@ -179,7 +179,5 @@ func test_removing_the_last_contract_dims_start_loading() -> void:
 	await press(&"ui_left")
 	await press(&"ui_accept")
 	check(economy().contracts.is_empty(), "Yes should remove the Contract")
-	check(not offers().start_loading_enabled(), "START LOADING should dim with no Contracts")
-	check(offers().on_start_loading(), "the cursor should be on START LOADING")
-	await press(&"ui_accept")
-	check(office().showing and economy().phase == Economy.Phase.NONE, "START LOADING should do nothing")
+	check(offers().start_text() == "START", "with no Contracts left the button should read START")
+	check(offers().on_start_loading(), "the cursor should be on the button")
