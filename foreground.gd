@@ -3,14 +3,18 @@ extends Node2D
 # The Foreground: a location's silhouettes drawn in front of the ship, in parallax layers anchored
 # on the pad that move faster than the world, so they can briefly hide the ship and its path as the
 # view moves. Opaque and near-black, darker than all other scenery at every hour and a little darker
-# at night; no lights and no collider. A location places them so they never cover its pad, its
-# solid terrain's edge near it or the ship in the last ~250 px of the approach (FAIR_HEIGHT).
+# at night; no lights and no collider. A location places them so they never cover the Approach
+# corridor (the column above its pad, CORRIDOR_MARGIN wider than the pad on each side) at any
+# height up to the Border, nor its pad, its solid terrain's edge near it or the ship in the last
+# ~250 px of the approach (FAIR_HEIGHT).
 
 const COLOR := Color(0.02, 0.022, 0.026)
 # How much darker it is at full night (the sky's night darkness), blended by the sky's darkness.
 const NIGHT_DARKENING := 0.5
 # How far above the pad's top a camera following the ship never has the pad covered.
 const FAIR_HEIGHT := 250.0
+# How far beyond each side of the pad the Approach corridor reaches.
+const CORRIDOR_MARGIN := 40.0
 # How far below the location's lowest point each silhouette reaches, so its bottom never shows.
 const BOTTOM_MARGIN := 300.0
 
