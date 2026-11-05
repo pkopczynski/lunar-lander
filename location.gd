@@ -1,7 +1,7 @@
 class_name Location
 extends RefCounted
 # The location table: every place on the planet the station can be above, with its pad and
-# terrain and its ground's height. The mountain side walls, backdrop, deep space and station
+# terrain, its ground's height and its Backdrop. The mountain side walls, deep space and station
 # are shared.
 
 # The open-pit mine's benches step down from the Valley's ground level, three steps a side, the
@@ -24,6 +24,8 @@ var lowest_y := NAN:
 		return ground_y + World.GROUND_DEPTH if is_nan(lowest_y) else lowest_y
 # Solid polygons added to the shared ground and mountains; touching them crashes the ship.
 var terrain: Array[PackedVector2Array] = []
+# The ridges behind the surface, farther first, with no collision; by default the Tatra-like ones.
+var backdrop: Array[Backdrop.Ridge] = Backdrop.tatras()
 
 # Named like constants: GDScript can't build objects in a const, so never reassign these.
 static var VALLEY := valley()

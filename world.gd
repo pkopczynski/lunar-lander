@@ -26,36 +26,6 @@ const MOUNTAIN_COLOR := Color(0.35, 0.33, 0.33)
 # A location's terrain, such as the Mine's benches: warmer than the ground, like cut rock.
 const TERRAIN_COLOR := Color(0.52, 0.45, 0.38)
 
-# The Backdrop: two Tatra-like ridges behind the surface, no collision. Only the
-# top edge is listed; each ridge closes down to the ground bottom. Most of it
-# sits between the mountains, which cover its ends.
-# The farther ridge: jagged granite High Tatra peaks, tallest near Rysy.
-const FAR_RIDGE := [
-	Vector2(-SIDE_OVERHANG, 300), Vector2(150, 300), Vector2(230, 260), Vector2(270, 285),
-	Vector2(320, 225), Vector2(350, 250), Vector2(390, 208), Vector2(420, 240),
-	Vector2(455, 222), Vector2(490, 270), Vector2(530, 245), Vector2(570, 290),
-	Vector2(610, 255), Vector2(650, 300), Vector2(700, 275), Vector2(750, 320),
-	Vector2(800, 300), Vector2(860, 340), Vector2(930, 320), Vector2(1000, 350),
-	Vector2(1080, 330), Vector2(1160, 345), Vector2(1250, 320), Vector2(1330, 335),
-	Vector2(1420, 300), Vector2(1500, 320), Vector2(1580, 285), Vector2(1650, 310),
-	Vector2(1720, 290), Vector2(1800, 320), Vector2(1880, 300), Vector2(WORLD_WIDTH + SIDE_OVERHANG, 300),
-]
-# The nearer ridge: low rounded ridges and Giewont's sleeping knight (the steep
-# Wielki Giewont, the long Długi Giewont, then the small bump of Mały Giewont).
-const NEAR_RIDGE := [
-	Vector2(-SIDE_OVERHANG, 420), Vector2(200, 420), Vector2(280, 400), Vector2(360, 380),
-	Vector2(440, 395), Vector2(520, 370), Vector2(600, 385), Vector2(680, 360),
-	Vector2(760, 375), Vector2(840, 395), Vector2(920, 410), Vector2(1000, 415),
-	Vector2(1080, 400), Vector2(1140, 370), Vector2(1180, 330), Vector2(1210, 290),
-	Vector2(1235, 255), Vector2(1250, 248), Vector2(1270, 252), Vector2(1300, 268),
-	Vector2(1360, 280), Vector2(1420, 292), Vector2(1470, 300), Vector2(1500, 315),
-	Vector2(1530, 305), Vector2(1555, 300), Vector2(1590, 320), Vector2(1650, 345),
-	Vector2(1720, 330), Vector2(1800, 350), Vector2(1880, 370), Vector2(WORLD_WIDTH + SIDE_OVERHANG, 380),
-]
-# How much darker than the background behind it each ridge is.
-const FAR_RIDGE_DARKENING := 0.08
-const NEAR_RIDGE_DARKENING := 0.16
-
 # The solid scenery the sky's darkness dims (the ground, the mountains, a location's terrain);
 # the pad isn't in it, so it stays easy to find at night.
 const SCENERY_GROUP := &"scenery"
@@ -90,7 +60,8 @@ var night_star_radii := PackedFloat32Array()
 # one by one; the night stars' brightness is their layer's modulate.
 var deep_star_layer := MeshInstance2D.new()
 var night_star_layer := MeshInstance2D.new()
-var backdrop := Node2D.new()
+# The current location's Backdrop, built afresh by show_location().
+var backdrop := Backdrop.new()
 # The pad's Beacon; a child of the pad, so it follows it to every location.
 var beacon := Beacon.new()
 
@@ -125,7 +96,6 @@ func _ready() -> void:
 	for i in layers.size():
 		add_child(layers[i])
 		move_child(layers[i], i)
-	backdrop.draw.connect(draw_backdrop)
 
 	var rng := RandomNumberGenerator.new()
 	rng.seed = STAR_SEED
@@ -170,8 +140,8 @@ func show_sky() -> void:
 	night_star_layer.modulate.a = sky.star_brightness
 	night_star_layer.visible = sky.star_brightness > 0.0
 	beacon.show_sky(sky)
+	backdrop.show_sky(background_color)
 	queue_redraw()
-	backdrop.queue_redraw()
 
 
 # Makes a solid visual part of the scenery, dimmed by the sky's darkness from now on; a
@@ -192,7 +162,8 @@ func show_location(to: Location) -> void:
 	show_ground_width(to)
 	pad.position.x = to.pad_center_x - ground.position.x
 	queue_redraw()
-	backdrop.queue_redraw()
+	backdrop.build(to.backdrop, to.lowest_y)
+	backdrop.show_sky(background_color)
 	for child in terrain.get_children():
 		terrain.remove_child(child)
 		child.queue_free()
@@ -308,14 +279,15 @@ func deep_space_stars() -> Array[Star]:
 	return stars
 
 
-# Which part of the scene a decor piece belongs to. Only the Beacon exists so far.
+# Which part of the scene a decor piece belongs to.
 enum DecorLayer { BACKDROP, PARALLAX, FOREGROUND, BEACON }
-# What a decor piece is within its layer: a light, or the glow around one.
-enum DecorPart { LIGHT, GLOW }
+# What a decor piece is within its layer: a light, the glow around one, or a ridge.
+enum DecorPart { LIGHT, GLOW, RIDGE }
 
 
 # One decor piece as drawn: its layer and part, whether it has a collider, its colour as drawn
-# (tinted by its own and its ancestors' modulate) and where it appears on screen.
+# (tinted by its own and its ancestors' modulate; a piece filled with a gradient gives the average
+# of its vertex colours) and where it appears on screen.
 class Decor:
 	var layer: DecorLayer
 	var part: DecorPart
@@ -328,6 +300,8 @@ class Decor:
 # camera_center at zoom (the viewport's centre is the camera's). Read-only, for tests.
 func shown_decor(camera_center: Vector2, zoom: float) -> Array[Decor]:
 	var pieces: Array[Decor] = []
+	for ridge in backdrop.ridges:
+		pieces.append(decor(ridge, DecorLayer.BACKDROP, DecorPart.RIDGE, camera_center, zoom))
 	for light in beacon.lights:
 		pieces.append(decor(light, DecorLayer.BEACON, DecorPart.LIGHT, camera_center, zoom))
 	for glow in beacon.glows:
@@ -343,6 +317,11 @@ func decor(visual: Polygon2D, layer: DecorLayer, part: DecorPart, camera_center:
 	piece.has_collider = visual.get_children().any(
 		func(child: Node) -> bool: return child is CollisionObject2D or child is CollisionShape2D or child is CollisionPolygon2D)
 	piece.color = visual.color * visual.self_modulate
+	if not visual.vertex_colors.is_empty():
+		var total := Color(0, 0, 0, 0)
+		for color in visual.vertex_colors:
+			total += color
+		piece.color *= total / visual.vertex_colors.size()
 	var node: Node = visual
 	while node is CanvasItem:
 		piece.color *= (node as CanvasItem).modulate
@@ -367,23 +346,6 @@ func _draw() -> void:
 	# keeps its ground colour.
 	if lowest_point() > GROUND_BOTTOM_Y:
 		draw_rect(Rect2(left, GROUND_BOTTOM_Y, right - left, lowest_point() - GROUND_BOTTOM_Y), sky.ground_color)
-
-
-func draw_backdrop() -> void:
-	draw_ridge(FAR_RIDGE, FAR_RIDGE_DARKENING)
-	draw_ridge(NEAR_RIDGE, NEAR_RIDGE_DARKENING)
-
-
-# Fills a Backdrop ridge with the background gradient, darkened, so it reads as
-# a shadow of the sky behind it.
-func draw_ridge(top_edge: Array, darkening: float) -> void:
-	var outline := PackedVector2Array(top_edge)
-	outline.append(Vector2(outline[-1].x, lowest_point()))
-	outline.append(Vector2(outline[0].x, lowest_point()))
-	var colors := PackedColorArray()
-	for point in outline:
-		colors.append(background_color(point.y).darkened(darkening))
-	backdrop.draw_polygon(outline, colors)
 
 
 func background_color(y: float) -> Color:
