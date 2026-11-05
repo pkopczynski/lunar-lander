@@ -120,6 +120,14 @@ func test_the_foreground_never_covers_the_pad_or_the_ship_in_the_last_of_the_app
 	check_foreground_is_fair("Valley")
 
 
+func test_the_metropolis_foreground_never_covers_the_pad_or_the_ship_in_the_last_of_the_approach() -> void:
+	await choose_ship()
+	clock().move_to(Location.METROPOLIS)
+	await frames(1)
+	check(pieces_in(World.DecorLayer.FOREGROUND).size() >= 2, "the Metropolis should show some Foreground pieces")
+	check_foreground_is_fair("Metropolis")
+
+
 func at_hour(hour: int) -> void:
 	clock().minutes = hour * 60 + 30
 	await frames(1)
@@ -161,6 +169,13 @@ func check_foreground_is_darkest(where: String) -> void:
 func test_the_foreground_is_darker_than_all_other_scenery_at_every_hour() -> void:
 	await choose_ship()
 	await check_foreground_is_darkest("Valley")
+
+
+func test_the_metropolis_foreground_is_darker_than_all_other_scenery_at_every_hour() -> void:
+	await choose_ship()
+	clock().move_to(Location.METROPOLIS)
+	await frames(1)
+	await check_foreground_is_darkest("Metropolis")
 
 
 func clouds() -> Array[World.Decor]:

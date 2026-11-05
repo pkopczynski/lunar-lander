@@ -20,6 +20,12 @@ const PAD_BUILDING_LEFT := 1100.0
 const PAD_BUILDING_RIGHT := 1400.0
 const ANTENNA_TOP_Y := 380.0
 const ANTENNA_WIDTH := 10.0
+# The Metropolis's lit facades: the faces of its buildings that hold windows, left to right, inside
+# their walls and clear of the left mountain and the neon signs.
+const METROPOLIS_FACADES: Array[Rect2] = [
+	Rect2(270, 380, 140, 400), Rect2(640, 280, 168, 500), Rect2(1120, 590, 260, 190),
+	Rect2(1412, 600, 108, 180), Rect2(1572, 680, 166, 100),
+]
 
 # Shown in the HUD.
 var name: String
@@ -36,13 +42,20 @@ var lowest_y := NAN:
 		return ground_y + World.GROUND_DEPTH if is_nan(lowest_y) else lowest_y
 # Solid polygons added to the shared ground and mountains; touching them crashes the ship.
 var terrain: Array[PackedVector2Array] = []
-# The ridges behind the surface, farther first, with no collision; by default the Tatra-like ones.
+# The ridges (or skyline) behind the surface, farther first, with no collision; by default the
+# Tatra-like ones.
 var backdrop: Array[Backdrop.Ridge] = Backdrop.tatras()
 # The clouds drifting in its sky; by default none.
 var clouds: Array[Clouds.Cloud] = []
 # The silhouettes in front of the ship; by default none. They must leave its pad and the ship's
 # last FAIR_HEIGHT of approach uncovered (see Foreground).
 var foreground: Array[Foreground.Silhouette] = []
+# Its city lights, drawn over its buildings with no collision (see CityLights); by default none.
+var windows: Array[Rect2] = []
+var neon_signs: Array[CityLights.Sign] = []
+var warning_lights := PackedVector2Array()
+# The distant vehicles flying in its sky behind the buildings; by default none.
+var vehicles: Array[Vehicles.Vehicle] = []
 
 # The location profile: what the Transport offers to it are like.
 # Its weight in the pool: offers go to each location in proportion to their shares.
@@ -147,6 +160,24 @@ static func metropolis() -> Location:
 		TransportOffer.Kind.CARGO: ["Mail and parcels", "Shop supplies", "Electronics", "Restaurant supplies"],
 		TransportOffer.Kind.MIXED: ["Office move", "Film crew and kit", "Hotel guests", "Pop-up shop", "Expo team"],
 	}
+	location.backdrop = Backdrop.skyline()
+	location.foreground = Foreground.metropolis()
+	location.windows = CityLights.windows_on(METROPOLIS_FACADES)
+	location.neon_signs = [
+		CityLights.Sign.new(Rect2(290, 352, 110, 10), Color(1.0, 0.6, 0.15)),
+		CityLights.Sign.new(Rect2(614, 300, 10, 130), Color(1.0, 0.2, 0.8)),
+		CityLights.Sign.new(Rect2(1130, 562, 240, 10), Color(0.2, 0.95, 1.0)),
+		CityLights.Sign.new(Rect2(1530, 610, 8, 90), Color(1.0, 0.2, 0.8)),
+	]
+	# On the towers' and the lower roof's corners, and the antenna's tip.
+	location.warning_lights = PackedVector2Array([
+		Vector2(414, 325), Vector2(606, 255), Vector2(814, 255),
+		Vector2(PAD_BUILDING_LEFT + ANTENNA_WIDTH / 2.0, ANTENNA_TOP_Y - CityLights.WARNING_RADIUS), Vector2(1554, 575),
+	])
+	location.vehicles = [
+		Vehicles.Vehicle.new(Vector2(300, 180), 45.0), Vehicles.Vehicle.new(Vector2(1500, 120), -60.0),
+		Vehicles.Vehicle.new(Vector2(900, 330), 30.0), Vehicles.Vehicle.new(Vector2(-400, 240), -38.0),
+	]
 	location.ground_y = ROOF_Y
 	location.ground_width = PAD_ROOF_WIDTH
 	location.lowest_y = STREET_Y + World.GROUND_DEPTH
