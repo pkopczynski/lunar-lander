@@ -12,6 +12,8 @@ const HULL_COLOR := Color(0.42, 0.45, 0.5)
 const HULL := [Vector2(-12, 0), Vector2(-8, -4), Vector2(6, -4), Vector2(12, 0), Vector2(8, 3), Vector2(-9, 3)]
 const LIGHT_COLOR := Color(0.6, 0.9, 1.0)
 const LIGHT_RADIUS := 1.5
+# Where each light sits on its hull, at its nose.
+const LIGHT_OFFSET := Vector2(9, -1)
 # Vehicles wrap around this span of their layer's x, wider than anything the view can show however
 # far the layer is shifted.
 const WRAP_LEFT := -World.SIDE_OVERHANG - 1200.0
@@ -61,7 +63,7 @@ func build(from: Array[Vehicle], anchor: Vector2) -> void:
 		var light := Polygon2D.new()
 		var points := PackedVector2Array()
 		for side in SIDES:
-			points.append(Vector2(9, -1) + Vector2.from_angle(TAU * side / SIDES) * LIGHT_RADIUS)
+			points.append(LIGHT_OFFSET + Vector2.from_angle(TAU * side / SIDES) * LIGHT_RADIUS)
 		light.polygon = points
 		light.color = LIGHT_COLOR
 		hull.add_child(light)

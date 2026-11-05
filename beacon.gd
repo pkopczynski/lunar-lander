@@ -24,7 +24,7 @@ var pulse_time := 0.0
 
 
 func _ready() -> void:
-	for edge in [-Lander.PAD_WIDTH / 2.0, Lander.PAD_WIDTH / 2.0]:
+	for edge: float in [-Lander.PAD_WIDTH / 2.0, Lander.PAD_WIDTH / 2.0]:
 		# Each light stands on the pad's top, at its edge.
 		var at := Vector2(edge, -Lander.PAD_HEIGHT - LIGHT_RADIUS)
 		var glow := disc(at, GLOW_RADIUS, LIGHT_COLOR)

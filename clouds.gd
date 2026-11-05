@@ -29,6 +29,11 @@ const WRAP_LEFT := -World.SIDE_OVERHANG - 1200.0
 const WRAP_WIDTH := World.WORLD_WIDTH + 2.0 * (World.SIDE_OVERHANG + 1200.0)
 # Points around each cloud's outline.
 const SIDES := 24
+# Each cloud's outline: its top raised by up to LUMP_HEIGHT of its half height in LUMPS bumps, its
+# bottom squashed to BOTTOM_SQUASH of it, nearly flat.
+const LUMPS := 3.0
+const LUMP_HEIGHT := 0.35
+const BOTTOM_SQUASH := 0.5
 
 
 # One cloud: its centre and half size, as designed (with the camera on the pad, before it drifts).
@@ -96,8 +101,8 @@ static func outline(half: Vector2) -> PackedVector2Array:
 		var angle := TAU * side / SIDES
 		var point := Vector2(cos(angle) * half.x, sin(angle) * half.y)
 		if point.y < 0.0:
-			point.y *= 1.0 + 0.35 * absf(sin(angle * 3.0))
+			point.y *= 1.0 + LUMP_HEIGHT * absf(sin(angle * LUMPS))
 		else:
-			point.y *= 0.5
+			point.y *= BOTTOM_SQUASH
 		points.append(point)
 	return points

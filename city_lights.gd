@@ -22,6 +22,8 @@ const WARNING_RADIUS := 3.0
 # Each warning light is on for the first half of its blink and faint for the rest.
 const BLINK_PERIOD := 1.6
 const BLINK_OFF_ALPHA := 0.15
+# Each warning light blinks this much later than the one before it.
+const BLINK_STAGGER := BLINK_PERIOD / 5.0
 # Sides of the polygon each warning light is drawn as.
 const SIDES := 12
 
@@ -99,8 +101,9 @@ func window_mesh(rects: Array[Rect2]) -> ArrayMesh:
 	var colors := PackedColorArray()
 	for i in rects.size():
 		var rect := rects[i]
-		var corners := [rect.position, Vector2(rect.end.x, rect.position.y), rect.end, Vector2(rect.position.x, rect.end.y)]
-		for corner in [0, 1, 2, 0, 2, 3]:
+		var corners := PackedVector2Array([rect.position, Vector2(rect.end.x, rect.position.y), rect.end,
+			Vector2(rect.position.x, rect.end.y)])
+		for corner: int in [0, 1, 2, 0, 2, 3]:
 			vertices.append(corners[corner])
 			colors.append(WINDOW_TINTS[i % WINDOW_TINTS.size()])
 	var arrays := []
@@ -120,7 +123,7 @@ func _process(delta: float) -> void:
 func blink(delta: float) -> void:
 	blink_time = fposmod(blink_time + delta, BLINK_PERIOD)
 	for i in warning_lights.size():
-		var phase := fposmod(blink_time + i * BLINK_PERIOD / 5.0, BLINK_PERIOD)
+		var phase := fposmod(blink_time + i * BLINK_STAGGER, BLINK_PERIOD)
 		warning_lights[i].modulate.a = 1.0 if phase < BLINK_PERIOD / 2.0 else BLINK_OFF_ALPHA
 
 
