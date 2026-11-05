@@ -49,11 +49,27 @@ func test_the_valley_backdrop_is_two_tatra_ridges_without_colliders() -> void:
 	check_tatras("Valley")
 
 
-func test_the_mine_shows_the_tatra_ridges_down_to_its_pit_floor() -> void:
+# The Mine's Backdrop: Himalaya-like peaks, towering well above the mountain tops where the Tatras
+# only reach them, then its far walls with their industrial silhouettes and cranes; all down past the pit floor.
+func test_the_mine_shows_himalaya_like_peaks_down_to_its_pit_floor_and_the_valley_still_the_tatras() -> void:
 	await choose_ship()
 	clock().move_to(Location.MINE)
 	await frames(1)
-	check_tatras("Mine")
+	var pieces := backdrop()
+	check(pieces.size() >= 3, "the Mine's Backdrop should be its peaks and far walls, got %d pieces" % pieces.size())
+	var highest := INF
+	for piece in pieces:
+		highest = minf(highest, piece.screen_area.position.y)
+		check(piece.screen_area.end.y >= screen_y(world().location.lowest_y),
+			"a Mine ridge should reach down to the pit floor's bottom (screen y %s), its bottom at %s"
+			% [screen_y(world().location.lowest_y), piece.screen_area.end.y])
+		check(not piece.has_collider, "a Mine Backdrop piece shouldn't have a collider")
+	check(highest < screen_y(World.MOUNTAIN_TOP_Y) - 60.0,
+		"the Mine's Himalaya-like peaks should tower well above the mountain tops (screen y %s), its highest at %s"
+		% [screen_y(World.MOUNTAIN_TOP_Y), highest])
+	clock().move_to(Location.VALLEY)
+	await frames(1)
+	check_tatras("Valley, back from the Mine,")
 
 
 func test_changing_the_location_rebuilds_its_backdrop() -> void:

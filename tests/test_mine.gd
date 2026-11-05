@@ -111,6 +111,34 @@ func test_touching_a_bench_crashes_and_the_valley_has_no_benches() -> void:
 	check(lander().state == Lander.State.FLYING, "back at the Valley the benches should be gone, says %s" % message())
 
 
+func test_touching_the_crane_arm_over_the_left_benches_crashes() -> void:
+	await choose_ship()
+	clock().move_to(Location.MINE)
+	# Gently down onto the arm, above the middle left bench, well above the benches.
+	place(Vector2(600, 380), Vector2(0, 20))
+	await seconds(1.5)
+	check(message().begins_with("Crashed"), "touching the crane arm should crash, got %s" % message())
+	check(lander().position.y < World.GROUND_TOP_Y - 100.0,
+		"the ship should crash on the crane arm, well above the benches, at y %s" % lander().position.y)
+	clock().move_to(Location.VALLEY)
+	place(Vector2(600, 380))
+	await frames(10)
+	check(lander().state == Lander.State.FLYING, "the Valley has no crane, says %s" % message())
+
+
+# The Mine's other cranes and its industrial silhouettes are only Backdrop: the ship flies through
+# where they're drawn.
+func test_the_mines_other_cranes_have_no_collider() -> void:
+	await choose_ship()
+	clock().move_to(Location.MINE)
+	for spot in [Vector2(1700, 434), Vector2(1100, 613), Vector2(1785, 410)]:
+		place(spot)
+		await frames(10)
+		check(lander().state == Lander.State.FLYING, "flying through a Backdrop crane at %s shouldn't crash, says %s" % [spot, message()])
+	for piece in world().shown_decor(Vector2(pad_x(), world().location.ground_y), 1.0):
+		check(not piece.has_collider, "no Mine decor piece should have a collider (layer %d, part %d)" % [piece.layer, piece.part])
+
+
 func test_the_debug_pad_shortcut_puts_the_ship_on_the_mines_pad() -> void:
 	await choose_ship(ShipType.MULE)
 	clock().move_to(Location.MINE)
@@ -176,7 +204,8 @@ func test_the_open_pit_mine_is_cut_into_the_ground_down_to_a_pit_floor_below_the
 		"the Mine's pad should sit on a pit floor well below the Valley's ground, y %s vs %s" % [lander().position.y, valley_y])
 	var highest := INF
 	for child in main().get_node("Terrain").get_children():
-		if child is Polygon2D:
+		# The crane over the left benches stands on them; it isn't a bench.
+		if child is Polygon2D and (child as Polygon2D).polygon != PackedVector2Array(Location.CRANE):
 			for point: Vector2 in (child as Polygon2D).polygon:
 				highest = minf(highest, point.y)
 	check(highest >= valley_ground - 0.01,

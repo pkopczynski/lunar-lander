@@ -5,7 +5,7 @@ extends Node2D
 # the sky. Each ridge is one Polygon2D filled with the background gradient, darkened, so it reads
 # as a shadow of the sky behind it, in its own parallax layer anchored on the pad.
 
-# Tatra-like ridges, behind the Valley and (for now) the Mine. Only the top edge is listed; each
+# Tatra-like ridges, behind the Valley and (for now) the Metropolis. Only the top edge is listed; each
 # ridge closes down to the location's lowest point. Most of it sits between the mountains, which
 # cover its ends.
 # The farther ridge: jagged granite High Tatra peaks, tallest near Rysy.
@@ -58,6 +58,56 @@ const TATRA_NEAR_DARKENING := 0.16
 # ridges barely rise into the sky as the ship climbs. Tuning, expected to change in playtests.
 const TATRA_FAR_SCROLL := Vector2(0.6, 0.97)
 const TATRA_NEAR_SCROLL := Vector2(0.75, 0.98)
+# The Mine's Backdrop, farther first, with stronger parallax than the Tatras' (each layer slower).
+# Tuning, expected to change in playtests.
+# The farther ridge: tall, jagged Himalaya-like peaks towering above the mountain tops, the
+# highest an Everest-like pyramid left of the pad.
+const HIMALAYA_FAR := [
+	Vector2(-World.SIDE_OVERHANG, 260), Vector2(100, 250), Vector2(180, 190), Vector2(240, 215),
+	Vector2(330, 130), Vector2(380, 160), Vector2(450, 105), Vector2(520, 170), Vector2(600, 140),
+	Vector2(690, 210), Vector2(760, 175), Vector2(850, 120), Vector2(920, 150), Vector2(1000, 75),
+	Vector2(1060, 110), Vector2(1120, 95), Vector2(1200, 170), Vector2(1270, 140), Vector2(1360, 200),
+	Vector2(1440, 150), Vector2(1520, 185), Vector2(1600, 130), Vector2(1680, 175), Vector2(1760, 210),
+	Vector2(1850, 190), Vector2(1950, 240), Vector2(World.WORLD_WIDTH + World.SIDE_OVERHANG, 250),
+]
+# The nearer ridge: lower, sharp foothills.
+const HIMALAYA_NEAR := [
+	Vector2(-World.SIDE_OVERHANG, 360), Vector2(150, 350), Vector2(260, 300), Vector2(340, 320),
+	Vector2(430, 270), Vector2(520, 310), Vector2(620, 285), Vector2(720, 330), Vector2(820, 300),
+	Vector2(900, 340), Vector2(1000, 315), Vector2(1100, 350), Vector2(1200, 320), Vector2(1300, 290),
+	Vector2(1380, 330), Vector2(1480, 300), Vector2(1580, 345), Vector2(1700, 320), Vector2(1820, 360),
+	Vector2(World.WORLD_WIDTH + World.SIDE_OVERHANG, 360),
+]
+# The far walls: the open-pit mine's far side, terraced down well below the benches so it looks
+# deep, with industrial silhouettes on its rim (a headframe, a chimney) and two cranes, one on a
+# deep terrace and one on the right rim. Background only: the one solid crane is the Mine's terrain.
+const FAR_WALLS := [
+	Vector2(-World.SIDE_OVERHANG, 540), Vector2(300, 540),
+	# The headframe.
+	Vector2(300, 470), Vector2(315, 470), Vector2(330, 440), Vector2(345, 470), Vector2(360, 470), Vector2(360, 540),
+	# The chimney.
+	Vector2(420, 540), Vector2(420, 430), Vector2(432, 430), Vector2(432, 540),
+	# The far walls' terraces, down to a deep floor.
+	Vector2(560, 540), Vector2(560, 575), Vector2(680, 575), Vector2(680, 615), Vector2(800, 615),
+	Vector2(800, 655), Vector2(940, 655), Vector2(940, 690),
+	# The crane on the deep terrace: its mast, counter-jib and jib reaching right.
+	Vector2(1000, 690), Vector2(1000, 618), Vector2(960, 618), Vector2(960, 610), Vector2(1000, 610),
+	Vector2(1000, 590), Vector2(1010, 590), Vector2(1010, 610), Vector2(1180, 610), Vector2(1180, 617),
+	Vector2(1010, 617), Vector2(1010, 690),
+	Vector2(1500, 690), Vector2(1500, 650), Vector2(1580, 650), Vector2(1580, 610), Vector2(1640, 610),
+	Vector2(1640, 575), Vector2(1700, 575), Vector2(1700, 540),
+	# The crane on the right rim: its jib reaching left over the pit, its counter-jib right.
+	Vector2(1780, 540), Vector2(1780, 438), Vector2(1600, 438), Vector2(1600, 430), Vector2(1780, 430),
+	Vector2(1780, 400), Vector2(1790, 400), Vector2(1790, 430), Vector2(1850, 430), Vector2(1850, 445),
+	Vector2(1790, 445), Vector2(1790, 540),
+	Vector2(World.WORLD_WIDTH + World.SIDE_OVERHANG, 540),
+]
+const HIMALAYA_FAR_DARKENING := 0.06
+const HIMALAYA_NEAR_DARKENING := 0.12
+const FAR_WALLS_DARKENING := 0.22
+const HIMALAYA_FAR_SCROLL := Vector2(0.4, 0.94)
+const HIMALAYA_NEAR_SCROLL := Vector2(0.55, 0.96)
+const FAR_WALLS_SCROLL := Vector2(0.7, 0.975)
 # How far below the location's lowest point each ridge reaches, so its bottom never shows as its
 # layer rises with a camera above the pad.
 const BOTTOM_MARGIN := 200.0
@@ -104,6 +154,13 @@ static func skyline_edge(blocks: Array) -> Array:
 		edge.append(Vector2(block[0], block[1]))
 		left = block[0]
 	return edge
+
+
+# The Mine's Backdrop, farther first: the Himalaya-like peaks, then the far walls.
+static func mine() -> Array[Ridge]:
+	return [Ridge.new(HIMALAYA_FAR, HIMALAYA_FAR_DARKENING, HIMALAYA_FAR_SCROLL),
+		Ridge.new(HIMALAYA_NEAR, HIMALAYA_NEAR_DARKENING, HIMALAYA_NEAR_SCROLL),
+		Ridge.new(FAR_WALLS, FAR_WALLS_DARKENING, FAR_WALLS_SCROLL)]
 
 
 # The ridges as drawn, farther first.

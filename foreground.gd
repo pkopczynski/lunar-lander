@@ -46,6 +46,27 @@ const METROPOLIS_RIGHT_ROOF := [
 	Vector2(1860, 660), Vector2(1900, 660), Vector2(1900, 700), Vector2(1960, 700),
 ]
 
+# The Mine's silhouettes, scrolling faster than the Valley's (stronger parallax): a spoil heap and a
+# haul truck on the left benches, an ore heap on the pit floor left of the pad, and an ore heap with
+# a conveyor's head tower on the right. All below the crane's arm, so as they only ever move down
+# from where they were designed (the camera is never below the pad), they never hide it.
+const MINE_SCROLL := Vector2(1.7, 1.1)
+const MINE_LEFT_HEAP := [
+	Vector2(40, 640), Vector2(90, 590), Vector2(140, 605), Vector2(190, 560), Vector2(240, 585),
+	Vector2(290, 570), Vector2(330, 610), Vector2(380, 630), Vector2(420, 630), Vector2(420, 590),
+	Vector2(445, 590), Vector2(445, 565), Vector2(480, 565), Vector2(480, 590), Vector2(500, 590),
+	Vector2(505, 555), Vector2(640, 545), Vector2(650, 575), Vector2(660, 600), Vector2(660, 640),
+	Vector2(700, 650),
+]
+const MINE_PIT_HEAP := [
+	Vector2(820, 760), Vector2(870, 720), Vector2(910, 705), Vector2(950, 725), Vector2(1000, 770),
+]
+const MINE_RIGHT_CONVEYOR := [
+	Vector2(1680, 720), Vector2(1720, 690), Vector2(1770, 650), Vector2(1800, 655), Vector2(1820, 640),
+	Vector2(1840, 640), Vector2(1840, 520), Vector2(1880, 520), Vector2(1880, 560), Vector2(1960, 600),
+	Vector2(2050, 640), Vector2(2200, 660),
+]
+
 
 # One Foreground silhouette: its top edge, left to right, and how fast its layer scrolls with the
 # camera (above 1: faster than the world).
@@ -62,9 +83,14 @@ static func valley() -> Array[Silhouette]:
 	return [Silhouette.new(VALLEY_LEFT_STAND, VALLEY_SCROLL), Silhouette.new(VALLEY_RIGHT_STAND, VALLEY_SCROLL)]
 
 
-
 static func metropolis() -> Array[Silhouette]:
 	return [Silhouette.new(METROPOLIS_LEFT_ROOF, METROPOLIS_SCROLL), Silhouette.new(METROPOLIS_RIGHT_ROOF, METROPOLIS_SCROLL)]
+
+
+static func mine() -> Array[Silhouette]:
+	return [Silhouette.new(MINE_LEFT_HEAP, MINE_SCROLL), Silhouette.new(MINE_PIT_HEAP, MINE_SCROLL),
+		Silhouette.new(MINE_RIGHT_CONVEYOR, MINE_SCROLL)]
+
 
 # The silhouettes as drawn, the pieces World.shown_decor() lists.
 var pieces: Array[Polygon2D] = []

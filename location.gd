@@ -8,6 +8,14 @@ extends RefCounted
 # last one onto the pit floor.
 const BENCH_STEP := 60.0
 const PIT_DEPTH := 3.0 * BENCH_STEP
+# The Mine's one solid crane: its mast stands on the top left bench, its counter-jib reaches left
+# and its arm right, over the left benches, well above them and away from the pad's approach.
+# Touching it crashes the ship.
+const CRANE := [
+	Vector2(375, World.GROUND_TOP_Y), Vector2(375, 462), Vector2(330, 462), Vector2(330, 450),
+	Vector2(375, 450), Vector2(375, 430), Vector2(385, 430), Vector2(385, 450), Vector2(760, 450),
+	Vector2(760, 462), Vector2(385, 462), Vector2(385, World.GROUND_TOP_Y),
+]
 
 # The Metropolis: the pad's roof at about mid-height between the mountain tops and the street,
 # which lies well below the Valley's ground. Gaps between buildings are at least ~2.5× the
@@ -106,13 +114,16 @@ static func valley() -> Location:
 
 # An open-pit mine: stepped benches cut down into the ground on both sides to a pit floor below
 # the Valley's ground, wider steps on the left, with the pad off-centre on the pit floor toward
-# the right. Each side reaches under its mountain and down to the ground's bottom, so no sky
-# shows below the Valley's ground outside the open-pit mine.
+# the right, and one solid crane over the left benches. Each side reaches under its mountain and
+# down to the ground's bottom, so no sky shows below the Valley's ground outside the open-pit mine.
+# Behind it, Himalaya-like peaks and its far walls; in front, its Foreground.
 static func mine() -> Location:
 	var location := Location.new()
 	location.name = "MINE"
 	location.pad_center_x = 1300.0
 	location.ground_y = World.GROUND_TOP_Y + PIT_DEPTH
+	location.backdrop = Backdrop.mine()
+	location.foreground = Foreground.mine()
 	location.pool_share = 0.3
 	location.kind_weights = PackedFloat32Array([0.1, 0.6, 0.3])
 	location.max_passengers = 4
@@ -139,6 +150,7 @@ static func mine() -> Location:
 			Vector2(1550, top + 2.0 * BENCH_STEP), Vector2(1550, top + BENCH_STEP),
 			Vector2(1650, top + BENCH_STEP), Vector2(1650, top), Vector2(right, top), Vector2(right, bottom),
 		]),
+		PackedVector2Array(CRANE),
 	]
 	return location
 
