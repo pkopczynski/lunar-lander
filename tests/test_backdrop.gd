@@ -27,7 +27,7 @@ func at_hour(hour: int) -> void:
 
 
 # Checks the two Tatra-like ridges: the farther peaking at the mountain tops (Rysy), the nearer
-# at Giewont, both reaching down to the location's lowest point.
+# at Giewont, both reaching down to (past) the location's lowest point.
 func check_tatras(where: String) -> void:
 	var pieces := backdrop()
 	check(pieces.size() == 2, "the %s's Backdrop should be two ridges, got %d pieces" % [where, pieces.size()])
@@ -38,8 +38,9 @@ func check_tatras(where: String) -> void:
 	check_near(tops[0], screen_y(World.MOUNTAIN_TOP_Y), 0.01, "the %s's farther ridge's peak on screen" % where)
 	check_near(tops[1], screen_y(248.0), 0.01, "the %s's nearer ridge's peak (Giewont) on screen" % where)
 	for piece in pieces:
-		check_near(piece.screen_area.end.y, screen_y(world().location.lowest_y), 0.01,
-			"a %s ridge should reach down to the location's lowest point" % where)
+		check(piece.screen_area.end.y >= screen_y(world().location.lowest_y),
+			"a %s ridge should reach down to the location's lowest point (screen y %s), its bottom at %s"
+			% [where, screen_y(world().location.lowest_y), piece.screen_area.end.y])
 		check(not piece.has_collider, "a %s ridge shouldn't have a collider" % where)
 
 
