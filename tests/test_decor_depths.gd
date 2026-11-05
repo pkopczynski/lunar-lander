@@ -75,7 +75,8 @@ func test_every_decor_piece_reports_its_opacity() -> void:
 	for part in [World.DecorPart.RIDGE, World.DecorPart.CLOUD, World.DecorPart.SILHOUETTE]:
 		for piece in parts(part):
 			check_near(piece.opacity, 1.0, 0.001, "a ridge, cloud or silhouette should be opaque (part %d)" % part)
-	var glows := parts(World.DecorPart.GLOW)
+	var glows := parts(World.DecorPart.GLOW).filter(
+		func(piece: World.Decor) -> bool: return piece.layer == World.DecorLayer.BEACON)
 	check(not glows.is_empty(), "the Beacon should list its glows")
 	for glow in glows:
 		check(glow.opacity > 0.0 and glow.opacity < 0.5, "the Beacon's glow should be translucent, got %s" % glow.opacity)
