@@ -69,7 +69,7 @@ The open-pit mine location: stepped benches cut down into the ground, with the p
 _Avoid_: Quarry, pit
 
 **Metropolis**:
-The futuristic city location: buildings of several heights, with the pad on a rooftop. Touching a solid building or the street crashes the ship.
+The futuristic city location: buildings of several heights, with the pad on a rooftop, the only place the ship can land there. Touching a solid building, the street or the antenna, or touching down on the pad's roof beside the pad, crashes the ship. It comes after the Mine in drift order.
 _Avoid_: City (on its own), downtown
 
 **Location profile**:

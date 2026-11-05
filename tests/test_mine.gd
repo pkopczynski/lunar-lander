@@ -21,15 +21,16 @@ func up_to_destination() -> void:
 	await press(&"ui_up")
 
 
-func test_return_cycles_valley_mine_and_wraps_without_moving_the_location() -> void:
+func test_return_cycles_valley_mine_metropolis_and_wraps_without_moving_the_location() -> void:
 	await open_transport_offers()
 	await press(&"ui_right")
 	await up_to_destination()
 	var seen := PackedStringArray([offers().mission_lines()[0]])
-	for i in 2:
+	for i in 3:
 		await press(&"ui_accept")
 		seen.append(offers().mission_lines()[0])
-	check(seen == PackedStringArray(["DESTINATION VALLEY", "DESTINATION MINE", "DESTINATION VALLEY"]),
+	check(seen == PackedStringArray(["DESTINATION VALLEY", "DESTINATION MINE", "DESTINATION METROPOLIS",
+		"DESTINATION VALLEY"]),
 		"Return should cycle the destination and wrap, got %s" % seen)
 	await press(&"ui_accept")
 	check(office().showing and economy().phase == Economy.Phase.NONE, "Return on the row shouldn't start loading")
