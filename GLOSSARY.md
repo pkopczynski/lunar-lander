@@ -17,7 +17,7 @@ The horizontal line between the surface and deep space.
 _Avoid_: Boundary, edge, atmosphere line
 
 **Mountains**:
-Solid side walls of the lower surface. Touching them crashes the ship.
+Solid side walls of the lower surface, the same shape at every location but dressed in each location's own look. Touching them crashes the ship.
 _Avoid_: Side borders, cliffs
 
 **Backdrop**:
@@ -27,6 +27,18 @@ _Avoid_: Mountains (the solid side walls), background mountains
 **Foreground**:
 Scenery drawn in front of the ship, with no collision. It may hide the ship, or the pad, for a moment as the view moves.
 _Avoid_: Overlay, front layer
+
+**Moons**:
+The other bodies in the planet's sky, seen from the surface: the same few at every location, each location showing them in its own place in the sky. Faint by day, clear at night. They sit low enough that they've sunk out of view before the ship reaches the Border, so deep space never shows them.
+_Avoid_: Planets (the planet is the one the ship lands on), sky bodies
+
+**Approach corridor**:
+The column above the pad, a little wider than the pad on each side, which the Foreground never covers at any height, so the way down to the pad always stays in sight. Outside it the Foreground may hide the ship.
+_Avoid_: Landing zone, safe zone
+
+**Vehicles**:
+The Metropolis's distant flying craft, in lanes at several heights and depths of its sky, each leaving a fading trail of light. Only scenery: the ship flies through them.
+_Avoid_: Aircraft, traffic (on its own), trails (a trail is part of a vehicle)
 
 **Border band**:
 The strip around the border where gravity fades out. A ship too slow to cross is bounced back to the side it came from.
