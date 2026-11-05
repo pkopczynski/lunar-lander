@@ -9,6 +9,18 @@ extends RefCounted
 const BENCH_STEP := 60.0
 const PIT_DEPTH := 3.0 * BENCH_STEP
 
+# The Metropolis: the pad's roof at about mid-height between the mountain tops and the street,
+# which lies well below the Valley's ground. Gaps between buildings are at least ~2.5× the
+# Mule's 68 px length.
+const ROOF_Y := 500.0
+const STREET_Y := 800.0
+# The landing surface: a little wider than the pad, and only part of the pad building's roof.
+const PAD_ROOF_WIDTH := 140.0
+const PAD_BUILDING_LEFT := 1100.0
+const PAD_BUILDING_RIGHT := 1400.0
+const ANTENNA_TOP_Y := 380.0
+const ANTENNA_WIDTH := 10.0
+
 # Shown in the HUD.
 var name: String
 var pad_center_x: float
@@ -51,8 +63,9 @@ var reward_factor := 1.0
 # Named like constants: GDScript can't build objects in a const, so never reassign these.
 static var VALLEY := valley()
 static var MINE := mine()
+static var METROPOLIS := metropolis()
 # In drift order: the location after the last one is the first.
-static var ALL: Array[Location] = [VALLEY, MINE]
+static var ALL: Array[Location] = [VALLEY, MINE, METROPOLIS]
 
 
 # The location after this one in drift order, wrapping to the first.
@@ -112,6 +125,69 @@ static func mine() -> Location:
 			Vector2(1450, bottom), Vector2(1450, top + 2.0 * BENCH_STEP),
 			Vector2(1550, top + 2.0 * BENCH_STEP), Vector2(1550, top + BENCH_STEP),
 			Vector2(1650, top + BENCH_STEP), Vector2(1650, top), Vector2(right, top), Vector2(right, bottom),
+		]),
+	]
+	return location
+
+
+# A city of rooftops: tall towers on the left, the pad on a roof at about mid-height right of
+# centre, and lower roofs stepping down on its right, forming the approach. The pad's roof is the
+# only landing surface; the buildings, the street below them and the antenna are solid terrain.
+static func metropolis() -> Location:
+	var location := Location.new()
+	location.name = "METROPOLIS"
+	location.pad_center_x = 1250.0
+	location.pool_share = 0.3
+	location.kind_weights = PackedFloat32Array([0.6, 0.1, 0.3])
+	location.max_cargo = 3000.0
+	location.reward_factor = 1.35
+	location.titles = {
+		TransportOffer.Kind.PASSENGERS: ["Tourist group", "Corporate team", "Business delegation",
+			"Conference guests", "Shift workers"],
+		TransportOffer.Kind.CARGO: ["Mail and parcels", "Shop supplies", "Electronics", "Restaurant supplies"],
+		TransportOffer.Kind.MIXED: ["Office move", "Film crew and kit", "Hotel guests", "Pop-up shop", "Expo team"],
+	}
+	location.ground_y = ROOF_Y
+	location.ground_width = PAD_ROOF_WIDTH
+	location.lowest_y = STREET_Y + World.GROUND_DEPTH
+	var left := -World.SIDE_OVERHANG
+	var right := World.WORLD_WIDTH + World.SIDE_OVERHANG
+	var street := STREET_Y
+	var bottom := location.lowest_y
+	# The pad's building is wider than its landing surface; the surface sits in a notch in its roof.
+	var roof_left := location.pad_center_x - PAD_ROOF_WIDTH / 2.0
+	var roof_right := location.pad_center_x + PAD_ROOF_WIDTH / 2.0
+	var under_roof := ROOF_Y + World.GROUND_DEPTH
+	location.terrain = [
+		# The street, across the whole world.
+		PackedVector2Array([Vector2(left, street), Vector2(right, street), Vector2(right, bottom), Vector2(left, bottom)]),
+		# A tall tower against the left mountain, with the rock below that mountain.
+		PackedVector2Array([
+			Vector2(140, 330), Vector2(420, 330), Vector2(420, street), Vector2(left, street), Vector2(left, 640),
+			Vector2(140, 640),
+		]),
+		# The tallest tower, with streets on both sides.
+		PackedVector2Array([Vector2(600, 260), Vector2(820, 260), Vector2(820, street), Vector2(600, street)]),
+		# The pad's building.
+		PackedVector2Array([
+			Vector2(PAD_BUILDING_LEFT, ROOF_Y), Vector2(roof_left, ROOF_Y), Vector2(roof_left, under_roof),
+			Vector2(roof_right, under_roof), Vector2(roof_right, ROOF_Y), Vector2(PAD_BUILDING_RIGHT, ROOF_Y),
+			Vector2(PAD_BUILDING_RIGHT, street), Vector2(PAD_BUILDING_LEFT, street),
+		]),
+		# The antenna, on the pad building's far left corner.
+		PackedVector2Array([
+			Vector2(PAD_BUILDING_LEFT, ANTENNA_TOP_Y), Vector2(PAD_BUILDING_LEFT + ANTENNA_WIDTH, ANTENNA_TOP_Y),
+			Vector2(PAD_BUILDING_LEFT + ANTENNA_WIDTH, ROOF_Y), Vector2(PAD_BUILDING_LEFT, ROOF_Y),
+		]),
+		# Two lower roofs stepping down on the pad's right, the last one reaching under the right
+		# mountain.
+		PackedVector2Array([
+			Vector2(PAD_BUILDING_RIGHT, 580), Vector2(1560, 580), Vector2(1560, street),
+			Vector2(PAD_BUILDING_RIGHT, street),
+		]),
+		PackedVector2Array([
+			Vector2(1560, 660), Vector2(1750, 660), Vector2(1750, 640), Vector2(right, 640), Vector2(right, street),
+			Vector2(1560, street),
 		]),
 	]
 	return location

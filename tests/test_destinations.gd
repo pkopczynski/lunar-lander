@@ -9,19 +9,19 @@ func offer_to(location: Location) -> TransportOffer:
 	return offer
 
 
-func test_every_offer_goes_to_the_valley_or_the_mine_shown_in_its_row_and_details() -> void:
+func test_every_offer_goes_to_the_valley_the_mine_or_the_metropolis_shown_in_its_row_and_details() -> void:
 	await open_transport_offers()
 	var seen := {}
 	for seed_value in 20:
 		economy().reseed(seed_value)
 		for i in economy().offers.size():
 			var offer := economy().offers[i]
-			check(offer.destination in [Location.VALLEY, Location.MINE],
-				"offer #%03d should go to the Valley or the Mine" % offer.number)
+			check(offer.destination in [Location.VALLEY, Location.MINE, Location.METROPOLIS],
+				"offer #%03d should go to the Valley, the Mine or the Metropolis" % offer.number)
 			check(" %s " % offer.destination.name in offers().rows()[i],
 				"the row should name the destination %s, got %s" % [offer.destination.name, offers().rows()[i]])
 			seen[offer.destination] = true
-	check(seen.size() == 2, "both the Valley and the Mine should come up over 100 offers")
+	check(seen.size() == 3, "the Valley, the Mine and the Metropolis should all come up over 100 offers")
 	var mine := offer_to(Location.MINE)
 	economy().put_offer(mine)
 	await open_details(mine)
@@ -110,7 +110,7 @@ func test_removing_the_last_contract_unlocks_the_destination_keeping_its_value()
 		"removing the last Contract should keep DESTINATION MINE, got %s" % offers().mission_lines())
 	await up_to_destination()
 	await press(&"ui_accept")
-	check(offers().mission_lines()[0] == "DESTINATION VALLEY",
+	check(offers().mission_lines()[0] == "DESTINATION METROPOLIS",
 		"Return should cycle DESTINATION again once unlocked, got %s" % offers().mission_lines())
 
 

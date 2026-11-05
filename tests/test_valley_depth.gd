@@ -220,3 +220,6 @@ func test_the_layers_cover_the_view_at_every_zoom_and_on_wide_windows() -> void:
 	clock().move_to(Location.MINE)
 	await frames(1)
 	check_layers_cover_the_view("Mine")
+	clock().move_to(Location.METROPOLIS)
+	await frames(1)
+	check_layers_cover_the_view("Metropolis")
