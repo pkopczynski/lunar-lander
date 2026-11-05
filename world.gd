@@ -60,8 +60,10 @@ var night_star_radii := PackedFloat32Array()
 # one by one; the night stars' brightness is their layer's modulate.
 var deep_star_layer := MeshInstance2D.new()
 var night_star_layer := MeshInstance2D.new()
-# The current location's Backdrop, built afresh by show_location().
+# The current location's Backdrop, clouds and Foreground, built afresh by show_location().
 var backdrop := Backdrop.new()
+var clouds := Clouds.new()
+var foreground := Foreground.new()
 # The pad's Beacon; a child of the pad, so it follows it to every location.
 var beacon := Beacon.new()
 
@@ -91,11 +93,13 @@ func _ready() -> void:
 	clock.location_changed.connect(show_location)
 	show_location(location)
 	add_scenery(ground_visual)
-	# Drawn over the gradient and under everything in the scene: the stars, then the Backdrop.
-	var layers: Array[CanvasItem] = [deep_star_layer, night_star_layer, backdrop]
+	# Drawn over the gradient and under everything in the scene: the stars, the clouds, then the
+	# Backdrop. The Foreground is drawn over everything, the ship included.
+	var layers: Array[CanvasItem] = [deep_star_layer, night_star_layer, clouds, backdrop]
 	for i in layers.size():
 		add_child(layers[i])
 		move_child(layers[i], i)
+	add_child(foreground)
 
 	var rng := RandomNumberGenerator.new()
 	rng.seed = STAR_SEED
@@ -141,6 +145,8 @@ func show_sky() -> void:
 	night_star_layer.visible = sky.star_brightness > 0.0
 	beacon.show_sky(sky)
 	backdrop.show_sky(background_color)
+	clouds.show_sky(sky, background_color)
+	foreground.show_sky(sky)
 	queue_redraw()
 
 
@@ -162,8 +168,13 @@ func show_location(to: Location) -> void:
 	show_ground_width(to)
 	pad.position.x = to.pad_center_x - ground.position.x
 	queue_redraw()
-	backdrop.build(to.backdrop, to.lowest_y)
+	var anchor := Vector2(to.pad_center_x, to.ground_y - Lander.PAD_HEIGHT)
+	backdrop.build(to.backdrop, to.lowest_y, anchor)
 	backdrop.show_sky(background_color)
+	clouds.build(to.clouds, anchor)
+	clouds.show_sky(sky, background_color)
+	foreground.build(to.foreground, to.lowest_y, anchor)
+	foreground.show_sky(sky)
 	for child in terrain.get_children():
 		terrain.remove_child(child)
 		child.queue_free()
@@ -281,18 +292,21 @@ func deep_space_stars() -> Array[Star]:
 
 # Which part of the scene a decor piece belongs to.
 enum DecorLayer { BACKDROP, PARALLAX, FOREGROUND, BEACON }
-# What a decor piece is within its layer: a light, the glow around one, or a ridge.
-enum DecorPart { LIGHT, GLOW, RIDGE }
+# What a decor piece is within its layer: a light, the glow around one, a ridge, a cloud or a
+# silhouette.
+enum DecorPart { LIGHT, GLOW, RIDGE, CLOUD, SILHOUETTE }
 
 
 # One decor piece as drawn: its layer and part, whether it has a collider, its colour as drawn
 # (tinted by its own and its ancestors' modulate; a piece filled with a gradient gives the average
-# of its vertex colours) and where it appears on screen.
+# of its vertex colours), how fast it scrolls with the camera (its parallax layer's scroll scale;
+# the world's, 1, if it's in none) and where it appears on screen.
 class Decor:
 	var layer: DecorLayer
 	var part: DecorPart
 	var has_collider: bool
 	var color: Color
+	var scroll_scale := Vector2.ONE
 	var screen_area: Rect2
 
 
@@ -302,10 +316,14 @@ func shown_decor(camera_center: Vector2, zoom: float) -> Array[Decor]:
 	var pieces: Array[Decor] = []
 	for ridge in backdrop.ridges:
 		pieces.append(decor(ridge, DecorLayer.BACKDROP, DecorPart.RIDGE, camera_center, zoom))
+	for cloud in clouds.pieces:
+		pieces.append(decor(cloud, DecorLayer.PARALLAX, DecorPart.CLOUD, camera_center, zoom))
 	for light in beacon.lights:
 		pieces.append(decor(light, DecorLayer.BEACON, DecorPart.LIGHT, camera_center, zoom))
 	for glow in beacon.glows:
 		pieces.append(decor(glow, DecorLayer.BEACON, DecorPart.GLOW, camera_center, zoom))
+	for silhouette in foreground.pieces:
+		pieces.append(decor(silhouette, DecorLayer.FOREGROUND, DecorPart.SILHOUETTE, camera_center, zoom))
 	return pieces
 
 
@@ -322,14 +340,21 @@ func decor(visual: Polygon2D, layer: DecorLayer, part: DecorPart, camera_center:
 		for color in visual.vertex_colors:
 			total += color
 		piece.color *= total / visual.vertex_colors.size()
+	# A piece in a parallax layer is drawn where that layer would be for this camera, not the
+	# actual one.
+	var shift := Vector2.ZERO
 	var node: Node = visual
 	while node is CanvasItem:
 		piece.color *= (node as CanvasItem).modulate
+		if node is AnchoredParallax:
+			var parallax := node as AnchoredParallax
+			piece.scroll_scale = parallax.scroll_scale
+			shift = parallax.offset_for(camera_center) - parallax.position
 		node = node.get_parent()
 	var screen_center := get_viewport_rect().size / 2.0
 	var area := Rect2()
 	for i in visual.polygon.size():
-		var on_screen := (visual.to_global(visual.polygon[i]) - camera_center) * zoom + screen_center
+		var on_screen := (visual.to_global(visual.polygon[i]) + shift - camera_center) * zoom + screen_center
 		area = Rect2(on_screen, Vector2.ZERO) if i == 0 else area.expand(on_screen)
 	piece.screen_area = area
 	return piece

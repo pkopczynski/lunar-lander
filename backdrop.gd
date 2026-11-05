@@ -3,7 +3,7 @@ extends Node2D
 # The Backdrop: the current location's scenery behind its surface, with no collision. The World
 # builds it afresh from the location's ridges whenever it shows a location, and recolours it from
 # the sky. Each ridge is one Polygon2D filled with the background gradient, darkened, so it reads
-# as a shadow of the sky behind it.
+# as a shadow of the sky behind it, in its own parallax layer anchored on the pad.
 
 # Tatra-like ridges, behind the Valley and (for now) the Mine. Only the top edge is listed; each
 # ridge closes down to the location's lowest point. Most of it sits between the mountains, which
@@ -34,22 +34,38 @@ const TATRA_NEAR := [
 # How much darker than the background behind it each Tatra ridge is.
 const TATRA_FAR_DARKENING := 0.08
 const TATRA_NEAR_DARKENING := 0.16
+# How fast each Tatra ridge scrolls with the camera, the world's being 1: mostly horizontal, so the
+# ridges barely rise into the sky as the ship climbs. Tuning, expected to change in playtests.
+const TATRA_FAR_SCROLL := Vector2(0.6, 0.97)
+const TATRA_NEAR_SCROLL := Vector2(0.75, 0.98)
+# How far below the location's lowest point each ridge reaches, so its bottom never shows as its
+# layer rises with a camera above the pad.
+const BOTTOM_MARGIN := 200.0
+# How far past its first and last points each ridge carries on, level, so its ends never show as its
+# layer shifts sideways (a layer anchored on a pad off the world's centre is shifted even with a
+# window wider than the world).
+const SIDE_MARGIN := 1000.0
 
 
-# One ridge of a location's Backdrop: its top edge, left to right, and how much darker than the
-# background gradient behind it it's filled.
+# One ridge of a location's Backdrop: its top edge, left to right, how much darker than the
+# background gradient behind it it's filled, and how fast it scrolls with the camera (by default
+# with the world, as if fixed). Its top edge must reach far enough past both sides of the world to
+# cover the view at the world's side overhang; the Backdrop carries it on further (SIDE_MARGIN).
 class Ridge:
 	var top_edge: PackedVector2Array
 	var darkening: float
+	var scroll_scale: Vector2
 
-	func _init(top: Array, darker: float) -> void:
+	func _init(top: Array, darker: float, scroll := Vector2.ONE) -> void:
 		top_edge = PackedVector2Array(top)
 		darkening = darker
+		scroll_scale = scroll
 
 
 # The Tatra-like ridges, farther first.
 static func tatras() -> Array[Ridge]:
-	return [Ridge.new(TATRA_FAR, TATRA_FAR_DARKENING), Ridge.new(TATRA_NEAR, TATRA_NEAR_DARKENING)]
+	return [Ridge.new(TATRA_FAR, TATRA_FAR_DARKENING, TATRA_FAR_SCROLL),
+		Ridge.new(TATRA_NEAR, TATRA_NEAR_DARKENING, TATRA_NEAR_SCROLL)]
 
 
 # The ridges as drawn, farther first.
@@ -57,20 +73,25 @@ var ridges: Array[Polygon2D] = []
 var darkenings: Array[float] = []
 
 
-# Builds the Backdrop afresh from a location's ridges, each closing down to bottom_y.
-func build(from: Array[Ridge], bottom_y: float) -> void:
-	for visual in ridges:
-		remove_child(visual)
-		visual.queue_free()
+# Builds the Backdrop afresh from a location's ridges, each carried on past both sides and closing
+# down past bottom_y, in its own parallax layer anchored on anchor.
+func build(from: Array[Ridge], bottom_y: float, anchor: Vector2) -> void:
+	for layer in get_children():
+		remove_child(layer)
+		layer.queue_free()
 	ridges.clear()
 	darkenings.clear()
 	for ridge in from:
 		var outline := ridge.top_edge.duplicate()
-		outline.append(Vector2(outline[-1].x, bottom_y))
-		outline.append(Vector2(outline[0].x, bottom_y))
+		outline.insert(0, outline[0] - Vector2(SIDE_MARGIN, 0))
+		outline.append(outline[-1] + Vector2(SIDE_MARGIN, 0))
+		outline.append(Vector2(outline[-1].x, bottom_y + BOTTOM_MARGIN))
+		outline.append(Vector2(outline[0].x, bottom_y + BOTTOM_MARGIN))
+		var layer := AnchoredParallax.new(ridge.scroll_scale, anchor)
+		add_child(layer)
 		var visual := Polygon2D.new()
 		visual.polygon = outline
-		add_child(visual)
+		layer.add_child(visual)
 		ridges.append(visual)
 		darkenings.append(ridge.darkening)
 

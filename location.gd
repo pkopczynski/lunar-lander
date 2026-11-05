@@ -38,6 +38,11 @@ var lowest_y := NAN:
 var terrain: Array[PackedVector2Array] = []
 # The ridges behind the surface, farther first, with no collision; by default the Tatra-like ones.
 var backdrop: Array[Backdrop.Ridge] = Backdrop.tatras()
+# The clouds drifting in its sky; by default none.
+var clouds: Array[Clouds.Cloud] = []
+# The silhouettes in front of the ship; by default none. They must leave its pad and the ship's
+# last FAIR_HEIGHT of approach uncovered (see Foreground).
+var foreground: Array[Foreground.Silhouette] = []
 
 # The location profile: what the Transport offers to it are like.
 # Its weight in the pool: offers go to each location in proportion to their shares.
@@ -72,6 +77,8 @@ static func valley() -> Location:
 	var location := Location.new()
 	location.name = "VALLEY"
 	location.pad_center_x = World.WORLD_WIDTH / 2.0
+	location.clouds = Clouds.valley()
+	location.foreground = Foreground.valley()
 	location.pool_share = 0.4
 	location.titles = {
 		TransportOffer.Kind.PASSENGERS: ["Tourist party", "Crew rotation", "Survey team", "Medical staff",
