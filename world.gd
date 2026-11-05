@@ -22,9 +22,9 @@ const MOUNTAIN_OUTLINE := [
 	Vector2(70, 260), Vector2(110, 240), Vector2(150, 320), Vector2(130, 370), Vector2(190, 410),
 	Vector2(170, 460), Vector2(230, 500), Vector2(210, 550), Vector2(250, 600), Vector2(250, 640),
 ]
-const MOUNTAIN_COLOR := Color(0.35, 0.33, 0.33)
+const MOUNTAIN_COLOR := Color(0.42, 0.34, 0.27)
 # A location's terrain, such as the Mine's benches: warmer than the ground, like cut rock.
-const TERRAIN_COLOR := Color(0.52, 0.45, 0.38)
+const TERRAIN_COLOR := Color(0.6, 0.42, 0.3)
 
 # The solid scenery the sky's darkness dims (the ground, the mountains, a location's terrain);
 # the pad isn't in it, so it stays easy to find at night.
