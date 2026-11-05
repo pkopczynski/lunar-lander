@@ -43,7 +43,7 @@ func test_the_details_show_the_wrong_destination_in_place_of_the_penalty() -> vo
 
 
 func test_landing_on_the_destinations_pad_after_drifting_away_and_back_pays_as_usual() -> void:
-	await deliver_after_drift([known_offer(1, 0.0)], 5.0, 2)
+	await deliver_after_drift([known_offer(1, 0.0)], 5.0, Location.ALL.size())
 	await unloaded()
 	check(economy().balance == 420, "the Valley was the destination, balance is %s" % economy().balance)
 	await enter_office()
