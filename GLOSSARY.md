@@ -65,7 +65,7 @@ The location the game started with: flat ground between the mountains, with the 
 _Avoid_: Mountains (that's the solid side walls), Tatras
 
 **Mine**:
-The open-pit mine location: stepped benches cut down into the ground, with the pad on the pit floor. Touching the benches crashes the ship.
+The open-pit mine location: stepped benches cut down into the ground, with the pad on the pit floor, and one solid crane whose arm reaches over the left benches. Touching the benches or the crane crashes the ship; the cranes in its Backdrop are only scenery.
 _Avoid_: Quarry, pit
 
 **Metropolis**:

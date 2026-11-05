@@ -50,13 +50,13 @@ func test_the_valley_backdrop_is_two_tatra_ridges_without_colliders() -> void:
 
 
 # The Mine's Backdrop: Himalaya-like peaks, towering well above the mountain tops where the Tatras
-# only reach them, then its industrial silhouettes and quarry walls; all down past the pit floor.
+# only reach them, then its far walls with their industrial silhouettes and cranes; all down past the pit floor.
 func test_the_mine_shows_himalaya_like_peaks_down_to_its_pit_floor_and_the_valley_still_the_tatras() -> void:
 	await choose_ship()
 	clock().move_to(Location.MINE)
 	await frames(1)
 	var pieces := backdrop()
-	check(pieces.size() >= 3, "the Mine's Backdrop should be its peaks and quarry scenery, got %d pieces" % pieces.size())
+	check(pieces.size() >= 3, "the Mine's Backdrop should be its peaks and far walls, got %d pieces" % pieces.size())
 	var highest := INF
 	for piece in pieces:
 		highest = minf(highest, piece.screen_area.position.y)

@@ -58,10 +58,10 @@ const HIMALAYA_NEAR := [
 	Vector2(1380, 330), Vector2(1480, 300), Vector2(1580, 345), Vector2(1700, 320), Vector2(1820, 360),
 	Vector2(World.WORLD_WIDTH + World.SIDE_OVERHANG, 360),
 ]
-# The quarry: the pit's far walls, terraced down well below the benches so the pit looks deep, with
-# industrial silhouettes on its rim (a mine headframe, a chimney) and two cranes, one on a deep
-# terrace and one on the right rim. Background only: the one solid crane is the Mine's terrain.
-const QUARRY := [
+# The far walls: the open-pit mine's far side, terraced down well below the benches so it looks
+# deep, with industrial silhouettes on its rim (a headframe, a chimney) and two cranes, one on a
+# deep terrace and one on the right rim. Background only: the one solid crane is the Mine's terrain.
+const FAR_WALLS := [
 	Vector2(-World.SIDE_OVERHANG, 540), Vector2(300, 540),
 	# The headframe.
 	Vector2(300, 470), Vector2(315, 470), Vector2(330, 440), Vector2(345, 470), Vector2(360, 470), Vector2(360, 540),
@@ -84,10 +84,10 @@ const QUARRY := [
 ]
 const HIMALAYA_FAR_DARKENING := 0.06
 const HIMALAYA_NEAR_DARKENING := 0.12
-const QUARRY_DARKENING := 0.22
+const FAR_WALLS_DARKENING := 0.22
 const HIMALAYA_FAR_SCROLL := Vector2(0.4, 0.94)
 const HIMALAYA_NEAR_SCROLL := Vector2(0.55, 0.96)
-const QUARRY_SCROLL := Vector2(0.7, 0.975)
+const FAR_WALLS_SCROLL := Vector2(0.7, 0.975)
 # How far below the location's lowest point each ridge reaches, so its bottom never shows as its
 # layer rises with a camera above the pad.
 const BOTTOM_MARGIN := 200.0
@@ -118,11 +118,11 @@ static func tatras() -> Array[Ridge]:
 		Ridge.new(TATRA_NEAR, TATRA_NEAR_DARKENING, TATRA_NEAR_SCROLL)]
 
 
-# The Mine's Backdrop, farther first: the Himalaya-like peaks, then the quarry.
+# The Mine's Backdrop, farther first: the Himalaya-like peaks, then the far walls.
 static func mine() -> Array[Ridge]:
 	return [Ridge.new(HIMALAYA_FAR, HIMALAYA_FAR_DARKENING, HIMALAYA_FAR_SCROLL),
 		Ridge.new(HIMALAYA_NEAR, HIMALAYA_NEAR_DARKENING, HIMALAYA_NEAR_SCROLL),
-		Ridge.new(QUARRY, QUARRY_DARKENING, QUARRY_SCROLL)]
+		Ridge.new(FAR_WALLS, FAR_WALLS_DARKENING, FAR_WALLS_SCROLL)]
 
 
 # The ridges as drawn, farther first.

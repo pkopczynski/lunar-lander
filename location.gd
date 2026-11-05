@@ -103,7 +103,7 @@ static func valley() -> Location:
 # the Valley's ground, wider steps on the left, with the pad off-centre on the pit floor toward
 # the right, and one solid crane over the left benches. Each side reaches under its mountain and
 # down to the ground's bottom, so no sky shows below the Valley's ground outside the open-pit mine.
-# Behind it, Himalaya-like peaks and the quarry's far walls; in front, its Foreground.
+# Behind it, Himalaya-like peaks and its far walls; in front, its Foreground.
 static func mine() -> Location:
 	var location := Location.new()
 	location.name = "MINE"
