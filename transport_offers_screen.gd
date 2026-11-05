@@ -30,6 +30,7 @@ const FUEL_LIMITED_LABEL := "FUEL LIMITED:"
 const FUEL_LIMITED_NOTE := "FUEL LIMITED"
 const START_LOADING_TEXT := "START LOADING"
 const START_TEXT := "START"
+const CANCEL_MISSION_TEXT := "CANCEL MISSION"
 const DESTINATION_LABEL := "DESTINATION"
 const START_PERIOD_LABEL := "START PERIOD"
 const REMOVE_TEXT := "X"
@@ -110,7 +111,8 @@ func handle_input(event: InputEvent) -> bool:
 
 
 # Up/Down walk the Contracts, the mission rows, then START LOADING. Return on a mission row
-# cycles its value. Escape is left to the Office.
+# cycles its value; on a Contract it asks to remove it, except once loaded. Escape is left to
+# the Office.
 func handle_contracts_input(event: InputEvent) -> bool:
 	if event.is_action_pressed("ui_up"):
 		cursor = maxi(cursor - 1, 0)
@@ -118,9 +120,12 @@ func handle_contracts_input(event: InputEvent) -> bool:
 		cursor = mini(cursor + 1, start_loading_stop())
 	elif event.is_action_pressed("ui_accept"):
 		if selected_contract() != null:
-			office.show_popup(Office.PopupKind.REMOVE_CONTRACT, Office.Choice.NO)
+			if not economy.mission_under_way():
+				office.show_popup(Office.PopupKind.REMOVE_CONTRACT, Office.Choice.NO)
 		elif on_mission_row():
 			cycle_mission_row(selected_mission_row())
+		elif economy.mission_under_way():
+			office.show_popup(Office.PopupKind.CANCEL_MISSION, Office.Choice.NO)
 		else:
 			office.start_mission()
 	else:
@@ -142,6 +147,12 @@ func confirm_accept() -> void:
 func confirm_remove() -> void:
 	economy.remove_contract(selected_contract())
 	cursor = start_loading_stop() if economy.contracts.is_empty() else mini(cursor, economy.contracts.size() - 1)
+
+
+# Yes on CANCEL MISSION?: every Contract is given up for its fee, leaving the cursor on START.
+func confirm_cancel() -> void:
+	economy.cancel_mission()
+	cursor = start_loading_stop()
 
 
 # Each time the Office opens, the mission rows start on the here and now: the Contracts'
@@ -347,8 +358,11 @@ func limits_fuel(load_mass: float) -> bool:
 	return ship.fuel_cap_for(load_mass) < ship.ship_type.tank
 
 
-# The button under the mission rows: START LOADING with Contracts, START (a free flight) without.
+# The button under the mission rows: CANCEL MISSION during a loaded mission, else START LOADING
+# with Contracts, START (a free flight) without.
 func start_text() -> String:
+	if economy.mission_under_way():
+		return CANCEL_MISSION_TEXT
 	return START_TEXT if economy.contracts.is_empty() else START_LOADING_TEXT
 
 

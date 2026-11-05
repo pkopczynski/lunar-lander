@@ -130,15 +130,3 @@ func test_a_deadline_past_midnight_reads_as_a_plain_time_in_the_message_and_the_
 	check(hud().delivery_text() == "VALLEY BY 01:08", "the HUD should give the next-day deadline with no day mark, got %s" % hud().delivery_text())
 	await seconds(91.0)
 	check(hud().delivery_text() == "VALLEY OVERDUE SINCE 01:08", "overdue shows the plain time too, got %s" % hud().delivery_text())
-
-
-func test_docking_while_loaded_shows_no_popup_and_leaves_the_ship_free() -> void:
-	await start_loading([known_offer(1, 0.0)])
-	await seconds(4.5)
-	await dock_in_spot()
-	check(office().popup == Office.PopupKind.NONE, "docking while loaded should not ask to enter the Office")
-	hold(&"ui_up")
-	await seconds(0.3)
-	release(&"ui_up")
-	check(lander().state == Lander.State.FLYING, "Up should undock right away: docking while loaded doesn't hold the ship")
-

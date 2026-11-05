@@ -25,6 +25,8 @@ const MAX_LUCK := 1.3
 # Settlement: share of each reward lost per whole overdue second.
 const PASSENGER_PENALTY_SHARE := 0.02
 const CARGO_PENALTY_SHARE := 0.01
+# Cancelling a loaded mission costs this share of each Contract's reward.
+const CANCELLATION_FEE_SHARE := 0.25
 
 enum Kind { PASSENGERS, CARGO, MIXED }
 
@@ -59,10 +61,12 @@ class Transaction:
 	var destination: String
 	# The name of the ship type that delivered it.
 	var ship: String
+	# Given up with its mission: the penalty is the cancellation fee, and nothing was delivered.
+	var cancelled := false
 
 	# Landed on another location's pad (drift took the destination away): it pays nothing.
 	func wrong_destination() -> bool:
-		return delivered_to != destination
+		return not cancelled and delivered_to != destination
 
 	# Whole seconds overdue, rounded down like the red counter.
 	func overdue_seconds() -> int:
@@ -141,6 +145,18 @@ func settlement(flight_deadline: float, delivery_time: float, deadline_at: float
 		transaction.penalty = mini(roundi(passenger_reward * PASSENGER_PENALTY_SHARE * overdue), passenger_reward) \
 			+ mini(roundi(cargo_reward * CARGO_PENALTY_SHARE * overdue), cargo_reward)
 	transaction.payout = transaction.reward - transaction.penalty
+	return transaction
+
+
+# What it costs when its mission is cancelled: the fee, a share of its reward, as a negative payout.
+func cancellation() -> Transaction:
+	var transaction := Transaction.new()
+	transaction.contract = self
+	transaction.cancelled = true
+	transaction.destination = destination.name
+	transaction.reward = reward()
+	transaction.penalty = roundi(transaction.reward * CANCELLATION_FEE_SHARE)
+	transaction.payout = -transaction.penalty
 	return transaction
 
 

@@ -137,7 +137,7 @@ A transport offer the player has accepted. All contracts accepted together share
 _Avoid_: Order, accepted offer
 
 **Cancellation**:
-Giving up all of a mission's contracts at once, back in the office after loading, for a cancellation fee instead of a payout.
+Giving up all of a mission's contracts at once, back in the office after loading, for a cancellation fee instead of a payout: 25% of each contract's reward, taken from the bank account. The load comes off at once, the mission ends, and the contracts are gone for good (they don't go back to the transport offers).
 _Avoid_: Removing (that's dropping one contract before loading), abort, refund
 
 **Mission**:
@@ -173,7 +173,7 @@ What a contract pays into the bank account once unloaded: its reward less a pena
 _Avoid_: Reward (that's before the penalty), income, score
 
 **Transaction**:
-One line in the bank account per delivered contract: its payout, opening to show its reward, penalty (or, when unloaded away from its destination, the wrong destination taking the whole reward), the flight's deadline it was settled against and the landing, both as local times, and the location it was delivered to (and its destination, when they differ).
+One line in the bank account per delivered or cancelled contract: its payout (negative for a cancellation fee), opening to show its reward, penalty (or, when unloaded away from its destination, the wrong destination taking the whole reward), the flight's deadline it was settled against and the landing, both as local times, and the location it was delivered to (and its destination, when they differ). A cancelled contract's shows its reward, the cancellation fee and that it was cancelled instead.
 _Avoid_: Receipt, entry, log
 
 **Load**:
