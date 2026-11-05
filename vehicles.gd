@@ -14,10 +14,6 @@ const LIGHT_COLOR := Color(0.6, 0.9, 1.0)
 const LIGHT_RADIUS := 1.5
 # Where each light sits on its hull, at its nose.
 const LIGHT_OFFSET := Vector2(9, -1)
-# Vehicles wrap around this span of their layer's x, wider than anything the view can show however
-# far the layer is shifted.
-const WRAP_LEFT := -World.SIDE_OVERHANG - 1200.0
-const WRAP_WIDTH := World.WORLD_WIDTH + 2.0 * (World.SIDE_OVERHANG + 1200.0)
 const SIDES := 8
 
 
@@ -42,9 +38,7 @@ var flown := 0.0
 
 # Builds the vehicles afresh, in a layer anchored on anchor.
 func build(from: Array[Vehicle], anchor: Vector2) -> void:
-	for child in get_children():
-		remove_child(child)
-		child.queue_free()
+	DecorKit.clear(self)
 	hulls.clear()
 	lights.clear()
 	speeds.clear()
@@ -61,10 +55,7 @@ func build(from: Array[Vehicle], anchor: Vector2) -> void:
 		hull.position = vehicle.start
 		layer.add_child(hull)
 		var light := Polygon2D.new()
-		var points := PackedVector2Array()
-		for side in SIDES:
-			points.append(LIGHT_OFFSET + Vector2.from_angle(TAU * side / SIDES) * LIGHT_RADIUS)
-		light.polygon = points
+		light.polygon = DecorKit.disc(LIGHT_OFFSET, LIGHT_RADIUS, SIDES)
 		light.color = LIGHT_COLOR
 		hull.add_child(light)
 		hulls.append(hull)
@@ -76,7 +67,7 @@ func build(from: Array[Vehicle], anchor: Vector2) -> void:
 func _process(delta: float) -> void:
 	flown += delta
 	for i in hulls.size():
-		hulls[i].position.x = fposmod(designed_x[i] + speeds[i] * flown - WRAP_LEFT, WRAP_WIDTH) + WRAP_LEFT
+		hulls[i].position.x = DecorKit.wrapped_x(designed_x[i] + speeds[i] * flown)
 
 
 # Dims the hulls with the sky's darkness, as the scenery is, and brightens their lights.

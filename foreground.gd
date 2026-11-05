@@ -99,20 +99,12 @@ var pieces: Array[Polygon2D] = []
 # Builds the Foreground afresh, each silhouette closing down past bottom_y in its own layer
 # anchored on anchor.
 func build(from: Array[Silhouette], bottom_y: float, anchor: Vector2) -> void:
-	for layer in get_children():
-		remove_child(layer)
-		layer.queue_free()
+	DecorKit.clear(self)
 	pieces.clear()
 	for silhouette in from:
-		var outline := silhouette.top_edge.duplicate()
-		outline.append(Vector2(outline[-1].x, bottom_y + BOTTOM_MARGIN))
-		outline.append(Vector2(outline[0].x, bottom_y + BOTTOM_MARGIN))
-		var layer := AnchoredParallax.new(silhouette.scroll_scale, anchor)
-		add_child(layer)
-		var visual := Polygon2D.new()
-		visual.polygon = outline
+		var outline := DecorKit.closed_down(silhouette.top_edge, bottom_y + BOTTOM_MARGIN)
+		var visual := DecorKit.add_in_layer(self, outline, silhouette.scroll_scale, anchor)
 		visual.color = COLOR
-		layer.add_child(visual)
 		pieces.append(visual)
 
 

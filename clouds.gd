@@ -23,10 +23,6 @@ const WIND_SPEED := 6.0
 # How much lighter than the sky behind it a cloud is by day; at night it darkens with the sky.
 const LIGHTENING := 0.45
 const NIGHT_DARKENING := 0.8
-# Clouds wrap around this span of their layer's x, wider than anything the view can show however
-# far the layer is shifted.
-const WRAP_LEFT := -World.SIDE_OVERHANG - 1200.0
-const WRAP_WIDTH := World.WORLD_WIDTH + 2.0 * (World.SIDE_OVERHANG + 1200.0)
 # Points around each cloud's outline.
 const SIDES := 24
 # Each cloud's outline: its top raised by up to LUMP_HEIGHT of its half height in LUMPS bumps, its
@@ -63,9 +59,7 @@ var designed_x := PackedFloat32Array()
 
 # Builds the clouds afresh, in a layer anchored on anchor.
 func build(from: Array[Cloud], anchor: Vector2) -> void:
-	for child in get_children():
-		remove_child(child)
-		child.queue_free()
+	DecorKit.clear(self)
 	pieces.clear()
 	designed_x.clear()
 	drift = 0.0
@@ -83,7 +77,7 @@ func build(from: Array[Cloud], anchor: Vector2) -> void:
 func _process(delta: float) -> void:
 	drift += WIND_SPEED * delta
 	for i in pieces.size():
-		pieces[i].position.x = fposmod(designed_x[i] + drift - WRAP_LEFT, WRAP_WIDTH) + WRAP_LEFT
+		pieces[i].position.x = DecorKit.wrapped_x(designed_x[i] + drift)
 
 
 # Tints each cloud from the background gradient behind it (background_color: a world y to its

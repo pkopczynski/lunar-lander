@@ -52,11 +52,8 @@ func show_sky(sky: SkyLook) -> void:
 
 
 func disc(at: Vector2, radius: float, color: Color) -> Polygon2D:
-	var points := PackedVector2Array()
-	for side in SIDES:
-		points.append(at + Vector2.from_angle(TAU * side / SIDES) * radius)
 	var visual := Polygon2D.new()
-	visual.polygon = points
+	visual.polygon = DecorKit.disc(at, radius, SIDES)
 	visual.color = color
 	add_child(visual)
 	return visual

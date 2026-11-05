@@ -177,23 +177,15 @@ var darkenings: Array[float] = []
 # Builds the Backdrop afresh from a location's ridges, each carried on past both sides and closing
 # down past bottom_y, in its own parallax layer anchored on anchor.
 func build(from: Array[Ridge], bottom_y: float, anchor: Vector2) -> void:
-	for layer in get_children():
-		remove_child(layer)
-		layer.queue_free()
+	DecorKit.clear(self)
 	ridges.clear()
 	darkenings.clear()
 	for ridge in from:
-		var outline := ridge.top_edge.duplicate()
-		outline.insert(0, outline[0] - Vector2(SIDE_MARGIN, 0))
-		outline.append(outline[-1] + Vector2(SIDE_MARGIN, 0))
-		outline.append(Vector2(outline[-1].x, bottom_y + BOTTOM_MARGIN))
-		outline.append(Vector2(outline[0].x, bottom_y + BOTTOM_MARGIN))
-		var layer := AnchoredParallax.new(ridge.scroll_scale, anchor)
-		add_child(layer)
-		var visual := Polygon2D.new()
-		visual.polygon = outline
-		layer.add_child(visual)
-		ridges.append(visual)
+		var top := ridge.top_edge.duplicate()
+		top.insert(0, top[0] - Vector2(SIDE_MARGIN, 0))
+		top.append(top[-1] + Vector2(SIDE_MARGIN, 0))
+		ridges.append(DecorKit.add_in_layer(self, DecorKit.closed_down(top, bottom_y + BOTTOM_MARGIN),
+			ridge.scroll_scale, anchor))
 		darkenings.append(ridge.darkening)
 
 

@@ -78,10 +78,7 @@ func build(to: Location) -> void:
 		signs.append(add_piece(PackedVector2Array([area.position, Vector2(area.end.x, area.position.y), area.end,
 			Vector2(area.position.x, area.end.y)]), neon.color))
 	for at in to.warning_lights:
-		var points := PackedVector2Array()
-		for side in SIDES:
-			points.append(at + Vector2.from_angle(TAU * side / SIDES) * WARNING_RADIUS)
-		warning_lights.append(add_piece(points, WARNING_COLOR))
+		warning_lights.append(add_piece(DecorKit.disc(at, WARNING_RADIUS, SIDES), WARNING_COLOR))
 	blink(0.0)
 
 
