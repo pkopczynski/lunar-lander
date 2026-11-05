@@ -1,7 +1,8 @@
 class_name Clouds
 extends Node2D
 # A location's clouds: soft, lumpy shapes high in the surface sky, drifting slowly on the wind in
-# one far parallax layer anchored on the pad, tinted by the sky colour behind them. Each one wraps
+# parallax layers anchored on the pad (one per depth: each cloud has its own scroll scale and wind
+# speed, by default the Valley's), tinted by the sky colour behind them. Each one wraps
 # around from one side to the other well outside the view, so none ever pops in sight. No collider.
 # Moving a cloud only changes its position, so nothing is redrawn as they drift.
 
@@ -17,8 +18,9 @@ const VALLEY := [
 	[Vector2(2700, -780), Vector2(160, 34)],
 	[Vector2(-700, -400), Vector2(140, 30)],
 ]
+# A cloud's depth and wind by default.
 const SCROLL := Vector2(0.35, 0.95)
-# The wind, in px/s; rightwards.
+# The wind, in px/s; rightwards (negative: leftwards).
 const WIND_SPEED := 6.0
 # How much lighter than the sky behind it a cloud is by day; at night it darkens with the sky.
 const LIGHTENING := 0.45
@@ -32,14 +34,19 @@ const LUMP_HEIGHT := 0.35
 const BOTTOM_SQUASH := 0.5
 
 
-# One cloud: its centre and half size, as designed (with the camera on the pad, before it drifts).
+# One cloud: its centre and half size, as designed (with the camera on the pad, before it drifts),
+# its depth (its parallax layer's scroll scale) and the wind carrying it, in px/s.
 class Cloud:
 	var center: Vector2
 	var half_size: Vector2
+	var scroll: Vector2
+	var wind: float
 
-	func _init(at: Vector2, half: Vector2) -> void:
+	func _init(at: Vector2, half: Vector2, scroll_scale := SCROLL, wind_speed := WIND_SPEED) -> void:
 		center = at
 		half_size = half
+		scroll = scroll_scale
+		wind = wind_speed
 
 
 static func valley() -> Array[Cloud]:
@@ -51,33 +58,34 @@ static func valley() -> Array[Cloud]:
 
 # The clouds as drawn.
 var pieces: Array[Polygon2D] = []
-var layer: AnchoredParallax
-# How far the wind has carried the clouds since they were built, in px.
-var drift := 0.0
+# How long the wind has carried the clouds since they were built, in s.
+var drifted := 0.0
 var designed_x := PackedFloat32Array()
+var winds := PackedFloat32Array()
 
 
-# Builds the clouds afresh, in a layer anchored on anchor.
+# Builds the clouds afresh, each depth in its own layer anchored on anchor.
 func build(from: Array[Cloud], anchor: Vector2) -> void:
 	DecorKit.clear(self)
 	pieces.clear()
 	designed_x.clear()
-	drift = 0.0
-	layer = AnchoredParallax.new(SCROLL, anchor)
-	add_child(layer)
+	winds.clear()
+	drifted = 0.0
+	var layers := DecorKit.Depths.new(self, anchor)
 	for cloud in from:
 		var visual := Polygon2D.new()
 		visual.polygon = outline(cloud.half_size)
 		visual.position = cloud.center
-		layer.add_child(visual)
+		layers.at(cloud.scroll).add_child(visual)
 		pieces.append(visual)
 		designed_x.append(cloud.center.x)
+		winds.append(cloud.wind)
 
 
 func _process(delta: float) -> void:
-	drift += WIND_SPEED * delta
+	drifted += delta
 	for i in pieces.size():
-		pieces[i].position.x = DecorKit.wrapped_x(designed_x[i] + drift)
+		pieces[i].position.x = DecorKit.wrapped_x(designed_x[i] + winds[i] * drifted)
 
 
 # The clouds, for World.shown_decor().

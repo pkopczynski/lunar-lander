@@ -311,19 +311,24 @@ func deep_space_stars() -> Array[Star]:
 enum DecorLayer { BACKDROP, PARALLAX, FOREGROUND, BEACON, LIGHTS }
 # What a decor piece is within its layer: a light, the glow around one, a ridge, a cloud, a
 # silhouette, one of a city's lights (all its windows, one mesh; a neon sign; a warning light; a
-# flying vehicle's light), a flying vehicle or a Moon.
-enum DecorPart { LIGHT, GLOW, RIDGE, CLOUD, SILHOUETTE, WINDOWS, NEON, WARNING_LIGHT, VEHICLE_LIGHT, VEHICLE, MOON }
+# flying vehicle's light) or a flying vehicle; then a Moon, a Vehicle's trail and a translucent
+# cloud wisp in front of the ship. New kinds of decor add their part at the end.
+enum DecorPart { LIGHT, GLOW, RIDGE, CLOUD, SILHOUETTE, WINDOWS, NEON, WARNING_LIGHT, VEHICLE_LIGHT, VEHICLE, MOON, TRAIL, WISP }
 
 
 # One decor piece as drawn: its layer and part, whether it has a collider, its colour as drawn
 # (tinted by its own and its ancestors' modulate; a piece filled with a gradient gives the average
-# of its vertex colours), how fast it scrolls with the camera (its parallax layer's scroll scale;
-# the world's, 1, if it's in none) and where it appears on screen.
+# of its vertex colours), its opacity as drawn (its colour's alpha: 1 opaque, 0 invisible), how fast
+# it scrolls with the camera (its parallax layer's scroll scale; the world's, 1, if it's in none)
+# and where it appears on screen.
 class Decor:
 	var layer: DecorLayer
 	var part: DecorPart
 	var has_collider: bool
 	var color: Color
+	var opacity: float:
+		get:
+			return color.a
 	var scroll_scale := Vector2.ONE
 	var screen_area: Rect2
 
