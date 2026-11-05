@@ -31,6 +31,26 @@ const TATRA_NEAR := [
 	Vector2(1530, 305), Vector2(1555, 300), Vector2(1590, 320), Vector2(1650, 345),
 	Vector2(1720, 330), Vector2(1800, 350), Vector2(1880, 370), Vector2(World.WORLD_WIDTH + World.SIDE_OVERHANG, 380),
 ]
+# The Metropolis's far skyline, in two depths: each a list of blocks left to right, [right x, roof
+# y], the first starting at the world's left side overhang and the last reaching its right one.
+# Flat roofs and straight walls, staying below the mountain tops; the nearer one a little lower.
+const SKYLINE_FAR := [
+	[-200, 360], [-60, 300], [40, 340], [130, 285], [210, 320], [300, 250], [360, 300], [470, 270],
+	[540, 330], [610, 235], [680, 290], [790, 310], [860, 255], [960, 330], [1040, 280], [1120, 245],
+	[1210, 300], [1300, 270], [1380, 320], [1460, 240], [1540, 290], [1640, 265], [1720, 330], [1800, 275],
+	[1900, 310], [2050, 260], [2400, 330], [World.WORLD_WIDTH + World.SIDE_OVERHANG, 300],
+]
+const SKYLINE_NEAR := [
+	[-100, 420], [80, 380], [190, 430], [280, 360], [380, 410], [450, 345], [560, 395], [650, 370],
+	[730, 420], [830, 350], [920, 400], [990, 330], [1080, 385], [1170, 420], [1260, 360], [1350, 405],
+	[1450, 340], [1520, 395], [1610, 370], [1700, 430], [1790, 365], [1880, 410], [2100, 380],
+	[World.WORLD_WIDTH + World.SIDE_OVERHANG, 420],
+]
+const SKYLINE_FAR_DARKENING := 0.1
+const SKYLINE_NEAR_DARKENING := 0.2
+# Tuning, expected to change in playtests.
+const SKYLINE_FAR_SCROLL := Vector2(0.55, 0.97)
+const SKYLINE_NEAR_SCROLL := Vector2(0.7, 0.98)
 # How much darker than the background behind it each Tatra ridge is.
 const TATRA_FAR_DARKENING := 0.08
 const TATRA_NEAR_DARKENING := 0.16
@@ -66,6 +86,24 @@ class Ridge:
 static func tatras() -> Array[Ridge]:
 	return [Ridge.new(TATRA_FAR, TATRA_FAR_DARKENING, TATRA_FAR_SCROLL),
 		Ridge.new(TATRA_NEAR, TATRA_NEAR_DARKENING, TATRA_NEAR_SCROLL)]
+
+
+# The Metropolis's skyline in two depths, farther first.
+static func skyline() -> Array[Ridge]:
+	return [Ridge.new(skyline_edge(SKYLINE_FAR), SKYLINE_FAR_DARKENING, SKYLINE_FAR_SCROLL),
+		Ridge.new(skyline_edge(SKYLINE_NEAR), SKYLINE_NEAR_DARKENING, SKYLINE_NEAR_SCROLL)]
+
+
+# The top edge of a row of blocks ([right x, roof y] each, left to right), from the world's left
+# side overhang: each roof flat, with a straight wall down or up to the next.
+static func skyline_edge(blocks: Array) -> Array:
+	var edge := []
+	var left := -World.SIDE_OVERHANG
+	for block in blocks:
+		edge.append(Vector2(left, block[1]))
+		edge.append(Vector2(block[0], block[1]))
+		left = block[0]
+	return edge
 
 
 # The ridges as drawn, farther first.

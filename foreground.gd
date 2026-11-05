@@ -33,6 +33,19 @@ const VALLEY_RIGHT_STAND := [
 	Vector2(1690, 540), Vector2(1680, 540), Vector2(1720, 600), Vector2(1760, 600),
 ]
 
+# The Metropolis's near rooftops, well to the sides of its pad's building: on the left a roof with
+# a water tank and a mast, on the right one with a billboard.
+const METROPOLIS_SCROLL := Vector2(1.4, 1.06)
+const METROPOLIS_LEFT_ROOF := [
+	Vector2(430, 720), Vector2(430, 670), Vector2(470, 670), Vector2(470, 610), Vector2(480, 600),
+	Vector2(530, 600), Vector2(540, 610), Vector2(540, 670), Vector2(600, 670), Vector2(600, 560),
+	Vector2(606, 560), Vector2(606, 670), Vector2(680, 670), Vector2(680, 700), Vector2(720, 700),
+]
+const METROPOLIS_RIGHT_ROOF := [
+	Vector2(1640, 720), Vector2(1640, 660), Vector2(1690, 660), Vector2(1690, 580), Vector2(1860, 580),
+	Vector2(1860, 660), Vector2(1900, 660), Vector2(1900, 700), Vector2(1960, 700),
+]
+
 
 # One Foreground silhouette: its top edge, left to right, and how fast its layer scrolls with the
 # camera (above 1: faster than the world).
@@ -48,6 +61,10 @@ class Silhouette:
 static func valley() -> Array[Silhouette]:
 	return [Silhouette.new(VALLEY_LEFT_STAND, VALLEY_SCROLL), Silhouette.new(VALLEY_RIGHT_STAND, VALLEY_SCROLL)]
 
+
+
+static func metropolis() -> Array[Silhouette]:
+	return [Silhouette.new(METROPOLIS_LEFT_ROOF, METROPOLIS_SCROLL), Silhouette.new(METROPOLIS_RIGHT_ROOF, METROPOLIS_SCROLL)]
 
 # The silhouettes as drawn, the pieces World.shown_decor() lists.
 var pieces: Array[Polygon2D] = []

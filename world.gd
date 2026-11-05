@@ -64,6 +64,10 @@ var night_star_layer := MeshInstance2D.new()
 var backdrop := Backdrop.new()
 var clouds := Clouds.new()
 var foreground := Foreground.new()
+# The current location's city lights, drawn over its buildings.
+var city_lights := CityLights.new()
+# Its distant flying vehicles, drawn behind its buildings.
+var vehicles := Vehicles.new()
 # The pad's Beacon; a child of the pad, so it follows it to every location.
 var beacon := Beacon.new()
 
@@ -95,10 +99,12 @@ func _ready() -> void:
 	add_scenery(ground_visual)
 	# Drawn over the gradient and under everything in the scene: the stars, the clouds, then the
 	# Backdrop. The Foreground is drawn over everything, the ship included.
-	var layers: Array[CanvasItem] = [deep_star_layer, night_star_layer, clouds, backdrop]
+	var layers: Array[CanvasItem] = [deep_star_layer, night_star_layer, clouds, backdrop, vehicles]
 	for i in layers.size():
 		add_child(layers[i])
 		move_child(layers[i], i)
+	add_child(city_lights)
+	move_child(city_lights, terrain.get_index() + 1)
 	add_child(foreground)
 
 	var rng := RandomNumberGenerator.new()
@@ -147,6 +153,8 @@ func show_sky() -> void:
 	backdrop.show_sky(background_color)
 	clouds.show_sky(sky, background_color)
 	foreground.show_sky(sky)
+	city_lights.show_sky(sky)
+	vehicles.show_sky(sky)
 	queue_redraw()
 
 
@@ -175,6 +183,10 @@ func show_location(to: Location) -> void:
 	clouds.show_sky(sky, background_color)
 	foreground.build(to.foreground, to.lowest_y, anchor)
 	foreground.show_sky(sky)
+	city_lights.build(to)
+	city_lights.show_sky(sky)
+	vehicles.build(to.vehicles, anchor)
+	vehicles.show_sky(sky)
 	for child in terrain.get_children():
 		terrain.remove_child(child)
 		child.queue_free()
@@ -291,10 +303,11 @@ func deep_space_stars() -> Array[Star]:
 
 
 # Which part of the scene a decor piece belongs to.
-enum DecorLayer { BACKDROP, PARALLAX, FOREGROUND, BEACON }
-# What a decor piece is within its layer: a light, the glow around one, a ridge, a cloud or a
-# silhouette.
-enum DecorPart { LIGHT, GLOW, RIDGE, CLOUD, SILHOUETTE }
+enum DecorLayer { BACKDROP, PARALLAX, FOREGROUND, BEACON, LIGHTS }
+# What a decor piece is within its layer: a light, the glow around one, a ridge, a cloud, a
+# silhouette, one of a city's lights (all its windows, one mesh; a neon sign; a warning light; a
+# flying vehicle's light) or a flying vehicle.
+enum DecorPart { LIGHT, GLOW, RIDGE, CLOUD, SILHOUETTE, WINDOWS, NEON, WARNING_LIGHT, VEHICLE_LIGHT, VEHICLE }
 
 
 # One decor piece as drawn: its layer and part, whether it has a collider, its colour as drawn
@@ -318,28 +331,52 @@ func shown_decor(camera_center: Vector2, zoom: float) -> Array[Decor]:
 		pieces.append(decor(ridge, DecorLayer.BACKDROP, DecorPart.RIDGE, camera_center, zoom))
 	for cloud in clouds.pieces:
 		pieces.append(decor(cloud, DecorLayer.PARALLAX, DecorPart.CLOUD, camera_center, zoom))
+	for hull in vehicles.hulls:
+		pieces.append(decor(hull, DecorLayer.PARALLAX, DecorPart.VEHICLE, camera_center, zoom))
 	for light in beacon.lights:
 		pieces.append(decor(light, DecorLayer.BEACON, DecorPart.LIGHT, camera_center, zoom))
 	for glow in beacon.glows:
 		pieces.append(decor(glow, DecorLayer.BEACON, DecorPart.GLOW, camera_center, zoom))
 	for silhouette in foreground.pieces:
 		pieces.append(decor(silhouette, DecorLayer.FOREGROUND, DecorPart.SILHOUETTE, camera_center, zoom))
+	if city_lights.windows.mesh:
+		pieces.append(decor(city_lights.windows, DecorLayer.LIGHTS, DecorPart.WINDOWS, camera_center, zoom))
+	for neon in city_lights.signs:
+		pieces.append(decor(neon, DecorLayer.LIGHTS, DecorPart.NEON, camera_center, zoom))
+	for light in city_lights.warning_lights:
+		pieces.append(decor(light, DecorLayer.LIGHTS, DecorPart.WARNING_LIGHT, camera_center, zoom))
+	for light in vehicles.lights:
+		pieces.append(decor(light, DecorLayer.LIGHTS, DecorPart.VEHICLE_LIGHT, camera_center, zoom))
 	return pieces
 
 
-func decor(visual: Polygon2D, layer: DecorLayer, part: DecorPart, camera_center: Vector2, zoom: float) -> Decor:
+# visual is a Polygon2D, or a MeshInstance2D (listed as its mesh's bounding box, coloured by the
+# average of its vertex colours).
+func decor(visual: Node2D, layer: DecorLayer, part: DecorPart, camera_center: Vector2, zoom: float) -> Decor:
 	var piece := Decor.new()
 	piece.layer = layer
 	piece.part = part
 	# A Polygon2D is never itself a collider; it would have one only through a child.
 	piece.has_collider = visual.get_children().any(
 		func(child: Node) -> bool: return child is CollisionObject2D or child is CollisionShape2D or child is CollisionPolygon2D)
-	piece.color = visual.color * visual.self_modulate
-	if not visual.vertex_colors.is_empty():
+	var outline: PackedVector2Array
+	var vertex_colors: PackedColorArray
+	if visual is MeshInstance2D:
+		var mesh := (visual as MeshInstance2D).mesh
+		var box := mesh.get_aabb()
+		outline = PackedVector2Array([Vector2(box.position.x, box.position.y), Vector2(box.end.x, box.end.y)])
+		piece.color = visual.self_modulate
+		vertex_colors = mesh.surface_get_arrays(0)[Mesh.ARRAY_COLOR]
+	else:
+		var polygon := visual as Polygon2D
+		outline = polygon.polygon
+		piece.color = polygon.color * polygon.self_modulate
+		vertex_colors = polygon.vertex_colors
+	if not vertex_colors.is_empty():
 		var total := Color(0, 0, 0, 0)
-		for color in visual.vertex_colors:
+		for color in vertex_colors:
 			total += color
-		piece.color *= total / visual.vertex_colors.size()
+		piece.color *= total / vertex_colors.size()
 	# A piece in a parallax layer is drawn where that layer would be for this camera, not the
 	# actual one.
 	var shift := Vector2.ZERO
@@ -353,8 +390,8 @@ func decor(visual: Polygon2D, layer: DecorLayer, part: DecorPart, camera_center:
 		node = node.get_parent()
 	var screen_center := get_viewport_rect().size / 2.0
 	var area := Rect2()
-	for i in visual.polygon.size():
-		var on_screen := (visual.to_global(visual.polygon[i]) + shift - camera_center) * zoom + screen_center
+	for i in outline.size():
+		var on_screen := (visual.to_global(outline[i]) + shift - camera_center) * zoom + screen_center
 		area = Rect2(on_screen, Vector2.ZERO) if i == 0 else area.expand(on_screen)
 	piece.screen_area = area
 	return piece
