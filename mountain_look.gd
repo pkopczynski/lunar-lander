@@ -11,7 +11,7 @@ extends RefCounted
 # The Valley: forested slopes under bare rocky tops.
 const VALLEY_FOREST := Color(0.3, 0.5, 0.14)
 const VALLEY_TREES := Color(0.1, 0.32, 0.04)
-const VALLEY_ROCK := Color(0.74, 0.5, 0.32)
+const VALLEY_ROCK := Color(0.74, 0.46, 0.2)
 # How far below the mountain tops the forest starts, and the trees' size.
 const TREELINE_DEPTH := 70.0
 const TREE_SPACING := Vector2(22.0, 26.0)
