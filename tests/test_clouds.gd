@@ -79,7 +79,8 @@ func test_the_wisps_are_the_only_translucent_foreground_pieces_and_the_ship_show
 			if piece.part == World.DecorPart.WISP:
 				check(piece.opacity <= WISP_MAX_OPACITY, "a %s wisp should let the ship show through, its opacity %s" % [location_name, piece.opacity])
 				seen = seen or piece.opacity > 0.1
-			elif piece.layer == World.DecorLayer.FOREGROUND:
+			elif piece.layer == World.DecorLayer.FOREGROUND and piece.part != World.DecorPart.GLOW:
+				# The night glows in some Valley crowns are lights, faint by design.
 				check_near(piece.opacity, 1.0, 0.001, "a %s Foreground piece other than a wisp should be opaque (part %d)" % [location_name, piece.part])
 		check(seen, "the %s's wisps should be visible, not fully faded" % location_name)
 
