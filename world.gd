@@ -22,7 +22,6 @@ const MOUNTAIN_OUTLINE := [
 	Vector2(70, 260), Vector2(110, 240), Vector2(150, 320), Vector2(130, 370), Vector2(190, 410),
 	Vector2(170, 460), Vector2(230, 500), Vector2(210, 550), Vector2(250, 600), Vector2(250, 640),
 ]
-const MOUNTAIN_COLOR := Color(0.42, 0.34, 0.27)
 # A location's terrain, such as the Mine's benches: warmer than the ground, like cut rock.
 const TERRAIN_COLOR := Color(0.6, 0.42, 0.3)
 
@@ -70,8 +69,12 @@ var foreground := Foreground.new()
 var city_lights := CityLights.new()
 # Its distant flying vehicles, drawn behind its buildings.
 var vehicles := Vehicles.new()
+# Its signs of work (warning lights and slow movers) on its Backdrop's structures, drawn just over the Backdrop.
+var activity := Activity.new()
 # The pad's Beacon; a child of the pad, so it follows it to every location.
 var beacon := Beacon.new()
+# The left and the right mountain's outline, the same at every location.
+var mountain_outlines: Array[PackedVector2Array] = []
 
 @onready var mountains: StaticBody2D = $Mountains
 @onready var terrain: StaticBody2D = $Terrain
@@ -88,8 +91,11 @@ func _ready() -> void:
 	var mirrored := PackedVector2Array()
 	for point in outline:
 		mirrored.append(Vector2(WORLD_WIDTH - point.x, point.y))
-	build_mountain(outline)
-	build_mountain(mirrored)
+	mountain_outlines = [outline, mirrored]
+	for side in mountain_outlines:
+		var shape := CollisionPolygon2D.new()
+		shape.polygon = side
+		mountains.add_child(shape)
 	var half := Lander.PAD_WIDTH / 2.0
 	pad.polygon = PackedVector2Array([
 		Vector2(-half, -Lander.PAD_HEIGHT), Vector2(half, -Lander.PAD_HEIGHT),
@@ -100,14 +106,16 @@ func _ready() -> void:
 	show_location(location)
 	add_scenery(ground_visual)
 	# Drawn over the gradient and under everything in the scene: the stars, the Moons, the clouds,
-	# then the Backdrop. The Foreground is drawn over everything, the ship included.
-	var layers: Array[CanvasItem] = [deep_star_layer, night_star_layer, moons, clouds, backdrop, vehicles]
+	# then the Backdrop and its signs of work. The Foreground, then the clouds' near wisps, are drawn
+	# over everything, the ship included.
+	var layers: Array[CanvasItem] = [deep_star_layer, night_star_layer, moons, clouds, backdrop, activity, vehicles]
 	for i in layers.size():
 		add_child(layers[i])
 		move_child(layers[i], i)
 	add_child(city_lights)
 	move_child(city_lights, terrain.get_index() + 1)
 	add_child(foreground)
+	add_child(clouds.near)
 
 	var rng := RandomNumberGenerator.new()
 	rng.seed = STAR_SEED
@@ -152,12 +160,13 @@ func show_sky() -> void:
 	night_star_layer.modulate.a = sky.star_brightness
 	night_star_layer.visible = sky.star_brightness > 0.0
 	beacon.show_sky(sky)
-	backdrop.show_sky(background_color)
+	backdrop.show_sky(sky, background_color)
 	moons.show_sky(sky)
 	clouds.show_sky(sky, background_color)
 	foreground.show_sky(sky)
 	city_lights.show_sky(sky)
 	vehicles.show_sky(sky)
+	activity.show_sky(sky, backdrop)
 	queue_redraw()
 
 
@@ -179,9 +188,9 @@ func show_location(to: Location) -> void:
 	show_ground_width(to)
 	pad.position.x = to.pad_center_x - ground.position.x
 	queue_redraw()
-	var anchor := Vector2(to.pad_center_x, to.ground_y - Lander.PAD_HEIGHT)
+	var anchor := to.pad_top()
 	backdrop.build(to.backdrop, to.lowest_y, anchor)
-	backdrop.show_sky(background_color)
+	backdrop.show_sky(sky, background_color)
 	moons.build(to.moons, anchor)
 	moons.show_sky(sky)
 	clouds.build(to.clouds, anchor)
@@ -192,6 +201,9 @@ func show_location(to: Location) -> void:
 	city_lights.show_sky(sky)
 	vehicles.build(to.vehicles, anchor)
 	vehicles.show_sky(sky)
+	activity.build(to.activity_lights, to.movers, anchor)
+	activity.show_sky(sky, backdrop)
+	dress_mountains(to.mountains)
 	for child in terrain.get_children():
 		terrain.remove_child(child)
 		child.queue_free()
@@ -231,15 +243,34 @@ func lowest_point() -> float:
 	return location.lowest_y
 
 
-func build_mountain(outline: PackedVector2Array) -> void:
-	var shape := CollisionPolygon2D.new()
-	shape.polygon = outline
-	mountains.add_child(shape)
-	var visual := Polygon2D.new()
-	visual.polygon = outline
-	visual.color = MOUNTAIN_COLOR
-	mountains.add_child(visual)
-	add_scenery(visual)
+# Dresses the Mountains in a location's look: each mountain's outline filled with its base colour,
+# then its dressings over it, clipped to the outline; all solid scenery, dimmed by the sky.
+func dress_mountains(look: MountainLook) -> void:
+	for child in mountains.get_children():
+		if child is Polygon2D:
+			mountains.remove_child(child)
+			child.queue_free()
+	for side in mountain_outlines.size():
+		var base := Polygon2D.new()
+		base.polygon = mountain_outlines[side]
+		base.color = look.base
+		mountains.add_child(base)
+		add_scenery(base)
+		for dressing in look.dressed(side, mountain_outlines[side]):
+			var visual := Polygon2D.new()
+			var points := PackedVector2Array()
+			var shapes: Array[PackedInt32Array] = []
+			for shape: PackedVector2Array in dressing[1]:
+				var indices := PackedInt32Array()
+				for point in shape:
+					indices.append(points.size())
+					points.append(point)
+				shapes.append(indices)
+			visual.polygon = points
+			visual.polygons = shapes
+			visual.color = dressing[0]
+			mountains.add_child(visual)
+			add_scenery(visual)
 
 
 func add_stars(rng: RandomNumberGenerator, area: Rect2, count: int) -> void:
@@ -312,15 +343,18 @@ enum DecorLayer { BACKDROP, PARALLAX, FOREGROUND, BEACON, LIGHTS }
 # What a decor piece is within its layer: a light, the glow around one, a ridge, a cloud, a
 # silhouette, one of a city's lights (all its windows, one mesh; a neon sign; a warning light; a
 # flying vehicle's light) or a flying vehicle; then a Moon, a Vehicle's trail and a translucent
-# cloud wisp in front of the ship. New kinds of decor add their part at the end.
-enum DecorPart { LIGHT, GLOW, RIDGE, CLOUD, SILHOUETTE, WINDOWS, NEON, WARNING_LIGHT, VEHICLE_LIGHT, VEHICLE, MOON, TRAIL, WISP }
+# cloud wisp in front of the ship; then a skyline depth's lit windows (one mesh), its beacons (one
+# mesh) and a band of haze between skyline depths; then a slow mover on the Backdrop's structures
+# (a crane's trolley, a hauler, a conveyor's marks). New kinds of decor add their part at the end.
+enum DecorPart { LIGHT, GLOW, RIDGE, CLOUD, SILHOUETTE, WINDOWS, NEON, WARNING_LIGHT, VEHICLE_LIGHT, VEHICLE, MOON, TRAIL, WISP, SKYLINE_WINDOWS, SKYLINE_BEACON, HAZE, MOVER }
 
 
 # One decor piece as drawn: its layer and part, whether it has a collider, its colour as drawn
 # (tinted by its own and its ancestors' modulate; a piece filled with a gradient gives the average
 # of its vertex colours), its opacity as drawn (its colour's alpha: 1 opaque, 0 invisible), how fast
 # it scrolls with the camera (its parallax layer's scroll scale; the world's, 1, if it's in none)
-# and where it appears on screen.
+# and where it appears on screen: its outline (a mesh's is its bounding box) and that outline's
+# bounding box.
 class Decor:
 	var layer: DecorLayer
 	var part: DecorPart
@@ -330,6 +364,7 @@ class Decor:
 		get:
 			return color.a
 	var scroll_scale := Vector2.ONE
+	var screen_outline: PackedVector2Array
 	var screen_area: Rect2
 
 
@@ -358,7 +393,7 @@ static func listings(pieces: Array, layer: DecorLayer, part: DecorPart) -> Array
 # camera_center at zoom (the viewport's centre is the camera's). Read-only, for tests.
 func shown_decor(camera_center: Vector2, zoom: float) -> Array[Decor]:
 	var pieces: Array[Decor] = []
-	for module in [backdrop, moons, clouds, vehicles, beacon, foreground, city_lights]:
+	for module in [backdrop, moons, clouds, vehicles, beacon, foreground, city_lights, activity]:
 		for listing: Listing in module.listed_decor():
 			pieces.append(decor(listing.visual, listing.layer, listing.part, camera_center, zoom))
 	return pieces
@@ -378,7 +413,8 @@ func decor(visual: Node2D, layer: DecorLayer, part: DecorPart, camera_center: Ve
 	if visual is MeshInstance2D:
 		var mesh := (visual as MeshInstance2D).mesh
 		var box := mesh.get_aabb()
-		outline = PackedVector2Array([Vector2(box.position.x, box.position.y), Vector2(box.end.x, box.end.y)])
+		outline = PackedVector2Array([Vector2(box.position.x, box.position.y), Vector2(box.end.x, box.position.y),
+			Vector2(box.end.x, box.end.y), Vector2(box.position.x, box.end.y)])
 		piece.color = visual.self_modulate
 		vertex_colors = mesh.surface_get_arrays(0)[Mesh.ARRAY_COLOR]
 	else:
@@ -406,6 +442,7 @@ func decor(visual: Node2D, layer: DecorLayer, part: DecorPart, camera_center: Ve
 	var area := Rect2()
 	for i in outline.size():
 		var on_screen := (visual.to_global(outline[i]) + shift - camera_center) * zoom + screen_center
+		piece.screen_outline.append(on_screen)
 		area = Rect2(on_screen, Vector2.ZERO) if i == 0 else area.expand(on_screen)
 	piece.screen_area = area
 	return piece
