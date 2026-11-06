@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/pkopczynski/lunar-lander/compare/v0.3.0...v0.4.0) (2026-11-06)
+
+
+### Features
+
+* fly Transport offers to their destination, visit the Metropolis and see deep, layered scenery up to the Border at every location ([#67](https://github.com/pkopczynski/lunar-lander/issues/67)) ([3f48178](https://github.com/pkopczynski/lunar-lander/commit/3f4817873222e933bbf7481db1279e70a80a128f))
+
 ## [0.3.0](https://github.com/pkopczynski/lunar-lander/compare/v0.2.0...v0.3.0) (2026-11-03)
 
 
