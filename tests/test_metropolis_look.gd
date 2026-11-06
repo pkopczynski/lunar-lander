@@ -226,7 +226,7 @@ func vehicles() -> Array[World.Decor]:
 func test_distant_flying_vehicles_move_by_themselves_behind_the_city_without_colliders() -> void:
 	await at_metropolis()
 	var before := vehicles()
-	check(before.size() >= 2 and before.size() <= 8, "the Metropolis should show a handful of flying vehicles, got %d" % before.size())
+	check(before.size() >= 2, "the Metropolis should show flying vehicles, got %d" % before.size())
 	await seconds(1.0)
 	var after := vehicles()
 	check(after.size() == before.size(), "the vehicles should stay listed as they fly")
@@ -240,6 +240,10 @@ func test_distant_flying_vehicles_move_by_themselves_behind_the_city_without_col
 	check(pieces(World.DecorLayer.LIGHTS, World.DecorPart.VEHICLE_LIGHT).size() == before.size(), "each vehicle should carry a light")
 
 
-func test_the_valley_shows_no_flying_vehicles() -> void:
+func test_the_valley_and_the_mine_show_no_flying_vehicles_or_trails() -> void:
 	await choose_ship()
-	check(vehicles().is_empty(), "the Valley should show no flying vehicles, got %d" % vehicles().size())
+	for location in [Location.VALLEY, Location.MINE]:
+		clock().move_to(location)
+		await frames(1)
+		check(vehicles().is_empty(), "%s should show no flying vehicles, got %d" % [location.name, vehicles().size()])
+		check(pieces(World.DecorLayer.LIGHTS, World.DecorPart.TRAIL).is_empty(), "%s should show no Vehicle trails" % location.name)

@@ -42,10 +42,22 @@ const METROPOLIS_NEON_SIGNS := [
 	[Rect2(290, 352, 110, 10), NEON_ORANGE], [Rect2(614, 300, 10, 130), NEON_PINK],
 	[Rect2(1130, 562, 240, 10), NEON_CYAN], [Rect2(1530, 610, 8, 90), NEON_PINK],
 ]
-# The Metropolis's flying vehicles: where each is as designed and its speed in px/s (negative:
-# leftwards). Tuning, expected to change in playtests.
-const METROPOLIS_VEHICLES := [
-	[Vector2(300, 180), 45.0], [Vector2(1500, 120), -60.0], [Vector2(900, 330), 30.0], [Vector2(-400, 240), -38.0],
+# The Metropolis's Vehicle lanes, low to high, up to about two-thirds of the way from the pad to
+# the Border: each lane's height above the pad's top (how high the camera climbs to have it at the
+# middle of the screen), its depth, its speed in px/s (negative: leftwards) and where along it
+# each of its Vehicles is as designed. Tuning, expected to change in playtests.
+const VEHICLE_FAR := Vector2(0.3, 0.86)
+const VEHICLE_MID := Vector2(0.5, 0.92)
+const VEHICLE_NEAR := Vector2(0.7, 0.97)
+const METROPOLIS_LANES := [
+	[150.0, VEHICLE_NEAR, 55.0, [200.0, 1500.0]],
+	[300.0, VEHICLE_MID, -40.0, [900.0, -300.0, 2400.0]],
+	[440.0, VEHICLE_FAR, 28.0, [500.0, 1900.0]],
+	[620.0, VEHICLE_NEAR, -70.0, [1300.0, 2800.0, -600.0]],
+	[800.0, VEHICLE_MID, 45.0, [100.0, 1700.0]],
+	[1000.0, VEHICLE_FAR, -32.0, [1100.0, 3000.0]],
+	[1200.0, VEHICLE_NEAR, 80.0, [-200.0, 1400.0]],
+	[1430.0, VEHICLE_MID, -50.0, [700.0, 2300.0]],
 ]
 
 # Each location's clouds (see Clouds.sky()): the variety each is scattered with.
@@ -245,8 +257,7 @@ static func metropolis() -> Location:
 		Vector2(414, 325), Vector2(606, 255), Vector2(814, 255),
 		Vector2(PAD_BUILDING_LEFT + ANTENNA_WIDTH / 2.0, ANTENNA_TOP_Y - CityLights.WARNING_RADIUS), Vector2(1554, 575),
 	])
-	for vehicle in METROPOLIS_VEHICLES:
-		location.vehicles.append(Vehicles.Vehicle.new(vehicle[0], vehicle[1]))
+	location.vehicles = Vehicles.in_lanes(METROPOLIS_LANES, ROOF_Y - Lander.PAD_HEIGHT)
 	location.ground_y = ROOF_Y
 	location.ground_width = PAD_ROOF_WIDTH
 	location.lowest_y = STREET_Y + World.GROUND_DEPTH
