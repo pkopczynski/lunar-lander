@@ -22,7 +22,6 @@ const MOUNTAIN_OUTLINE := [
 	Vector2(70, 260), Vector2(110, 240), Vector2(150, 320), Vector2(130, 370), Vector2(190, 410),
 	Vector2(170, 460), Vector2(230, 500), Vector2(210, 550), Vector2(250, 600), Vector2(250, 640),
 ]
-const MOUNTAIN_COLOR := Color(0.42, 0.34, 0.27)
 # A location's terrain, such as the Mine's benches: warmer than the ground, like cut rock.
 const TERRAIN_COLOR := Color(0.6, 0.42, 0.3)
 
@@ -70,6 +69,8 @@ var city_lights := CityLights.new()
 var vehicles := Vehicles.new()
 # The pad's Beacon; a child of the pad, so it follows it to every location.
 var beacon := Beacon.new()
+# The left and the right mountain's outline, the same at every location.
+var mountain_outlines: Array[PackedVector2Array] = []
 
 @onready var mountains: StaticBody2D = $Mountains
 @onready var terrain: StaticBody2D = $Terrain
@@ -86,8 +87,11 @@ func _ready() -> void:
 	var mirrored := PackedVector2Array()
 	for point in outline:
 		mirrored.append(Vector2(WORLD_WIDTH - point.x, point.y))
-	build_mountain(outline)
-	build_mountain(mirrored)
+	mountain_outlines = [outline, mirrored]
+	for side in mountain_outlines:
+		var shape := CollisionPolygon2D.new()
+		shape.polygon = side
+		mountains.add_child(shape)
 	var half := Lander.PAD_WIDTH / 2.0
 	pad.polygon = PackedVector2Array([
 		Vector2(-half, -Lander.PAD_HEIGHT), Vector2(half, -Lander.PAD_HEIGHT),
@@ -187,6 +191,7 @@ func show_location(to: Location) -> void:
 	city_lights.show_sky(sky)
 	vehicles.build(to.vehicles, anchor)
 	vehicles.show_sky(sky)
+	dress_mountains(to.mountains)
 	for child in terrain.get_children():
 		terrain.remove_child(child)
 		child.queue_free()
@@ -226,15 +231,34 @@ func lowest_point() -> float:
 	return location.lowest_y
 
 
-func build_mountain(outline: PackedVector2Array) -> void:
-	var shape := CollisionPolygon2D.new()
-	shape.polygon = outline
-	mountains.add_child(shape)
-	var visual := Polygon2D.new()
-	visual.polygon = outline
-	visual.color = MOUNTAIN_COLOR
-	mountains.add_child(visual)
-	add_scenery(visual)
+# Dresses the Mountains in a location's look: each mountain's outline filled with its base colour,
+# then its dressings over it, clipped to the outline; all solid scenery, dimmed by the sky.
+func dress_mountains(look: MountainLook) -> void:
+	for child in mountains.get_children():
+		if child is Polygon2D:
+			mountains.remove_child(child)
+			child.queue_free()
+	for side in mountain_outlines.size():
+		var base := Polygon2D.new()
+		base.polygon = mountain_outlines[side]
+		base.color = look.base
+		mountains.add_child(base)
+		add_scenery(base)
+		for dressing in look.dressed(side, mountain_outlines[side]):
+			var visual := Polygon2D.new()
+			var points := PackedVector2Array()
+			var shapes: Array[PackedInt32Array] = []
+			for shape: PackedVector2Array in dressing[1]:
+				var indices := PackedInt32Array()
+				for point in shape:
+					indices.append(points.size())
+					points.append(point)
+				shapes.append(indices)
+			visual.polygon = points
+			visual.polygons = shapes
+			visual.color = dressing[0]
+			mountains.add_child(visual)
+			add_scenery(visual)
 
 
 func add_stars(rng: RandomNumberGenerator, area: Rect2, count: int) -> void:
