@@ -334,10 +334,11 @@ func build(from: Array[Silhouette], bottom_y: float, anchor: Vector2) -> void:
 			glows.append(glow)
 
 
-# The silhouettes and their glows, for World.shown_decor().
+# The silhouettes and their glows, for World.shown_decor(). The glows are drawn in front with
+# their crowns but listed as lights, so the Foreground stays near-black but for the wisps.
 func listed_decor() -> Array[World.Listing]:
 	return World.listings(pieces, World.DecorLayer.FOREGROUND, World.DecorPart.SILHOUETTE) \
-		+ World.listings(glows, World.DecorLayer.FOREGROUND, World.DecorPart.GLOW)
+		+ World.listings(glows, World.DecorLayer.LIGHTS, World.DecorPart.GLOW)
 
 
 func show_sky(sky: SkyLook) -> void:

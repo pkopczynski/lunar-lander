@@ -40,7 +40,7 @@ func pieces_in(layer: World.DecorLayer) -> Array[World.Decor]:
 
 # The Backdrop's depths, farther first: its pieces grouped by how fast they scroll sideways (the
 # slower, the farther), then the Foreground's opaque silhouettes as the nearest depth (the clouds'
-# translucent wisps and the glows in some crowns aren't a depth).
+# translucent wisps aren't a depth).
 func depths() -> Array[Array]:
 	var by_scroll := {}
 	for piece in pieces_in(World.DecorLayer.BACKDROP):
@@ -88,9 +88,8 @@ func solid_colors() -> Array[Color]:
 # Foreground. Lights (windows, neon, the Beacon, the glows in some crowns) are small glowing points
 # on top of things.
 func scenery_decor() -> Array[World.Decor]:
-	var surfaces := [World.DecorLayer.BACKDROP, World.DecorLayer.PARALLAX, World.DecorLayer.FOREGROUND]
 	return world().shown_decor(pad_top(), 1.0).filter(func(piece: World.Decor) -> bool:
-		return piece.layer in surfaces and piece.part != World.DecorPart.GLOW)
+		return piece.layer in [World.DecorLayer.BACKDROP, World.DecorLayer.PARALLAX, World.DecorLayer.FOREGROUND])
 
 
 func distance(a: Color, b: Color) -> float:

@@ -177,7 +177,9 @@ func test_the_city_shows_lit_windows_neon_signs_and_warning_lights_without_colli
 
 func test_the_valley_shows_no_city_lights() -> void:
 	await choose_ship()
-	check(lights().is_empty(), "the Valley should show no city lights, got %d" % lights().size())
+	# Its only lights are the faint night glows in some of its Foreground crowns.
+	var city := lights().filter(func(piece: World.Decor) -> bool: return piece.part != World.DecorPart.GLOW)
+	check(city.is_empty(), "the Valley should show no city lights, got %d" % city.size())
 
 
 # The brightest each light gets over a few seconds (the warning lights blink), by part and index.
