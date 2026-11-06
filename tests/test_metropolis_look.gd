@@ -95,24 +95,22 @@ func test_lit_windows_on_the_three_nearest_depths_get_dimmer_sparser_and_smaller
 		var nearer: World.Decor = windows[lit_scrolls[i + 1]][0]
 		check(farther.color.get_luminance() < nearer.color.get_luminance(),
 			"depth %d's windows (%s) should be dimmer than the nearer depth's (%s)" % [i, farther.color, nearer.color])
-	# From the location table: the windows each skyline depth holds, farther first.
-	var ridges := Location.METROPOLIS.backdrop
-	var lit := ridges.filter(func(ridge: Backdrop.Ridge) -> bool: return not ridge.windows.is_empty())
-	check(lit.size() == 3, "three skyline depths should hold windows, got %d" % lit.size())
-	check(ridges[0].windows.is_empty(), "the farthest skyline should hold no windows")
-	var solid_window: Rect2 = Location.METROPOLIS.windows[0]
-	for i in lit.size():
-		var ridge: Backdrop.Ridge = lit[i]
-		for window in ridge.windows:
+	# As drawn: each depth's windows, farther first, against the buildings' own (the solid terrain's).
+	var solid_window: Rect2 = lights_of(World.DecorPart.WINDOWS)[0].screen_rects()[0]
+	for i in lit_scrolls.size():
+		var shown: Array[Rect2] = windows[lit_scrolls[i]][0].screen_rects()
+		check(not shown.is_empty(), "depth %d should show some lit windows" % i)
+		if shown.is_empty():
+			continue
+		for window in shown:
 			check(window.size.x < solid_window.size.x and window.size.y < solid_window.size.y,
 				"skyline windows should be smaller than the buildings' (%s), got %s" % [solid_window.size, window.size])
 		if i > 0:
-			var nearer: Backdrop.Ridge = lit[i]
-			var farther: Backdrop.Ridge = lit[i - 1]
-			check(farther.windows.size() < nearer.windows.size(),
-				"a farther depth should have fewer windows (%d) than the nearer one (%d)" % [farther.windows.size(), nearer.windows.size()])
-			check(farther.windows[0].size.x <= nearer.windows[0].size.x and farther.windows[0].size.y <= nearer.windows[0].size.y,
-				"a farther depth's windows (%s) should be no bigger than the nearer one's (%s)" % [farther.windows[0].size, nearer.windows[0].size])
+			var farther: Array[Rect2] = windows[lit_scrolls[i - 1]][0].screen_rects()
+			check(farther.size() < shown.size(),
+				"a farther depth should show fewer windows (%d) than the nearer one (%d)" % [farther.size(), shown.size()])
+			check(farther[0].size.x <= shown[0].size.x + 0.01 and farther[0].size.y <= shown[0].size.y + 0.01,
+				"a farther depth's windows (%s) should be no bigger than the nearer one's (%s)" % [farther[0].size, shown[0].size])
 
 
 func test_skyline_windows_are_paler_than_the_buildings_windows() -> void:

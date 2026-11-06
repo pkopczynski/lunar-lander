@@ -346,7 +346,8 @@ enum DecorLayer { BACKDROP, PARALLAX, FOREGROUND, BEACON, LIGHTS }
 # flying vehicle's light) or a flying vehicle; then a Moon, a Vehicle's trail and a translucent
 # cloud wisp in front of the ship; then a skyline depth's lit windows (one mesh), its beacons (one
 # mesh) and a band of haze between skyline depths; then a slow mover on the Backdrop's structures
-# (a crane's trolley, a hauler, a conveyor's marks). New kinds of decor add their part at the end.
+# (a crane's trolley, a hauler, ore lumps riding a conveyor). New kinds of decor add their part at
+# the end.
 enum DecorPart { LIGHT, GLOW, RIDGE, CLOUD, SILHOUETTE, WINDOWS, NEON, WARNING_LIGHT, VEHICLE_LIGHT, VEHICLE, MOON, TRAIL, WISP, SKYLINE_WINDOWS, SKYLINE_BEACON, HAZE, MOVER }
 
 
@@ -355,7 +356,7 @@ enum DecorPart { LIGHT, GLOW, RIDGE, CLOUD, SILHOUETTE, WINDOWS, NEON, WARNING_L
 # of its vertex colours), its opacity as drawn (its colour's alpha: 1 opaque, 0 invisible), how fast
 # it scrolls with the camera (its parallax layer's scroll scale; the world's, 1, if it's in none)
 # and where it appears on screen: its outline (a mesh's is its bounding box) and that outline's
-# bounding box.
+# bounding box, and for a mesh of lights (windows), each light's rectangle (screen_rects()).
 class Decor:
 	var layer: DecorLayer
 	var part: DecorPart
@@ -367,6 +368,19 @@ class Decor:
 	var scroll_scale := Vector2.ONE
 	var screen_outline: PackedVector2Array
 	var screen_area: Rect2
+	# A mesh's triangles, two per light, and how its points map onto the screen.
+	var mesh_vertices: PackedVector2Array
+	var to_screen: Transform2D
+
+	# Each of a mesh's lights on screen, in the order it was built: none for a polygon.
+	func screen_rects() -> Array[Rect2]:
+		var rects: Array[Rect2] = []
+		for i in range(0, mesh_vertices.size(), 6):
+			var rect := Rect2(to_screen * mesh_vertices[i], Vector2.ZERO)
+			for corner in range(i + 1, i + 6):
+				rect = rect.expand(to_screen * mesh_vertices[corner])
+			rects.append(rect)
+		return rects
 
 
 # One decor piece as its module lists it (each decor module's listed_decor()): its visual (a
@@ -418,6 +432,7 @@ func decor(visual: Node2D, layer: DecorLayer, part: DecorPart, camera_center: Ve
 			Vector2(box.end.x, box.end.y), Vector2(box.position.x, box.end.y)])
 		piece.color = visual.self_modulate
 		vertex_colors = mesh.surface_get_arrays(0)[Mesh.ARRAY_COLOR]
+		piece.mesh_vertices = mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
 	else:
 		var polygon := visual as Polygon2D
 		outline = polygon.polygon
@@ -440,6 +455,8 @@ func decor(visual: Node2D, layer: DecorLayer, part: DecorPart, camera_center: Ve
 			shift = parallax.offset_for(camera_center) - parallax.position
 		node = node.get_parent()
 	var screen_center := get_viewport_rect().size / 2.0
+	piece.to_screen = Transform2D(0.0, Vector2(zoom, zoom), 0.0, (shift - camera_center) * zoom + screen_center) \
+		* visual.get_global_transform()
 	var area := Rect2()
 	for i in outline.size():
 		var on_screen := (visual.to_global(outline[i]) + shift - camera_center) * zoom + screen_center
