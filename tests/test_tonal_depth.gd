@@ -39,7 +39,7 @@ func pieces_in(layer: World.DecorLayer) -> Array[World.Decor]:
 
 
 # The Backdrop's depths, farther first: its pieces grouped by how fast they scroll sideways (the
-# slower, the farther), then the Foreground as the nearest depth.
+# slower, the farther), then the Foreground (its opaque pieces) as the nearest depth.
 func depths() -> Array[Array]:
 	var by_scroll := {}
 	for piece in pieces_in(World.DecorLayer.BACKDROP):
@@ -51,7 +51,9 @@ func depths() -> Array[Array]:
 	var ordered: Array[Array] = []
 	for scroll: float in scrolls:
 		ordered.append(by_scroll[scroll])
-	ordered.append(pieces_in(World.DecorLayer.FOREGROUND))
+	# The clouds' translucent wisps are the Foreground's only pieces that aren't near-black.
+	ordered.append(pieces_in(World.DecorLayer.FOREGROUND).filter(
+		func(piece: World.Decor) -> bool: return piece.part != World.DecorPart.WISP))
 	return ordered
 
 

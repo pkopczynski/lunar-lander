@@ -28,8 +28,8 @@ const WIND_SPEED := 6.0
 const SKY_LIGHT := 0.6
 const LIGHTENING := 0.45
 # How much of that lightening is left at full night, so the clouds don't glow against the night sky.
-const NIGHT_LIGHTENING := 0.4
-const NIGHT_DARKENING := 0.8
+const NIGHT_LIGHTENING := 0.2
+const NIGHT_DARKENING := 1.0
 # Points around each cloud's outline.
 const SIDES := 24
 # A wisp's opacity, before it fades toward the corridor.
@@ -186,15 +186,16 @@ func listed_decor() -> Array[World.Listing]:
 
 
 # Tints each cloud from the background gradient behind it (background_color: a world y to its
-# colour) and the sky's colour, lighter, drawn a little toward its kind's colour and darker as the
-# sky darkens.
+# colour) and the sky's colour, lighter, drawn a little toward its kind's colour (by day: it fades
+# into the night sky like the rest) and darker as the sky darkens, so at night it never comes close
+# to solid terrain's colour.
 func show_sky(sky: SkyLook, background_color: Callable) -> void:
 	for i in drawn.size():
 		var cloud := drawn[i]
 		var shape: Array = KINDS[kinds[i]]
 		var behind: Color = background_color.call(cloud.position.y)
 		var lightening := LIGHTENING * lerpf(1.0, NIGHT_LIGHTENING, sky.night())
-		var color := behind.lerp(sky.ground_color, SKY_LIGHT).lerp(Color.WHITE, lightening).lerp(shape[4], shape[5]).darkened(sky.darkness * NIGHT_DARKENING)
+		var color := behind.lerp(sky.ground_color, SKY_LIGHT).lerp(Color.WHITE, lightening).lerp(shape[4], shape[5] * (1.0 - sky.night())).darkened(sky.darkness * NIGHT_DARKENING)
 		color.a = WISP_OPACITY if translucent[i] else 1.0
 		cloud.color = color
 
