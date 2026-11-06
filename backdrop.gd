@@ -318,8 +318,9 @@ func build(from: Array[Ridge], bottom_y: float, anchor: Vector2) -> void:
 		var top := ridge.top_edge.duplicate()
 		top.insert(0, top[0] - Vector2(SIDE_MARGIN, 0))
 		top.append(top[-1] + Vector2(SIDE_MARGIN, 0))
-		# A layer slower than the world rises as the camera climbs: by the Border, by this much.
-		var rise := maxf(0.0, (1.0 - ridge.scroll_scale.y) * (anchor.y - World.BORDER_Y))
+		# A layer rising faster with the camera reaches further down, so its bottom never shows with
+		# the camera up at the Border.
+		var rise := maxf(anchor.y - World.BORDER_Y, 0.0) * (1.0 - ridge.scroll_scale.y)
 		ridges.append(DecorKit.add_in_layer(self, DecorKit.closed_down(top, bottom_y + BOTTOM_MARGIN + rise),
 			ridge.scroll_scale, anchor))
 		darkenings.append(ridge.darkening)
