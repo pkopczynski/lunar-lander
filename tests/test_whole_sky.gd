@@ -14,6 +14,9 @@ const BELOW_BORDER := 50.0
 const MIN_IN_VIEW := 20.0
 # How visible a piece must be drawn to count as in view (a Moon is faint by day, but shows).
 const MIN_OPACITY := 0.1
+# How far, in RGB, a piece as seen (blended over the sky by its opacity) must be from the sky behind
+# it to count as in view: a cloud drawn as dark as the night sky isn't seen.
+const MIN_CONTRAST := 0.1
 # How far apart two vertical scroll factors must be to read as clearly different speeds.
 const DISTINCT_SCROLL := 0.05
 # The heights the capture tool reviews, in px above the pad's top, where the scenery in view must
@@ -38,16 +41,25 @@ func heights() -> Array[float]:
 
 
 # The scenery in view for a camera at camera_center: every decor piece but the pad's Beacon,
-# drawn visibly enough and far enough on screen.
+# drawn visibly enough, far enough on screen, and standing out from the sky behind it.
 func in_view(camera_center: Vector2, zoom: float) -> Array[World.Decor]:
 	var view := world().get_viewport_rect().grow(-MIN_IN_VIEW)
 	var pieces: Array[World.Decor] = []
 	for piece in world().shown_decor(camera_center, zoom):
 		if piece.layer == World.DecorLayer.BEACON or piece.opacity < MIN_OPACITY:
 			continue
-		if piece.screen_area.intersects(view):
+		if piece.screen_area.intersects(view) and contrast(piece, camera_center, zoom) >= MIN_CONTRAST:
 			pieces.append(piece)
 	return pieces
+
+
+# How far a piece as seen is from the sky behind the middle of its part on screen, in RGB.
+func contrast(piece: World.Decor, camera_center: Vector2, zoom: float) -> float:
+	var view := world().get_viewport_rect()
+	var screen_y := piece.screen_area.intersection(view).get_center().y
+	var sky := world().background_color(camera_center.y + (screen_y - view.size.y / 2.0) / zoom)
+	var seen := sky.lerp(Color(piece.color, 1.0), piece.opacity)
+	return Vector3(seen.r - sky.r, seen.g - sky.g, seen.b - sky.b).length()
 
 
 # The clearly different vertical scroll factors among pieces, each at least DISTINCT_SCROLL apart.

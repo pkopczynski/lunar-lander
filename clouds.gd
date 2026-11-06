@@ -27,9 +27,10 @@ const WIND_SPEED := 6.0
 # it is. At night it darkens with the sky.
 const SKY_LIGHT := 0.6
 const LIGHTENING := 0.45
-# How much of that lightening is left at full night, so the clouds don't glow against the night sky.
-const NIGHT_LIGHTENING := 0.2
-const NIGHT_DARKENING := 1.0
+# How much of that lightening is left at full night, and how much the clouds darken with the sky:
+# faintly moonlit, so they still read against the night sky high up, without glowing.
+const NIGHT_LIGHTENING := 0.3
+const NIGHT_DARKENING := 0.75
 # Points around each cloud's outline.
 const SIDES := 24
 # A wisp's opacity, before it fades toward the corridor.
