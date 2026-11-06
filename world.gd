@@ -315,7 +315,8 @@ enum DecorPart { LIGHT, GLOW, RIDGE, CLOUD, SILHOUETTE, WINDOWS, NEON, WARNING_L
 # (tinted by its own and its ancestors' modulate; a piece filled with a gradient gives the average
 # of its vertex colours), its opacity as drawn (its colour's alpha: 1 opaque, 0 invisible), how fast
 # it scrolls with the camera (its parallax layer's scroll scale; the world's, 1, if it's in none)
-# and where it appears on screen.
+# and where it appears on screen: its outline (a mesh's is its bounding box) and that outline's
+# bounding box.
 class Decor:
 	var layer: DecorLayer
 	var part: DecorPart
@@ -325,6 +326,7 @@ class Decor:
 		get:
 			return color.a
 	var scroll_scale := Vector2.ONE
+	var screen_outline: PackedVector2Array
 	var screen_area: Rect2
 
 
@@ -373,7 +375,8 @@ func decor(visual: Node2D, layer: DecorLayer, part: DecorPart, camera_center: Ve
 	if visual is MeshInstance2D:
 		var mesh := (visual as MeshInstance2D).mesh
 		var box := mesh.get_aabb()
-		outline = PackedVector2Array([Vector2(box.position.x, box.position.y), Vector2(box.end.x, box.end.y)])
+		outline = PackedVector2Array([Vector2(box.position.x, box.position.y), Vector2(box.end.x, box.position.y),
+			Vector2(box.end.x, box.end.y), Vector2(box.position.x, box.end.y)])
 		piece.color = visual.self_modulate
 		vertex_colors = mesh.surface_get_arrays(0)[Mesh.ARRAY_COLOR]
 	else:
@@ -401,6 +404,7 @@ func decor(visual: Node2D, layer: DecorLayer, part: DecorPart, camera_center: Ve
 	var area := Rect2()
 	for i in outline.size():
 		var on_screen := (visual.to_global(outline[i]) + shift - camera_center) * zoom + screen_center
+		piece.screen_outline.append(on_screen)
 		area = Rect2(on_screen, Vector2.ZERO) if i == 0 else area.expand(on_screen)
 	piece.screen_area = area
 	return piece
