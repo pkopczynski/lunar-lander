@@ -2,11 +2,11 @@ class_name Activity
 extends Node2D
 # A location's signs of work on its Backdrop's structures: red warning lights blinking a little out
 # of step, never dimmed and brighter at night (as CityLights' are), and a few slow movers (a crane's
-# trolley, a hauler, a conveyor's marks), silhouettes filled like the depth they move in. Each piece
-# sits in a parallax layer anchored on the pad (one per depth, DecorKit.Depths), at the scroll scale
-# of the Backdrop depth it stands on, so it stays on its structure. No collider. The lights blink
-# through their own modulate and the movers only change position, so nothing is redrawn as time
-# passes.
+# trolley, a hauler, ore lumps riding a conveyor), silhouettes filled like the depth they move in.
+# Each piece sits in a parallax layer anchored on the pad (one per depth, DecorKit.Depths), at the
+# scroll scale of the Backdrop depth it stands on, so it stays on its structure. No collider. The
+# lights blink through their own modulate and the movers only change position, so nothing is
+# redrawn as time passes.
 
 # Tuning, expected to change in playtests.
 # Sides of the polygon each warning light is drawn as.
