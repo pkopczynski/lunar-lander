@@ -156,7 +156,7 @@ func show_sky() -> void:
 	night_star_layer.modulate.a = sky.star_brightness
 	night_star_layer.visible = sky.star_brightness > 0.0
 	beacon.show_sky(sky)
-	backdrop.show_sky(background_color)
+	backdrop.show_sky(sky, background_color)
 	moons.show_sky(sky)
 	clouds.show_sky(sky, background_color)
 	foreground.show_sky(sky)
@@ -185,7 +185,7 @@ func show_location(to: Location) -> void:
 	queue_redraw()
 	var anchor := Vector2(to.pad_center_x, to.ground_y - Lander.PAD_HEIGHT)
 	backdrop.build(to.backdrop, to.lowest_y, anchor)
-	backdrop.show_sky(background_color)
+	backdrop.show_sky(sky, background_color)
 	moons.build(to.moons, anchor)
 	moons.show_sky(sky)
 	clouds.build(to.clouds, anchor)
@@ -336,8 +336,9 @@ enum DecorLayer { BACKDROP, PARALLAX, FOREGROUND, BEACON, LIGHTS }
 # What a decor piece is within its layer: a light, the glow around one, a ridge, a cloud, a
 # silhouette, one of a city's lights (all its windows, one mesh; a neon sign; a warning light; a
 # flying vehicle's light) or a flying vehicle; then a Moon, a Vehicle's trail and a translucent
-# cloud wisp in front of the ship. New kinds of decor add their part at the end.
-enum DecorPart { LIGHT, GLOW, RIDGE, CLOUD, SILHOUETTE, WINDOWS, NEON, WARNING_LIGHT, VEHICLE_LIGHT, VEHICLE, MOON, TRAIL, WISP }
+# cloud wisp in front of the ship; then a skyline depth's lit windows (one mesh), its beacons (one
+# mesh) and a band of haze between skyline depths. New kinds of decor add their part at the end.
+enum DecorPart { LIGHT, GLOW, RIDGE, CLOUD, SILHOUETTE, WINDOWS, NEON, WARNING_LIGHT, VEHICLE_LIGHT, VEHICLE, MOON, TRAIL, WISP, SKYLINE_WINDOWS, SKYLINE_BEACON, HAZE }
 
 
 # One decor piece as drawn: its layer and part, whether it has a collider, its colour as drawn

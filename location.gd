@@ -218,7 +218,7 @@ static func metropolis() -> Location:
 	location.profile.max_cargo = METROPOLIS_MAX_CARGO
 	location.profile.reward_factor = METROPOLIS_REWARD_FACTOR
 	location.profile.titles = METROPOLIS_TITLES
-	location.backdrop = Backdrop.skyline()
+	location.backdrop = Skyline.metropolis()
 	location.mountains = MountainLook.metropolis()
 	location.foreground = Foreground.metropolis()
 	location.windows = CityLights.windows_on(METROPOLIS_FACADES)

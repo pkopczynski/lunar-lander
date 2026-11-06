@@ -38,32 +38,6 @@ const TATRA_NEAR_DARKENING := 0.28
 # ridges barely rise into the sky as the ship climbs. Tuning, expected to change in playtests.
 const TATRA_FAR_SCROLL := Vector2(0.6, 0.97)
 const TATRA_NEAR_SCROLL := Vector2(0.75, 0.98)
-# The Metropolis's far skyline, in two depths: each a list of blocks left to right, each
-# Vector2(right x, roof y), the first starting at the world's left side overhang and the last
-# reaching its right one. Flat roofs and straight walls, staying below the mountain tops; the
-# nearer one a little lower.
-const SKYLINE_FAR: Array[Vector2] = [
-	Vector2(-200, 360), Vector2(-60, 300), Vector2(40, 340), Vector2(130, 285), Vector2(210, 320),
-	Vector2(300, 250), Vector2(360, 300), Vector2(470, 270), Vector2(540, 330), Vector2(610, 235),
-	Vector2(680, 290), Vector2(790, 310), Vector2(860, 255), Vector2(960, 330), Vector2(1040, 280),
-	Vector2(1120, 245), Vector2(1210, 300), Vector2(1300, 270), Vector2(1380, 320), Vector2(1460, 240),
-	Vector2(1540, 290), Vector2(1640, 265), Vector2(1720, 330), Vector2(1800, 275), Vector2(1900, 310),
-	Vector2(2050, 260), Vector2(2400, 330), Vector2(World.WORLD_WIDTH + World.SIDE_OVERHANG, 300),
-]
-const SKYLINE_NEAR: Array[Vector2] = [
-	Vector2(-100, 420), Vector2(80, 380), Vector2(190, 430), Vector2(280, 360), Vector2(380, 410),
-	Vector2(450, 345), Vector2(560, 395), Vector2(650, 370), Vector2(730, 420), Vector2(830, 350),
-	Vector2(920, 400), Vector2(990, 330), Vector2(1080, 385), Vector2(1170, 420), Vector2(1260, 360),
-	Vector2(1350, 405), Vector2(1450, 340), Vector2(1520, 395), Vector2(1610, 370), Vector2(1700, 430),
-	Vector2(1790, 365), Vector2(1880, 410), Vector2(2100, 380),
-	Vector2(World.WORLD_WIDTH + World.SIDE_OVERHANG, 420),
-]
-# How much darker than the sky behind the roofs each depth is by day, and how fast it scrolls.
-# Tuning, expected to change in playtests.
-const SKYLINE_FAR_DARKENING := 0.12
-const SKYLINE_NEAR_DARKENING := 0.3
-const SKYLINE_FAR_SCROLL := Vector2(0.55, 0.97)
-const SKYLINE_NEAR_SCROLL := Vector2(0.7, 0.98)
 # The Mine's Backdrop, farther first, with stronger parallax than the Tatras' (each layer slower).
 # Tuning, expected to change in playtests.
 # The farther ridge: tall, jagged Himalaya-like peaks towering above the mountain tops, the
@@ -190,6 +164,11 @@ const SATURATION_STEP := 0.12
 # Depths past this many in front of the farthest are no more saturated, so a Location with many
 # depths (the Mine) doesn't turn its nearest ones vivid.
 const MAX_SATURATION_STEPS := 2
+# The highest a Backdrop takes its sky colour from: a skyline towering far above the mountains is
+# coloured as if it peaked here, so it doesn't turn near-black by day.
+const HIGHEST_SKY_Y := 0.0
+# How opaque haze is at its bottom, fading out to its top.
+const HAZE_ALPHA := 0.45
 
 
 # One ridge of a location's Backdrop: its top edge, left to right, how much darker than the sky
@@ -198,11 +177,19 @@ const MAX_SATURATION_STEPS := 2
 # cover the view at the world's side overhang; the Backdrop carries it on further (SIDE_MARGIN).
 # It may carry structures that stand free of its top edge, such as a ropeway's ropes: outlines
 # drawn in its depth and colour, not closed down.
+# A ridge may also hold lit windows (each a rect, all in one colour), beacons (spots), and a band
+# of haze behind it, from haze_top_y (clear) down to haze_bottom_y (HAZE_ALPHA), across the whole
+# layer: it veils the farther depths just above its roofs.
 class Ridge:
 	var top_edge: PackedVector2Array
 	var darkening: float
 	var scroll_scale: Vector2
 	var structures: Array[PackedVector2Array] = []
+	var windows: Array[Rect2] = []
+	var window_color := Color.WHITE
+	var beacons := PackedVector2Array()
+	var haze_top_y := NAN
+	var haze_bottom_y := NAN
 
 	func _init(top: Array, darker: float, scroll := Vector2.ONE, free_standing: Array[PackedVector2Array] = []) -> void:
 		top_edge = PackedVector2Array(top)
@@ -215,24 +202,6 @@ class Ridge:
 static func tatras() -> Array[Ridge]:
 	return [Ridge.new(TATRA_FAR, TATRA_FAR_DARKENING, TATRA_FAR_SCROLL),
 		Ridge.new(TATRA_NEAR, TATRA_NEAR_DARKENING, TATRA_NEAR_SCROLL)]
-
-
-# The Metropolis's skyline in two depths, farther first.
-static func skyline() -> Array[Ridge]:
-	return [Ridge.new(skyline_edge(SKYLINE_FAR), SKYLINE_FAR_DARKENING, SKYLINE_FAR_SCROLL),
-		Ridge.new(skyline_edge(SKYLINE_NEAR), SKYLINE_NEAR_DARKENING, SKYLINE_NEAR_SCROLL)]
-
-
-# The top edge of a row of blocks (each Vector2(right x, roof y), left to right), from the world's
-# left side overhang: each roof flat, with a straight wall down or up to the next.
-static func skyline_edge(blocks: Array[Vector2]) -> Array[Vector2]:
-	var edge: Array[Vector2] = []
-	var left := -World.SIDE_OVERHANG
-	for block in blocks:
-		edge.append(Vector2(left, block.y))
-		edge.append(block)
-		left = block.x
-	return edge
 
 
 # The Mine's Backdrop, farther first: the Himalaya-like peaks, the upper walls with the ropeway
@@ -260,8 +229,12 @@ static func rope(from: Vector2, to: Vector2) -> PackedVector2Array:
 	return upper + lower
 
 
-# The ridges as drawn, farther first, and their structures, each with the index of its ridge.
+# The ridges as drawn, farther first, their structures, each with the index of its ridge, and their
+# lights and haze.
 var ridges: Array[Polygon2D] = []
+var windows: Array[MeshInstance2D] = []
+var beacons: Array[MeshInstance2D] = []
+var hazes: Array[Polygon2D] = []
 var darkenings: Array[float] = []
 var structures: Array[Polygon2D] = []
 var structure_ridges: Array[int] = []
@@ -275,6 +248,9 @@ var peak_y := 0.0
 func build(from: Array[Ridge], bottom_y: float, anchor: Vector2) -> void:
 	DecorKit.clear(self)
 	ridges.clear()
+	windows.clear()
+	beacons.clear()
+	hazes.clear()
 	darkenings.clear()
 	structures.clear()
 	structure_ridges.clear()
@@ -299,22 +275,59 @@ func build(from: Array[Ridge], bottom_y: float, anchor: Vector2) -> void:
 			structure_ridges.append(ridges.size())
 		ridges.append(visual)
 		darkenings.append(ridge.darkening)
+		var layer := visual.get_parent()
+		if not is_nan(ridge.haze_top_y):
+			var haze := Polygon2D.new()
+			haze.polygon = PackedVector2Array([Vector2(top[0].x, ridge.haze_top_y), Vector2(top[-1].x, ridge.haze_top_y),
+				Vector2(top[-1].x, ridge.haze_bottom_y), Vector2(top[0].x, ridge.haze_bottom_y)])
+			var clear := Color(1, 1, 1, 0)
+			var veiled := Color(1, 1, 1, HAZE_ALPHA)
+			haze.vertex_colors = PackedColorArray([clear, clear, veiled, veiled])
+			layer.add_child(haze)
+			layer.move_child(haze, 0)
+			hazes.append(haze)
+		if not ridge.windows.is_empty():
+			windows.append(add_lights(layer, ridge.windows, ridge.window_color))
+		if not ridge.beacons.is_empty():
+			var spots: Array[Rect2] = []
+			for spot in ridge.beacons:
+				spots.append(Rect2(spot - Skyline.BEACON_SIZE / 2.0, Skyline.BEACON_SIZE))
+			beacons.append(add_lights(layer, spots, Skyline.BEACON_COLOR))
+	peak_y = maxf(peak_y, HIGHEST_SKY_Y)
 
 
-# The ridges, then their structures (silhouettes), for World.shown_decor().
+# Adds one mesh of lights in a colour to a ridge's layer, over the ridge.
+func add_lights(layer: Node, rects: Array[Rect2], color: Color) -> MeshInstance2D:
+	var tints: Array[Color] = [color]
+	var lights := MeshInstance2D.new()
+	lights.mesh = CityLights.mesh_of(rects, tints)
+	layer.add_child(lights)
+	return lights
+
+
+# The ridges, their structures (silhouettes), their haze and their lights, for World.shown_decor().
 func listed_decor() -> Array[World.Listing]:
-	return World.listings(ridges, World.DecorLayer.BACKDROP, World.DecorPart.RIDGE) \
-		+ World.listings(structures, World.DecorLayer.BACKDROP, World.DecorPart.SILHOUETTE)
+	var listed := World.listings(ridges, World.DecorLayer.BACKDROP, World.DecorPart.RIDGE)
+	listed.append_array(World.listings(structures, World.DecorLayer.BACKDROP, World.DecorPart.SILHOUETTE))
+	listed.append_array(World.listings(hazes, World.DecorLayer.PARALLAX, World.DecorPart.HAZE))
+	listed.append_array(World.listings(windows, World.DecorLayer.LIGHTS, World.DecorPart.SKYLINE_WINDOWS))
+	listed.append_array(World.listings(beacons, World.DecorLayer.LIGHTS, World.DecorPart.SKYLINE_BEACON))
+	return listed
 
 
-# Fills each ridge with its depth's colour, from the background gradient (background_color: a
-# world y to its colour) behind the farthest ridge's highest peak.
-func show_sky(background_color: Callable) -> void:
+# Fills each ridge and its structures with its depth's colour, from the background gradient
+# (background_color: a world y to its colour) behind the farthest ridge's highest peak, tints each
+# haze band with the sky behind it, and brightens the lights like the city's: never dimmed.
+func show_sky(sky: SkyLook, background_color: Callable) -> void:
 	var colors := depth_colors(background_color.call(peak_y), darkenings)
 	for i in ridges.size():
 		ridges[i].color = colors[i]
 	for i in structures.size():
 		structures[i].color = colors[structure_ridges[i]]
+	for haze in hazes:
+		haze.color = background_color.call(haze.polygon[0].y)
+	for lights in windows + beacons:
+		lights.modulate = CityLights.brightness(sky)
 
 
 # The colours of depths in front of a sky colour, farther first, each darker than that sky by its
