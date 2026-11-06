@@ -8,10 +8,12 @@ func pad_top() -> Vector2:
 	return Vector2(pad_x(), world().location.ground_y - Lander.PAD_HEIGHT)
 
 
+# The pieces in layer; the clouds' translucent wisps in the Foreground are left out (they're clouds,
+# checked in test_clouds.gd, and the Approach corridor test keeps them clear of the pad).
 func pieces_in(layer: World.DecorLayer, camera_center := pad_top(), zoom := 1.0) -> Array[World.Decor]:
 	var pieces: Array[World.Decor] = []
 	for piece in world().shown_decor(camera_center, zoom):
-		if piece.layer == layer:
+		if piece.layer == layer and piece.part != World.DecorPart.WISP:
 			pieces.append(piece)
 	return pieces
 

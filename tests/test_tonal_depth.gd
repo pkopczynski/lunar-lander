@@ -39,8 +39,8 @@ func pieces_in(layer: World.DecorLayer) -> Array[World.Decor]:
 
 
 # The Backdrop's depths, farther first: its pieces grouped by how fast they scroll sideways (the
-# slower, the farther), then the Foreground's silhouettes as the nearest depth (the glows in some
-# crowns are lights, not a depth).
+# slower, the farther), then the Foreground's opaque silhouettes as the nearest depth (the clouds'
+# translucent wisps and the glows in some crowns aren't a depth).
 func depths() -> Array[Array]:
 	var by_scroll := {}
 	for piece in pieces_in(World.DecorLayer.BACKDROP):
