@@ -39,15 +39,21 @@ const WISP_OPACITY := 0.32
 const WISP_CLEARANCE := 40.0
 const WISP_FADE := 260.0
 
-# The three depths of sky(), farthest first: [scroll scale, wind (px/s), how many, the heights
-# above the pad's top they're scattered between (px), the smallest and largest half size].
+# The three depths of sky(), farthest first, then the highest streaks: [scroll scale, wind
+# (px/s), how many, the heights above the pad's top they're scattered between (as shares of the
+# climb from the pad's top to the Border, so every location's sky is filled up to its Border), the
+# smallest and largest half size].
 const DEPTHS := [
 	# Far, thin streaks high up.
-	[Vector2(0.2, 0.7), 4.0, 12, Vector2(650, 1100), Vector2(170, 5), Vector2(300, 9)],
+	[Vector2(0.2, 0.7), 4.0, 12, Vector2(0.3, 0.48), Vector2(170, 5), Vector2(300, 9)],
 	# Mid banks across the middle sky.
-	[Vector2(0.4, 0.85), 8.0, 16, Vector2(250, 1450), Vector2(90, 20), Vector2(190, 36)],
+	[Vector2(0.4, 0.85), 8.0, 16, Vector2(0.12, 0.67), Vector2(90, 20), Vector2(190, 36)],
 	# Near wisps in front of the ship, high above the pad.
-	[Vector2(1.15, 1.12), 16.0, 10, Vector2(850, 1900), Vector2(110, 16), Vector2(200, 30)],
+	[Vector2(1.15, 1.12), 16.0, 10, Vector2(0.39, 0.88), Vector2(110, 16), Vector2(200, 30)],
+	# Thin streaks in the mid banks' depth, the highest of all: close enough together that one is
+	# always in view just below the Border, wherever the wind has carried them, yet low enough to
+	# sink out of view before the Border (a farther depth couldn't do both).
+	[Vector2(0.4, 0.85), 8.0, 12, Vector2(0.67, 0.73), Vector2(170, 4), Vector2(260, 7)],
 ]
 # Each kind's shape and colour: [half size scale, lumps, lump height (share of the half height),
 # bottom squash, the colour it's drawn toward, by how much].
@@ -80,15 +86,17 @@ class Cloud:
 
 
 # A location's clouds of kind in the three DEPTHS, scattered evenly across the span they wrap
-# around and between each depth's heights above pad_top, the same each time for a variety.
+# around and between each depth's heights above pad_top (shares of the climb to the Border), the
+# same each time for a variety.
 static func sky(kind: Kind, pad_top: Vector2, variety: int) -> Array[Cloud]:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = variety
 	var shape: Vector2 = KINDS[kind][0]
 	var clouds: Array[Cloud] = []
+	var to_border := pad_top.y - World.BORDER_Y
 	for depth: Array in DEPTHS:
 		var count: int = depth[2]
-		var heights: Vector2 = depth[3]
+		var heights: Vector2 = depth[3] * to_border
 		var smallest: Vector2 = depth[4]
 		var largest: Vector2 = depth[5]
 		var slot := DecorKit.WRAP_WIDTH / count
