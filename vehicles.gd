@@ -9,7 +9,7 @@ extends Node2D
 
 # Tuning, expected to change in playtests.
 const SCROLL := Vector2(0.5, 0.96)
-const HULL_COLOR := Color(0.42, 0.45, 0.5)
+const HULL_COLOR := Color(0.28, 0.34, 0.5)
 const HULL := [Vector2(-12, 0), Vector2(-8, -4), Vector2(6, -4), Vector2(12, 0), Vector2(8, 3), Vector2(-9, 3)]
 const LIGHT_COLOR := Color(0.6, 0.9, 1.0)
 const LIGHT_RADIUS := 1.5
