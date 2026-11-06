@@ -79,25 +79,37 @@ const METROPOLIS_RIGHT_ROOFS := [
 	Vector2(2220, 600), Vector2(2220, 650), Vector2(3200, 650),
 ]
 
-# The Mine's silhouettes, scrolling faster than the Valley's (stronger parallax): a spoil heap and a
-# haul truck on the left benches, an ore heap on the pit floor left of the pad, and an ore heap with
-# a conveyor's head tower on the right. All below the crane's arm, so as they only ever move down
-# from where they were designed (the camera is never below the pad), they never hide it.
-const MINE_SCROLL := Vector2(1.7, 1.1)
-const MINE_LEFT_HEAP := [
+# The Mine's silhouettes, scrolling faster than the Valley's (stronger parallax): two continuous
+# near strips of spoil, one on each side of the Approach corridor, each running far out of view on
+# its outer end and dropping steeply below the view toward the corridor, so no block side shows.
+# On the left, a spoil heap and a haul truck on the left benches, then an ore heap on the pit floor
+# with a stacker's tower; on the right, an ore heap under a conveyor's head tower, its gallery
+# sloping down to the right onto the heap. Each tower tops out just below the crane's arm (MINE_TOP_Y), so as the
+# strips only ever move down from where they were designed (the camera is never below the pad),
+# they never hide it; just low enough to stay in view on each side of the corridor through the last
+# ~500 px of the approach. Each strip stays clear of the corridor and of the benches near the pad
+# with the camera following the ship a little to either side.
+const MINE_SCROLL := Vector2(1.7, 1.07)
+# The highest a Mine silhouette reaches: just below the crane's arm (Location.CRANE, bottom 462).
+const MINE_TOP_Y := 463.0
+const MINE_LEFT_STRIP := [
+	Vector2(-1500, 790), Vector2(-900, 770), Vector2(-500, 740), Vector2(-200, 700), Vector2(0, 665),
 	Vector2(40, 640), Vector2(90, 590), Vector2(140, 605), Vector2(190, 560), Vector2(240, 585),
 	Vector2(290, 570), Vector2(330, 610), Vector2(380, 630), Vector2(420, 630), Vector2(420, 590),
 	Vector2(445, 590), Vector2(445, 565), Vector2(480, 565), Vector2(480, 590), Vector2(500, 590),
-	Vector2(505, 555), Vector2(640, 545), Vector2(650, 575), Vector2(660, 600), Vector2(660, 640),
-	Vector2(700, 650),
+	Vector2(505, 555), Vector2(640, 545), Vector2(650, 575), Vector2(660, 600), Vector2(690, 640),
+	Vector2(740, 690), Vector2(790, 715), Vector2(830, 700), Vector2(860, 665), Vector2(880, 640),
+	Vector2(890, 640), Vector2(890, 480), Vector2(882, 480), Vector2(882, MINE_TOP_Y),
+	Vector2(950, MINE_TOP_Y), Vector2(950, 476), Vector2(940, 476), Vector2(905, 500),
+	Vector2(905, 640), Vector2(935, 655), Vector2(965, 690), Vector2(985, 760), Vector2(1000, 1000),
 ]
-const MINE_PIT_HEAP := [
-	Vector2(820, 760), Vector2(870, 720), Vector2(910, 705), Vector2(950, 725), Vector2(1000, 770),
-]
-const MINE_RIGHT_CONVEYOR := [
-	Vector2(1680, 720), Vector2(1720, 690), Vector2(1770, 650), Vector2(1800, 655), Vector2(1820, 640),
-	Vector2(1840, 640), Vector2(1840, 520), Vector2(1880, 520), Vector2(1880, 560), Vector2(1960, 600),
-	Vector2(2050, 640), Vector2(2200, 660),
+const MINE_RIGHT_STRIP := [
+	Vector2(1600, 1000), Vector2(1608, 820), Vector2(1620, 745), Vector2(1636, 712), Vector2(1636, 482),
+	Vector2(1626, 482), Vector2(1626, MINE_TOP_Y), Vector2(1690, MINE_TOP_Y), Vector2(1690, 474),
+	Vector2(2000, 612), Vector2(2000, 628), Vector2(1664, 492), Vector2(1664, 705), Vector2(1700, 722),
+	Vector2(1760, 706), Vector2(1840, 682), Vector2(1920, 657), Vector2(1990, 641), Vector2(2040, 643),
+	Vector2(2140, 656), Vector2(2200, 650), Vector2(2260, 668), Vector2(2500, 710), Vector2(3000, 750),
+	Vector2(3500, 790),
 ]
 
 
@@ -122,8 +134,7 @@ static func metropolis() -> Array[Silhouette]:
 
 
 static func mine() -> Array[Silhouette]:
-	return [Silhouette.new(MINE_LEFT_HEAP, MINE_SCROLL), Silhouette.new(MINE_PIT_HEAP, MINE_SCROLL),
-		Silhouette.new(MINE_RIGHT_CONVEYOR, MINE_SCROLL)]
+	return [Silhouette.new(MINE_LEFT_STRIP, MINE_SCROLL), Silhouette.new(MINE_RIGHT_STRIP, MINE_SCROLL)]
 
 
 # The silhouettes as drawn.
