@@ -105,6 +105,8 @@ var terrain: Array[PackedVector2Array] = []
 # The ridges (or skyline) behind the surface, farther first, with no collision; by default the
 # Tatra-like ones.
 var backdrop: Array[Backdrop.Ridge] = Backdrop.tatras()
+# Where its sky shows the Moons (see Moons); by default none.
+var moons: Array[Moons.Moon] = []
 # The clouds drifting in its sky; by default none.
 var clouds: Array[Clouds.Cloud] = []
 # The silhouettes in front of the ship; by default none. They must leave its pad and the ship's
@@ -154,6 +156,7 @@ func next() -> Location:
 static func valley() -> Location:
 	var location := Location.new()
 	location.name = "VALLEY"
+	location.moons = Moons.valley()
 	location.pad_center_x = World.WORLD_WIDTH / 2.0
 	location.clouds = Clouds.valley()
 	location.foreground = Foreground.valley()
@@ -170,6 +173,7 @@ static func valley() -> Location:
 static func mine() -> Location:
 	var location := Location.new()
 	location.name = "MINE"
+	location.moons = Moons.mine()
 	location.pad_center_x = 1300.0
 	location.ground_y = World.GROUND_TOP_Y + PIT_DEPTH
 	location.backdrop = Backdrop.mine()
@@ -207,6 +211,7 @@ static func mine() -> Location:
 static func metropolis() -> Location:
 	var location := Location.new()
 	location.name = "METROPOLIS"
+	location.moons = Moons.metropolis()
 	location.pad_center_x = 1250.0
 	location.profile.pool_share = METROPOLIS_POOL_SHARE
 	location.profile.kind_weights = PackedFloat32Array(METROPOLIS_KIND_WEIGHTS)
