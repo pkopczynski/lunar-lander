@@ -106,7 +106,8 @@ func _ready() -> void:
 	show_location(location)
 	add_scenery(ground_visual)
 	# Drawn over the gradient and under everything in the scene: the stars, the Moons, the clouds,
-	# then the Backdrop and its signs of work. The Foreground is drawn over everything, the ship included.
+	# then the Backdrop and its signs of work. The Foreground, then the clouds' near wisps, are drawn
+	# over everything, the ship included.
 	var layers: Array[CanvasItem] = [deep_star_layer, night_star_layer, moons, clouds, backdrop, activity, vehicles]
 	for i in layers.size():
 		add_child(layers[i])
@@ -114,6 +115,7 @@ func _ready() -> void:
 	add_child(city_lights)
 	move_child(city_lights, terrain.get_index() + 1)
 	add_child(foreground)
+	add_child(clouds.near)
 
 	var rng := RandomNumberGenerator.new()
 	rng.seed = STAR_SEED
@@ -158,7 +160,7 @@ func show_sky() -> void:
 	night_star_layer.modulate.a = sky.star_brightness
 	night_star_layer.visible = sky.star_brightness > 0.0
 	beacon.show_sky(sky)
-	backdrop.show_sky(background_color)
+	backdrop.show_sky(sky, background_color)
 	moons.show_sky(sky)
 	clouds.show_sky(sky, background_color)
 	foreground.show_sky(sky)
@@ -186,9 +188,9 @@ func show_location(to: Location) -> void:
 	show_ground_width(to)
 	pad.position.x = to.pad_center_x - ground.position.x
 	queue_redraw()
-	var anchor := Vector2(to.pad_center_x, to.ground_y - Lander.PAD_HEIGHT)
+	var anchor := to.pad_top()
 	backdrop.build(to.backdrop, to.lowest_y, anchor)
-	backdrop.show_sky(background_color)
+	backdrop.show_sky(sky, background_color)
 	moons.build(to.moons, anchor)
 	moons.show_sky(sky)
 	clouds.build(to.clouds, anchor)
@@ -341,9 +343,10 @@ enum DecorLayer { BACKDROP, PARALLAX, FOREGROUND, BEACON, LIGHTS }
 # What a decor piece is within its layer: a light, the glow around one, a ridge, a cloud, a
 # silhouette, one of a city's lights (all its windows, one mesh; a neon sign; a warning light; a
 # flying vehicle's light) or a flying vehicle; then a Moon, a Vehicle's trail and a translucent
-# cloud wisp in front of the ship, and a slow mover on the Backdrop's structures (a crane's
-# trolley, a hauler, a conveyor's marks). New kinds of decor add their part at the end.
-enum DecorPart { LIGHT, GLOW, RIDGE, CLOUD, SILHOUETTE, WINDOWS, NEON, WARNING_LIGHT, VEHICLE_LIGHT, VEHICLE, MOON, TRAIL, WISP, MOVER }
+# cloud wisp in front of the ship; then a skyline depth's lit windows (one mesh), its beacons (one
+# mesh) and a band of haze between skyline depths; then a slow mover on the Backdrop's structures
+# (a crane's trolley, a hauler, a conveyor's marks). New kinds of decor add their part at the end.
+enum DecorPart { LIGHT, GLOW, RIDGE, CLOUD, SILHOUETTE, WINDOWS, NEON, WARNING_LIGHT, VEHICLE_LIGHT, VEHICLE, MOON, TRAIL, WISP, SKYLINE_WINDOWS, SKYLINE_BEACON, HAZE, MOVER }
 
 
 # One decor piece as drawn: its layer and part, whether it has a collider, its colour as drawn

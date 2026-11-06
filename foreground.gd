@@ -3,7 +3,7 @@ extends Node2D
 # The Foreground: a location's silhouettes drawn in front of the ship, in parallax layers anchored
 # on the pad that move faster than the world, so they can briefly hide the ship and its path as the
 # view moves. Opaque and near-black, darker than all other scenery at every hour and a little darker
-# at night; no lights and no collider. A location places them so they never cover the Approach
+# at night; no collider, and no lights but the faint glows in some Valley crowns at night. A location places them so they never cover the Approach
 # corridor (the column above its pad, CORRIDOR_MARGIN wider than the pad on each side) at any
 # height up to the Border, nor its pad, its solid terrain's edge near it or the ship in the last
 # ~250 px of the approach (FAIR_HEIGHT).
@@ -19,23 +19,52 @@ const CORRIDOR_MARGIN := 40.0
 const BOTTOM_MARGIN := 300.0
 
 # Tuning, expected to change in playtests.
-# The Valley's spruce stands, each the top edge of one silhouette (closed down below the ground),
-# well to the sides of its pad. Tatra spruces: stacked tiers narrowing to a spike.
+# The Valley's stands: giant sequoias, alone and in groups, among spruces, broad trees, shrubs and a
+# few oddly shaped crowns, all rising from one near ground on each side of its pad. Each side is one
+# silhouette: the near ground's top edge starts and ends below the lowest point (so no side ever
+# shows) and the trees stand on it, their feet hidden in it. Each tree is [kind, x, height above the
+# near ground, crown half-width], in the layer's coordinates (the world's, with the camera on the
+# pad's top).
 const VALLEY_SCROLL := Vector2(1.45, 1.06)
-const VALLEY_LEFT_STAND := [
-	Vector2(260, 600), Vector2(300, 560), Vector2(285, 560), Vector2(320, 515), Vector2(305, 515),
-	Vector2(335, 465), Vector2(325, 465), Vector2(345, 420), Vector2(365, 465), Vector2(355, 465),
-	Vector2(385, 515), Vector2(370, 515), Vector2(405, 560), Vector2(395, 560), Vector2(420, 545),
-	Vector2(410, 545), Vector2(440, 505), Vector2(430, 505), Vector2(455, 470), Vector2(480, 505),
-	Vector2(470, 505), Vector2(500, 545), Vector2(490, 545), Vector2(530, 600), Vector2(560, 610),
+enum Plant { SEQUOIA, SPRUCE, BROAD, SHRUB, LOBED, UMBRELLA }
+# The near ground's top, how much it undulates, and how far down its two ends dip.
+const VALLEY_GROUND_Y := 618.0
+const VALLEY_GROUND_BUMP := 10.0
+const VALLEY_GROUND_ENDS_Y := 720.0
+# Each side's near ground, from x to y: the outer end well past the view however far the layer is
+# shifted, the inner end far enough from the pad that, with the camera to either side of it, no
+# tree reaches the ground's edge within ~250 px of the pad (and so the corridor), keeping the
+# Valley open around its pad.
+const VALLEY_LEFT_GROUND := Vector2(-1900, 716)
+const VALLEY_RIGHT_GROUND := Vector2(1284, 3900)
+const VALLEY_LEFT_TREES := [
+	[Plant.SHRUB, 694, 30, 18], [Plant.SEQUOIA, 660, 1010, 38], [Plant.SEQUOIA, 598, 800, 34],
+	[Plant.LOBED, 528, 640, 46], [Plant.BROAD, 452, 190, 46], [Plant.SPRUCE, 392, 360, 40],
+	[Plant.SHRUB, 346, 40, 34], [Plant.SEQUOIA, 290, 1180, 48], [Plant.SPRUCE, 222, 290, 34],
+	[Plant.BROAD, 150, 300, 66], [Plant.SEQUOIA, 70, 920, 42], [Plant.SEQUOIA, 4, 1090, 46],
+	[Plant.SEQUOIA, -70, 760, 36], [Plant.SHRUB, -130, 36, 30], [Plant.UMBRELLA, -220, 560, 90],
+	[Plant.SPRUCE, -300, 380, 42], [Plant.SEQUOIA, -400, 1040, 44], [Plant.BROAD, -520, 280, 62],
+	[Plant.SEQUOIA, -650, 880, 40], [Plant.SEQUOIA, -716, 1150, 48], [Plant.SPRUCE, -840, 330, 38],
+	[Plant.LOBED, -960, 700, 50], [Plant.SEQUOIA, -1100, 960, 44], [Plant.SHRUB, -1200, 40, 44],
+	[Plant.SEQUOIA, -1320, 1060, 46], [Plant.SPRUCE, -1450, 360, 40], [Plant.SEQUOIA, -1580, 900, 42],
 ]
-const VALLEY_RIGHT_STAND := [
-	Vector2(1430, 610), Vector2(1470, 570), Vector2(1460, 570), Vector2(1495, 525), Vector2(1485, 525),
-	Vector2(1515, 480), Vector2(1545, 525), Vector2(1535, 525), Vector2(1565, 560), Vector2(1580, 540),
-	Vector2(1570, 540), Vector2(1600, 495), Vector2(1590, 495), Vector2(1615, 450), Vector2(1605, 450),
-	Vector2(1630, 405), Vector2(1655, 450), Vector2(1645, 450), Vector2(1670, 495), Vector2(1660, 495),
-	Vector2(1690, 540), Vector2(1680, 540), Vector2(1720, 600), Vector2(1760, 600),
+const VALLEY_RIGHT_TREES := [
+	[Plant.SHRUB, 1306, 30, 18], [Plant.SEQUOIA, 1340, 900, 38], [Plant.LOBED, 1412, 1060, 48],
+	[Plant.BROAD, 1490, 180, 44], [Plant.SPRUCE, 1556, 400, 42], [Plant.SPRUCE, 1606, 310, 34],
+	[Plant.SHRUB, 1650, 36, 36], [Plant.SEQUOIA, 1720, 1220, 50], [Plant.SEQUOIA, 1790, 960, 42],
+	[Plant.SEQUOIA, 1850, 820, 36], [Plant.UMBRELLA, 1960, 600, 96], [Plant.SHRUB, 2060, 40, 40],
+	[Plant.BROAD, 2140, 280, 64], [Plant.SEQUOIA, 2210, 1100, 46], [Plant.SPRUCE, 2310, 360, 40],
+	[Plant.SEQUOIA, 2400, 900, 42], [Plant.LOBED, 2520, 720, 50], [Plant.SEQUOIA, 2650, 1180, 48],
+	[Plant.SEQUOIA, 2720, 940, 40], [Plant.SHRUB, 2820, 36, 40], [Plant.BROAD, 2930, 300, 64],
+	[Plant.SEQUOIA, 3060, 1000, 44], [Plant.SPRUCE, 3180, 350, 40], [Plant.SEQUOIA, 3320, 1080, 46],
+	[Plant.SEQUOIA, 3480, 880, 42],
 ]
+const VALLEY_SEED := 75
+# How far apart the foliage's clumps are along a crown's side.
+const CLUMP_STEP := 26.0
+# The faint glow in the odd crowns at night: its colour, and its opacity at full night (none by day).
+const GLOW_COLOR := Color(0.55, 1.0, 0.82)
+const GLOW_NIGHT_ALPHA := 0.22
 
 # The Metropolis's near rooftops, rising from one continuous near strip on both sides of the
 # Approach corridor, the tallest just beside it so they stay in view through the landing on the
@@ -113,11 +142,14 @@ const MINE_RIGHT_STRIP := [
 ]
 
 
-# One Foreground silhouette: its top edge, left to right, and how fast its layer scrolls with the
-# camera (above 1: faster than the world).
+# One Foreground silhouette: its top edge, left to right, how fast its layer scrolls with the camera
+# (above 1: faster than the world), the shapes standing on it (drawn as part of it) and the faint
+# glows drawn over them at night.
 class Silhouette:
 	var top_edge: PackedVector2Array
 	var scroll_scale: Vector2
+	var shapes: Array[PackedVector2Array] = []
+	var glows: Array[PackedVector2Array] = []
 
 	func _init(top: Array, scroll: Vector2) -> void:
 		top_edge = PackedVector2Array(top)
@@ -125,7 +157,139 @@ class Silhouette:
 
 
 static func valley() -> Array[Silhouette]:
-	return [Silhouette.new(VALLEY_LEFT_STAND, VALLEY_SCROLL), Silhouette.new(VALLEY_RIGHT_STAND, VALLEY_SCROLL)]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = VALLEY_SEED
+	return [valley_stand(VALLEY_LEFT_GROUND, VALLEY_LEFT_TREES, rng), valley_stand(VALLEY_RIGHT_GROUND, VALLEY_RIGHT_TREES, rng)]
+
+
+# One side's near ground, from ends.x to ends.y, and the trees standing on it.
+static func valley_stand(ends: Vector2, trees: Array, rng: RandomNumberGenerator) -> Silhouette:
+	var top := [Vector2(ends.x, VALLEY_GROUND_ENDS_Y)]
+	var x := ends.x + 60.0
+	while x < ends.y - 60.0:
+		top.append(Vector2(x, VALLEY_GROUND_Y - rng.randf() * VALLEY_GROUND_BUMP))
+		x += rng.randf_range(30.0, 60.0)
+	top.append(Vector2(ends.y, VALLEY_GROUND_ENDS_Y))
+	var stand := Silhouette.new(top, VALLEY_SCROLL)
+	for tree: Array in trees:
+		add_tree(stand, tree[0], tree[1], tree[2], tree[3], rng)
+	return stand
+
+
+static func add_tree(stand: Silhouette, kind: Plant, x: float, height: float, half_width: float, rng: RandomNumberGenerator) -> void:
+	var foot := VALLEY_GROUND_Y + VALLEY_GROUND_BUMP
+	var top_y := VALLEY_GROUND_Y - height
+	match kind:
+		Plant.SEQUOIA:
+			# A column of clumped foliage, narrowing to a rounded top, high on a bare trunk that
+			# flares at its foot.
+			var crown_bottom := top_y + height * rng.randf_range(0.6, 0.7)
+			stand.shapes.append(trunk(x, foot, crown_bottom - 40.0, half_width * 0.3))
+			stand.shapes.append(crown(x, crown_bottom, top_y, half_width, 0.45, rng))
+		Plant.SPRUCE:
+			stand.shapes.append(spruce(x, foot, top_y, half_width, rng))
+		Plant.BROAD:
+			stand.shapes.append(trunk(x, foot, top_y + height * 0.38, half_width * 0.16))
+			stand.shapes.append(blob(Vector2(x, top_y + height * 0.38), Vector2(half_width, height * 0.38), rng))
+		Plant.SHRUB:
+			stand.shapes.append(blob(Vector2(x, VALLEY_GROUND_Y), Vector2(half_width, height), rng))
+		Plant.LOBED:
+			# Alien: a thin trunk carrying round lobes, smaller toward the top, the upper two glowing
+			# brighter at their hearts.
+			stand.shapes.append(trunk(x, foot, top_y + half_width, half_width * 0.16))
+			var y := top_y + half_width * 0.7
+			var radius := half_width * 0.7
+			for lobe in 3:
+				var center := Vector2(x + rng.randf_range(-0.2, 0.2) * half_width, y)
+				stand.shapes.append(blob(center, Vector2(radius * 1.1, radius), rng))
+				if lobe < 2:
+					stand.glows.append(ellipse(center, Vector2(radius * 0.6, radius * 0.55), 12))
+					stand.glows.append(ellipse(center, Vector2(radius * 0.3, radius * 0.28), 10))
+				y += radius * 2.6
+				radius *= 1.25
+		Plant.UMBRELLA:
+			# Alien: a flat, wide canopy on a tall bare trunk, glowing faintly underneath.
+			var canopy := Vector2(x, top_y + half_width * 0.25)
+			stand.shapes.append(trunk(x, foot, canopy.y, half_width * 0.14))
+			stand.shapes.append(blob(canopy, Vector2(half_width, half_width * 0.25), rng))
+			stand.glows.append(ellipse(canopy + Vector2(0, half_width * 0.08), Vector2(half_width * 0.6, half_width * 0.1), 16))
+
+
+# A trunk from foot (inside the near ground) up to top, flaring at its foot.
+static func trunk(x: float, foot: float, top: float, half_width: float) -> PackedVector2Array:
+	var flare := VALLEY_GROUND_Y - 20.0
+	return PackedVector2Array([
+		Vector2(x - half_width * 2.0, foot), Vector2(x - half_width * 1.1, flare), Vector2(x - half_width * 0.5, top),
+		Vector2(x + half_width * 0.5, top), Vector2(x + half_width * 1.1, flare), Vector2(x + half_width * 2.0, foot),
+	])
+
+
+# A crown of clumps from bottom up to a rounded top, half_width wide at the bottom and narrowing
+# by taper toward the top.
+static func crown(x: float, bottom: float, top: float, half_width: float, taper: float, rng: RandomNumberGenerator) -> PackedVector2Array:
+	var dome := half_width * (1.0 - taper)
+	var steps := maxi(2, ceili((bottom - top - dome) / CLUMP_STEP))
+	var step := (bottom - top - dome) / steps
+	var left := PackedVector2Array([Vector2(x - half_width * 0.3, bottom + 8.0)])
+	var right := PackedVector2Array([Vector2(x + half_width * 0.3, bottom + 8.0)])
+	# Each clump bulges out between two notches.
+	for i in steps:
+		var y := bottom - step * i
+		var width := half_width * (1.0 - taper * float(i) / steps)
+		left.append_array(clump(x, y, -width, step, rng))
+		right.append_array(clump(x, y, width, step, rng))
+	var points := left
+	for i in range(1, 6):
+		var angle := PI + PI * i / 6.0
+		points.append(Vector2(x, top + dome) + Vector2(cos(angle), sin(angle)) * dome)
+	right.reverse()
+	points.append_array(right)
+	return points
+
+
+# One clump on a crown's side, from a notch at y up to the next: width out from x (negative: to
+# the left), step high.
+static func clump(x: float, y: float, width: float, step: float, rng: RandomNumberGenerator) -> PackedVector2Array:
+	var reach := width * rng.randf_range(0.75, 1.25)
+	return PackedVector2Array([Vector2(x + width * rng.randf_range(0.55, 0.8), y), Vector2(x + reach, y - step * 0.3),
+		Vector2(x + reach * rng.randf_range(0.8, 1.0), y - step * 0.75)])
+
+
+# A Tatra spruce: stacked tiers narrowing to a spike.
+static func spruce(x: float, foot: float, top: float, half_width: float, rng: RandomNumberGenerator) -> PackedVector2Array:
+	var tiers := 5
+	var lowest := VALLEY_GROUND_Y - 15.0
+	var tier := (lowest - top) / (tiers + 0.5)
+	var left := PackedVector2Array([Vector2(x - half_width * 0.15, foot)])
+	var right := PackedVector2Array([Vector2(x + half_width * 0.15, foot)])
+	for i in tiers:
+		var y := lowest - tier * i
+		var width := half_width * (1.0 - float(i) / tiers) * rng.randf_range(0.85, 1.05)
+		left.append(Vector2(x - width, y))
+		left.append(Vector2(x - width * 0.45, y - tier * 0.4))
+		right.append(Vector2(x + width, y))
+		right.append(Vector2(x + width * 0.45, y - tier * 0.4))
+	left.append(Vector2(x, top))
+	right.reverse()
+	left.append_array(right)
+	return left
+
+
+# A lumpy round shape around center, size across and up.
+static func blob(center: Vector2, size: Vector2, rng: RandomNumberGenerator) -> PackedVector2Array:
+	var points := PackedVector2Array()
+	for i in 18:
+		var angle := TAU * i / 18.0
+		points.append(center + Vector2(cos(angle) * size.x, sin(angle) * size.y) * rng.randf_range(0.85, 1.05))
+	return points
+
+
+static func ellipse(center: Vector2, size: Vector2, sides: int) -> PackedVector2Array:
+	var points := PackedVector2Array()
+	for i in sides:
+		var angle := TAU * i / sides
+		points.append(center + Vector2(cos(angle) * size.x, sin(angle) * size.y))
+	return points
 
 
 static func metropolis() -> Array[Silhouette]:
@@ -137,27 +301,47 @@ static func mine() -> Array[Silhouette]:
 	return [Silhouette.new(MINE_LEFT_STRIP, MINE_SCROLL), Silhouette.new(MINE_RIGHT_STRIP, MINE_SCROLL)]
 
 
-# The silhouettes as drawn.
+# The silhouettes as drawn, and the glows over them.
 var pieces: Array[Polygon2D] = []
+var glows: Array[Polygon2D] = []
 
 
 # Builds the Foreground afresh, each silhouette closing down past bottom_y in its own layer
-# anchored on anchor.
+# anchored on anchor, with the shapes standing on it and its glows.
 func build(from: Array[Silhouette], bottom_y: float, anchor: Vector2) -> void:
 	DecorKit.clear(self)
 	pieces.clear()
+	glows.clear()
 	for silhouette in from:
 		var outline := DecorKit.closed_down(silhouette.top_edge, bottom_y + BOTTOM_MARGIN)
 		var visual := DecorKit.add_in_layer(self, outline, silhouette.scroll_scale, anchor)
 		visual.color = COLOR
+		if not silhouette.shapes.is_empty():
+			# One piece, drawn as several polygons: its outline and each shape on it.
+			var points := PackedVector2Array()
+			var polygons := []
+			for part: PackedVector2Array in [outline] + silhouette.shapes:
+				polygons.append(PackedInt32Array(range(points.size(), points.size() + part.size())))
+				points.append_array(part)
+			visual.polygon = points
+			visual.polygons = polygons
 		pieces.append(visual)
+		for shape in silhouette.glows:
+			var glow := Polygon2D.new()
+			glow.polygon = shape
+			glow.color = GLOW_COLOR
+			visual.get_parent().add_child(glow)
+			glows.append(glow)
 
 
-# The silhouettes, for World.shown_decor().
+# The silhouettes and their glows, for World.shown_decor().
 func listed_decor() -> Array[World.Listing]:
-	return World.listings(pieces, World.DecorLayer.FOREGROUND, World.DecorPart.SILHOUETTE)
+	return World.listings(pieces, World.DecorLayer.FOREGROUND, World.DecorPart.SILHOUETTE) \
+		+ World.listings(glows, World.DecorLayer.FOREGROUND, World.DecorPart.GLOW)
 
 
 func show_sky(sky: SkyLook) -> void:
 	for piece in pieces:
 		piece.self_modulate = Color.WHITE.darkened(NIGHT_DARKENING * sky.night())
+	for glow in glows:
+		glow.self_modulate.a = GLOW_NIGHT_ALPHA * sky.night()

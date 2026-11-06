@@ -16,7 +16,7 @@ const MIN_IN_VIEW := 40.0
 # Locations whose Foreground doesn't yet keep a piece in view on each side of the corridor through
 # the last BESIDE_HEIGHT. A Location's Foreground ticket takes its name off this list; the test
 # fails if a Location listed here already meets the check, so the list stays honest.
-const BESIDE_PENDING: Array[String] = ["VALLEY"]
+const BESIDE_PENDING: Array[String] = []
 
 
 func pad_top() -> Vector2:
