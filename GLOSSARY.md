@@ -29,7 +29,7 @@ Scenery drawn in front of the ship, with no collision. It may hide the ship, or 
 _Avoid_: Overlay, front layer
 
 **Moons**:
-The other bodies in the planet's sky, seen from the surface: the same few at every location, each location showing them in its own place in the sky. Faint by day, clear at night. They're so far away that flying across barely moves them, but they stay in their spot in the sky as the ship climbs, sinking out of view long before the Border, so deep space never shows them.
+The other bodies in the planet's sky, seen from the surface: the same few at every location, each location showing them in its own place in the sky. Faint by day, clear at night. They stay in their spot in the sky as the ship flies around, sinking out of view as it climbs, long before the Border, so deep space never shows them.
 _Avoid_: Planets (the planet is the one the ship lands on), sky bodies
 
 **Approach corridor**:

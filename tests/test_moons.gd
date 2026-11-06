@@ -35,8 +35,7 @@ func shown(piece: World.Decor) -> bool:
 	return piece.opacity > 0.0 and in_view(piece)
 
 
-# The Moons are very far away sideways and fixed in the world up and down: flying across barely
-# moves them on screen, and climbing sinks them like the ground.
+# The Moons are fixed in the world: they pass by on screen like the ground as the ship flies around.
 func test_the_moons_stay_in_their_spot_in_the_sky_as_the_ship_flies_around() -> void:
 	await choose_ship()
 	var zoom := FollowCamera.SURFACE_ZOOM
@@ -48,10 +47,9 @@ func test_the_moons_stay_in_their_spot_in_the_sky_as_the_ship_flies_around() -> 
 		var elsewhere := moons(pad_top() + flown, zoom)
 		for i in mini(on_pad.size(), elsewhere.size()):
 			var moved := elsewhere[i].screen_area.position - on_pad[i].screen_area.position
-			check(absf(moved.x) <= 0.05 * flown.x * zoom,
-				"Moon %d at the %s should barely move sideways as the ship flies 300 px across, moved %.0f px" % [i, location.name, moved.x])
-			check_near(moved.y, -flown.y * zoom, 0.5,
-				"Moon %d at the %s should sink like the ground as the ship climbs 1000 px" % [i, location.name])
+			check(on_pad[i].scroll_scale == Vector2.ONE, "Moon %d at the %s should have no parallax, its scale %s" % [i, location.name, on_pad[i].scroll_scale])
+			check(moved.distance_to(-flown * zoom) < 0.5,
+				"Moon %d at the %s should pass by like the ground as the ship flies 1000 px up and 300 px across, moved %s" % [i, location.name, moved])
 
 
 func test_the_moons_are_out_of_view_at_the_border_and_in_deep_space() -> void:

@@ -4,9 +4,8 @@ extends Node2D
 # placing and sizing them (see Moon). A giant one low, partly behind the Backdrop and in view from
 # the pad (above the Mine's walls and the Metropolis's towers, higher up), a medium one higher and
 # two small ones high up. Each sits in its own layer anchored on
-# the pad (SCROLL): very far away sideways, so flying across barely moves it, and fixed in the
-# world up and down, so it stays in its spot in the sky and sinks out of view as the ship climbs,
-# long before the Border, so deep space never shows them. Muted colours, a fixed lit side and no phases; faint by day, clear at night. No collider.
+# the pad, fixed in the world (SCROLL, no parallax), so it stays in its spot in the sky and sinks
+# out of view as the ship climbs, long before the Border, so deep space never shows them. Muted colours, a fixed lit side and no phases; faint by day, clear at night. No collider.
 
 # Tuning, expected to change in playtests.
 # The four bodies, giant first: their colour (dusty rose, blue-grey, ochre, bone).
@@ -15,9 +14,8 @@ extends Node2D
 const COLORS: Array[Color] = [
 	Color(0.8, 0.58, 0.58), Color(0.6, 0.65, 0.72), Color(0.77, 0.67, 0.45), Color(0.86, 0.83, 0.75),
 ]
-# How fast they scroll with the camera, the world's being 1: barely at all sideways, like the world
-# up and down.
-const SCROLL := Vector2(0.03, 1.0)
+# How fast they scroll with the camera: like the world.
+const SCROLL := Vector2.ONE
 # Where each location shows the four, giant first: each centre, from the pad's top, and radius.
 # Each location places them where they first show above its own scenery, at the surface zoom: the
 # Valley's within the sky the view shows with the ship resting on its pad (the camera there sits
