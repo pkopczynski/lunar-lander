@@ -2,32 +2,36 @@ class_name Moons
 extends Node2D
 # The Moons: the same four other bodies in the surface sky at every location, each location
 # placing and sizing them (see Moon). A giant one low, partly behind the Backdrop and in view from
-# the pad, a medium one higher and two small ones high up. They're very far away: each sits in its
-# own static layer anchored on the pad (a backdrop fixed on screen: it doesn't move as the camera
-# does), and fades out as it nears the Border (World.high_sky_opacity()), so deep space never shows them. Muted
-# colours, a fixed lit side and no phases; faint by day, clear at night. No collider.
+# the pad (above the Mine's walls and the Metropolis's towers, higher up), a medium one higher and
+# two small ones high up. Each sits in its own layer anchored on
+# the pad (SCROLL): very far away sideways, so flying across barely moves it, and fixed in the
+# world up and down, so it stays in its spot in the sky and sinks out of view as the ship climbs,
+# long before the Border, so deep space never shows them. Muted colours, a fixed lit side and no phases; faint by day, clear at night. No collider.
 
 # Tuning, expected to change in playtests.
-# The four bodies, giant first: their colour (dusty rose, blue-grey, ochre, bone). They don't scroll
-# with the camera at all (SCROLL).
+# The four bodies, giant first: their colour (dusty rose, blue-grey, ochre, bone).
 # Shaded, each colour must stay 0.1 from every solid terrain colour, however dimmed (see
 # test_tonal_depth.gd).
 const COLORS: Array[Color] = [
 	Color(0.8, 0.58, 0.58), Color(0.6, 0.65, 0.72), Color(0.77, 0.67, 0.45), Color(0.86, 0.83, 0.75),
 ]
-const SCROLL := Vector2.ZERO
-# Where each location shows the four, giant first: each centre as seen from the pad's top (with the
-# camera centred there) and radius.
-# They stay where they're placed on screen, so they're placed within the sky the view shows above the pad
-# at the surface zoom.
+# How fast they scroll with the camera, the world's being 1: barely at all sideways, like the world
+# up and down.
+const SCROLL := Vector2(0.03, 1.0)
+# Where each location shows the four, giant first: each centre, from the pad's top, and radius.
+# Each location places them where they first show above its own scenery, at the surface zoom: the
+# Valley's within the sky the view shows with the ship resting on its pad (the camera there sits
+# 203 px above the pad's top, its bottom held at the location's lowest point), the Mine's and the
+# Metropolis's, whose walls and towers hide that sky, within the sky the view shows with the ship
+# 700 px above its pad (the camera 720 px above the pad's top).
 const VALLEY := [
-	[Vector2(-170, -170), 150.0], [Vector2(330, -205), 38.0], [Vector2(-390, -225), 14.0], [Vector2(170, -235), 11.0],
+	[Vector2(-170, -373), 150.0], [Vector2(330, -408), 38.0], [Vector2(-390, -428), 14.0], [Vector2(170, -438), 11.0],
 ]
 const MINE := [
-	[Vector2(-360, -150), 180.0], [Vector2(-40, -215), 44.0], [Vector2(250, -230), 16.0], [Vector2(390, -195), 12.0],
+	[Vector2(-360, -870), 180.0], [Vector2(-40, -935), 44.0], [Vector2(250, -950), 16.0], [Vector2(390, -915), 12.0],
 ]
 const METROPOLIS := [
-	[Vector2(-350, -130), 145.0], [Vector2(220, -210), 36.0], [Vector2(-130, -235), 13.0], [Vector2(400, -225), 10.0],
+	[Vector2(-350, -850), 145.0], [Vector2(220, -930), 36.0], [Vector2(-130, -955), 13.0], [Vector2(400, -945), 10.0],
 ]
 # The side away from the sun, toward which each Moon shades, is this much darker than its lit side.
 const SHADE := 0.45
@@ -37,7 +41,7 @@ const DAY_ALPHA := 0.3
 const SIDES := 48
 
 
-# Where a location shows one Moon: its centre as seen from the pad's top, and its radius.
+# Where a location shows one Moon: its centre from the pad's top, and its radius.
 class Moon:
 	var center: Vector2
 	var radius: float
@@ -66,20 +70,14 @@ static func metropolis() -> Array[Moon]:
 	return placed(METROPOLIS)
 
 
-# The Moons as drawn, and each one's top, for fading it out near the Border.
+# The Moons as drawn.
 var pieces: Array[Polygon2D] = []
-var tops := PackedFloat32Array()
-
-
-func _process(_delta: float) -> void:
-	DecorKit.fade_toward_border(pieces, tops)
 
 
 # Builds the Moons afresh where the location places them, each in its own layer anchored on anchor.
 func build(from: Array[Moon], anchor: Vector2) -> void:
 	DecorKit.clear(self)
 	pieces.clear()
-	tops.clear()
 	for i in mini(from.size(), COLORS.size()):
 		var moon := from[i]
 		var visual := DecorKit.add_in_layer(self, DecorKit.disc(anchor + moon.center, moon.radius, SIDES), SCROLL, anchor)
@@ -88,9 +86,7 @@ func build(from: Array[Moon], anchor: Vector2) -> void:
 			var lit := ((point - anchor - moon.center) / moon.radius).dot(LIT_FROM.normalized()) * 0.5 + 0.5
 			shades.append(COLORS[i].darkened(SHADE * (1.0 - lit)))
 		visual.vertex_colors = shades
-		visual.add_to_group(World.HIGH_SKY_GROUP)
 		pieces.append(visual)
-		tops.append(DecorKit.top_of(visual.polygon))
 
 
 # The Moons, for World.shown_decor().

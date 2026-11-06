@@ -18,8 +18,8 @@ const MIN_CONTRAST := 0.1
 # How far apart two vertical scroll factors must be to read as clearly different speeds.
 const DISTINCT_SCROLL := 0.05
 # The heights the capture tool reviews, in px above the pad's top, where the scenery in view must
-# move at two clearly different vertical speeds. Higher up (1800 px) only the static sky (the Moons
-# and far clouds, which playtests found looked wrong moving) may be in view.
+# move at two clearly different vertical speeds. Higher up (1800 px) only the far clouds, fixed in
+# the world up and down, may be in view.
 const REVIEWED_HEIGHTS := [0.0, 300.0, 700.0, 1200.0]
 
 
@@ -28,7 +28,7 @@ func pad_top() -> Vector2:
 
 
 # Camera heights above the pad's top, from the pad up to where the Border comes into view at zoom
-# (above that the static sky fades out toward the Border).
+# (above that the view shows deep space).
 func heights(zoom: float) -> Array[float]:
 	var list: Array[float] = []
 	var top := pad_top().y - World.BORDER_Y - world().get_viewport_rect().size.y / zoom / 2.0

@@ -2,10 +2,10 @@ class_name Clouds
 extends Node2D
 # A location's clouds, in three depths (see sky()): high cirrus streaks and lower puffy cumulus
 # behind the scenery, and near translucent wisps in front of everything, the ship included. The
-# cirrus and cumulus are a static backdrop: fixed on screen as the camera moves (they don't scroll
-# with it at all), they only drift slowly sideways on their own wind, tinted by the sky colour
-# behind them. Each fades out as it nears the Border (World.high_sky_opacity()), so none shows in
-# deep space. Each cloud wraps around from one side to the other well outside the view, so none ever
+# cirrus and cumulus fill the sky from just above the pad to just below the Border, fixed in the
+# world (no parallax), so they stay in their spot in the sky as the ship flies around and none ever
+# shows in deep space. They drift slowly
+# sideways on their own wind, tinted by the sky colour behind them. Each cloud wraps around from one side to the other well outside the view, so none ever
 # pops in sight. No collider. Moving a cloud only changes its position (and a wisp's modulate, a far
 # cloud's self_modulate), so nothing is redrawn as they drift.
 #
@@ -21,8 +21,8 @@ enum Kind { CUMULUS, SMOG, DUST }
 enum Form { CIRRUS, CUMULUS }
 
 # Tuning, expected to change in playtests.
-# A cloud's depth and wind by default.
-const SCROLL := Vector2.ZERO
+# A cloud's depth (how fast it scrolls with the camera, the world's being 1) and wind by default.
+const SCROLL := Vector2.ONE
 # The wind, in px/s; rightwards (negative: leftwards).
 const WIND_SPEED := 6.0
 # How much of the sky's own colour (at ground level) lights a cloud over the gradient behind it, so
@@ -57,14 +57,15 @@ const WISP_OPACITY := 0.32
 const WISP_CLEARANCE := 40.0
 const WISP_FADE := 260.0
 
-# The two far depths of sky(), highest first: [form, scroll scale, wind (px/s), how many, the
-# heights above the pad's top they're scattered between as seen with the camera on the pad (they
-# stay there on screen), the smallest and largest half size].
+# The two far depths of sky(), highest first: [form, scroll scale, wind (px/s), how many per 100 px
+# of the heights they're scattered between, those heights above the pad's top (as shares of the
+# climb from the pad's top to the Border, the highest one leaving room for the cloud below it), the
+# smallest and largest half size].
 const DEPTHS := [
 	# Cirrus streaks high in the sky.
-	[Form.CIRRUS, Vector2.ZERO, 3.0, 16, Vector2(150, 300), Vector2(150, 6), Vector2(300, 12)],
-	# Cumulus heaps lower down, partly behind the scenery.
-	[Form.CUMULUS, Vector2.ZERO, 6.0, 14, Vector2(20, 190), Vector2(60, 26), Vector2(130, 48)],
+	[Form.CIRRUS, Vector2.ONE, 3.0, 3.6, Vector2(0.5, 0.94), Vector2(150, 6), Vector2(300, 12)],
+	# Cumulus heaps lower down, the lowest partly behind the scenery.
+	[Form.CUMULUS, Vector2.ONE, 6.0, 2.7, Vector2(0.01, 0.5), Vector2(60, 26), Vector2(130, 48)],
 ]
 # The near wisps in front of the ship, high above the pad: [scroll scale, wind (px/s), how many,
 # the heights above the pad's top they're scattered between (as shares of the climb from the pad's
@@ -112,9 +113,11 @@ static func sky(kind: Kind, pad_top: Vector2, variety: int) -> Array[Cloud]:
 	rng.seed = variety
 	var shape: Vector2 = KINDS[kind][0]
 	var clouds: Array[Cloud] = []
-	for depth: Array in DEPTHS:
-		scatter(clouds, rng, kind, depth[0], depth[1], depth[2], depth[3], depth[4] * shape, depth[5] * shape, depth[6] * shape, pad_top)
 	var to_border := pad_top.y - World.BORDER_Y
+	for depth: Array in DEPTHS:
+		var heights: Vector2 = depth[4] * to_border
+		var count := roundi(depth[3] * (heights.y - heights.x) / 100.0)
+		scatter(clouds, rng, kind, depth[0], depth[1], depth[2], count, heights, depth[5] * shape, depth[6] * shape, pad_top)
 	scatter(clouds, rng, kind, Form.CUMULUS, WISPS[0], WISPS[1], WISPS[2], WISPS[3] * to_border, WISPS[4] * shape, WISPS[5] * shape, pad_top)
 	return clouds
 
@@ -150,8 +153,6 @@ var kinds: Array[Kind] = []
 var translucent: Array[bool] = []
 var shades: Array[PackedFloat32Array] = []
 var alphas: Array[PackedFloat32Array] = []
-# Each far cloud's top, in its own coordinates, for fading it out near the Border.
-var tops := PackedFloat32Array()
 
 
 # Builds the clouds afresh, each depth in its own layer anchored on anchor (the pad's top).
@@ -167,7 +168,6 @@ func build(from: Array[Cloud], anchor: Vector2) -> void:
 	translucent.clear()
 	shades.clear()
 	alphas.clear()
-	tops.clear()
 	drawn.clear()
 	drifted = 0.0
 	var layers := DecorKit.Depths.new(self, anchor)
@@ -186,9 +186,7 @@ func build(from: Array[Cloud], anchor: Vector2) -> void:
 			lanes.append(wisp_lane(cloud, anchor))
 		else:
 			layers.at(cloud.scroll).add_child(visual)
-			visual.add_to_group(World.HIGH_SKY_GROUP)
 			pieces.append(visual)
-			tops.append(DecorKit.top_of(visual.polygon))
 			lanes.append(Vector2(DecorKit.WRAP_LEFT, DecorKit.WRAP_WIDTH))
 		drawn.append(visual)
 		shades.append(shaped[1])
@@ -214,7 +212,6 @@ static func wisp_lane(cloud: Cloud, anchor: Vector2) -> Vector2:
 func _process(delta: float) -> void:
 	drifted += delta
 	drift()
-	DecorKit.fade_toward_border(pieces, tops)
 
 
 # Places each cloud where the wind has carried it, and fades each wisp near its lane's ends.

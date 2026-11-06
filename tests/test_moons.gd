@@ -31,30 +31,30 @@ func in_view(piece: World.Decor) -> bool:
 	return piece.screen_area.intersects(world().get_viewport_rect())
 
 
-# Shown: in view and not faded out.
 func shown(piece: World.Decor) -> bool:
 	return piece.opacity > 0.0 and in_view(piece)
 
 
-# The Moons are a static backdrop: fixed on screen however the camera moves.
-func test_the_moons_stay_fixed_on_screen_as_the_ship_flies_around() -> void:
+# The Moons are very far away sideways and fixed in the world up and down: flying across barely
+# moves them on screen, and climbing sinks them like the ground.
+func test_the_moons_stay_in_their_spot_in_the_sky_as_the_ship_flies_around() -> void:
 	await choose_ship()
+	var zoom := FollowCamera.SURFACE_ZOOM
+	var flown := Vector2(300.0, -1000.0)
 	for location in Location.ALL:
 		clock().move_to(location)
 		await frames(1)
-		for moon in moons():
-			check(moon.scroll_scale == Vector2.ZERO, "a Moon at the %s shouldn't scroll with the camera, its scale %s" % [location.name, moon.scroll_scale])
-		var on_pad := moons(pad_top(), FollowCamera.SURFACE_ZOOM)
-		var elsewhere := moons(pad_top() + Vector2(300.0, -1000.0), FollowCamera.SURFACE_ZOOM)
+		var on_pad := moons(pad_top(), zoom)
+		var elsewhere := moons(pad_top() + flown, zoom)
 		for i in mini(on_pad.size(), elsewhere.size()):
-			check(elsewhere[i].screen_area.position.distance_to(on_pad[i].screen_area.position) < 0.01,
-				"Moon %d at the %s should stay put on screen as the ship flies 1000 px up and 300 px across, from %s to %s"
-				% [i, location.name, on_pad[i].screen_area.position, elsewhere[i].screen_area.position])
-			check(shown(elsewhere[i]) == shown(on_pad[i]),
-				"Moon %d at the %s should still show 1000 px above the pad if it shows on the pad" % [i, location.name])
+			var moved := elsewhere[i].screen_area.position - on_pad[i].screen_area.position
+			check(absf(moved.x) <= 0.05 * flown.x * zoom,
+				"Moon %d at the %s should barely move sideways as the ship flies 300 px across, moved %.0f px" % [i, location.name, moved.x])
+			check_near(moved.y, -flown.y * zoom, 0.5,
+				"Moon %d at the %s should sink like the ground as the ship climbs 1000 px" % [i, location.name])
 
 
-func test_the_moons_have_faded_out_at_the_border_and_stay_out_in_deep_space() -> void:
+func test_the_moons_are_out_of_view_at_the_border_and_in_deep_space() -> void:
 	await choose_ship()
 	var size := world().get_viewport_rect().size
 	for location in Location.ALL:
@@ -90,11 +90,11 @@ func test_the_moons_are_fainter_by_day_than_at_night() -> void:
 
 
 # A tall window shows far more sky below the camera than the standard one, and the fast zoom shows
-# the most; even then the Moons have faded out at the Border.
+# the most; even then the Moons have sunk out of view by the Border.
 const TALL_WINDOW := Vector2i(1152, 1600)
 
 
-func test_the_moons_have_faded_out_at_the_border_on_a_tall_window() -> void:
+func test_the_moons_are_out_of_view_at_the_border_on_a_tall_window() -> void:
 	await choose_ship()
 	var window := world().get_window()
 	var standard := window.size

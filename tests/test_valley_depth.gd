@@ -33,8 +33,8 @@ func test_the_valley_lists_parallax_ridges_clouds_and_a_foreground_without_colli
 	check(ridges.size() >= 4, "the Valley should show its Backdrop in at least four depths, got %d" % ridges.size())
 	check(clouds.size() >= 3, "the Valley should show some clouds, got %d" % clouds.size())
 	check(foreground.size() >= 2, "the Valley should show some Foreground pieces, got %d" % foreground.size())
-	for piece in ridges + clouds:
-		check(piece.scroll_scale.x < 1.0, "a ridge or cloud should scroll more slowly than the world, its scale %s" % piece.scroll_scale)
+	for piece in ridges:
+		check(piece.scroll_scale.x < 1.0, "a ridge should scroll more slowly than the world, its scale %s" % piece.scroll_scale)
 	for piece in foreground:
 		check(piece.scroll_scale.x > 1.0, "a Foreground piece should scroll faster than the world, its scale %s" % piece.scroll_scale)
 	for piece in world().shown_decor(pad_top(), 1.0):

@@ -1,6 +1,6 @@
 extends "res://tests/scene_test.gd"
 # Every Location's clouds in three depths: high cirrus streaks and lower cumulus heaps behind the
-# scenery, a static backdrop fixed on screen, and near translucent wisps in the Foreground, in
+# scenery, filling the sky up to the Border, fixed in the world, and near translucent wisps in the Foreground, in
 # front of the ship, kept out of the Approach corridor.
 # Each depth drifts on its own wind, wraps around only out of sight and is tinted by the sky.
 # Read through the World's decor listing, World.shown_decor().
@@ -39,7 +39,7 @@ func clouds(camera_center := pad_top(), zoom := 1.0) -> Array[World.Decor]:
 	return pieces
 
 
-func test_every_location_has_static_far_clouds_and_near_wisps() -> void:
+func test_every_location_has_far_clouds_and_near_wisps() -> void:
 	await choose_ship()
 	for location_name in LOCATIONS:
 		await at(location_name)
@@ -213,21 +213,40 @@ func test_no_cloud_ever_shows_in_deep_space() -> void:
 				above += SPACE_HEIGHT_STEP
 
 
-# The far clouds are a static backdrop: fixed on screen however the camera moves (only the wind
-# carries them).
-func test_the_far_clouds_stay_fixed_on_screen_as_the_ship_flies_around() -> void:
+# The far clouds are fixed in the world: they pass by on screen like the ground as the ship flies
+# around (only the wind carries them).
+func test_the_far_clouds_stay_in_their_spot_in_the_sky_as_the_ship_flies_around() -> void:
 	await choose_ship()
+	var flown := Vector2(300.0, -1000.0)
 	for location_name in LOCATIONS:
 		await at(location_name)
 		var on_pad := clouds()
-		var elsewhere := clouds(pad_top() + Vector2(300.0, -1000.0))
+		var elsewhere := clouds(pad_top() + flown)
 		for i in mini(on_pad.size(), elsewhere.size()):
 			if on_pad[i].part != World.DecorPart.CLOUD:
 				continue
-			check(on_pad[i].scroll_scale == Vector2.ZERO,
-				"a %s cloud shouldn't scroll with the camera, its scale %s" % [location_name, on_pad[i].scroll_scale])
-			check(elsewhere[i].screen_area.position.distance_to(on_pad[i].screen_area.position) < 0.01,
-				"a %s cloud should stay put on screen as the ship flies 1000 px up and 300 px across" % location_name)
+			var moved := elsewhere[i].screen_area.position - on_pad[i].screen_area.position
+			check(on_pad[i].scroll_scale == Vector2.ONE, "a %s cloud should have no parallax, its scale %s" % [location_name, on_pad[i].scroll_scale])
+			check(moved.distance_to(-flown) < 0.5,
+				"a %s cloud should pass by like the ground as the ship flies 1000 px up and 300 px across, moved %s" % [location_name, moved])
+
+
+# The far clouds fill the sky as the ship climbs: some in the lower, middle and upper part of the
+# climb from the pad's top to the Border.
+func test_the_far_clouds_fill_the_sky_up_to_the_border() -> void:
+	await choose_ship()
+	for location_name in LOCATIONS:
+		await at(location_name)
+		var to_border := pad_top().y - World.BORDER_Y
+		var thirds := [0, 0, 0]
+		for piece in clouds():
+			if piece.part != World.DecorPart.CLOUD:
+				continue
+			# Seen with the camera on the pad's top at zoom 1, the screen's middle is the pad's top.
+			var above := (world().get_viewport_rect().size.y / 2.0 - piece.screen_area.get_center().y) / to_border
+			thirds[clampi(floori(above * 3.0), 0, 2)] += 1
+		for third in 3:
+			check(thirds[third] > 5, "the %s should have far clouds in each third of its climb to the Border, got %s" % [location_name, thirds])
 
 
 # How flat a cloud is: its height over its width on screen.

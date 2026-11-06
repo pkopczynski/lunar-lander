@@ -29,13 +29,6 @@ const TERRAIN_COLOR := Color(0.8, 0.4, 0.2)
 # The solid scenery the sky's darkness dims (the ground, the mountains, a location's terrain);
 # the pad isn't in it, so it stays easy to find at night.
 const SCENERY_GROUP := &"scenery"
-# The far pieces of the sky (the Moons and the far clouds), a static backdrop fixed on screen, so
-# they fade out as they near the Border instead of sinking out of view: fully gone with
-# their top at the Border, fully there HIGH_SKY_FADE px below it. A piece in this group is listed
-# (shown_decor()) faded for the camera asked about.
-const HIGH_SKY_GROUP := &"high_sky"
-const HIGH_SKY_FADE := 300.0
-
 const STAR_SEED := 7
 # Area of deep space per star, in px².
 const STAR_SPACING := 6000.0
@@ -442,11 +435,7 @@ func decor(visual: Node2D, layer: DecorLayer, part: DecorPart, camera_center: Ve
 	else:
 		var polygon := visual as Polygon2D
 		outline = polygon.polygon
-		var self_tint := polygon.self_modulate
-		# A far piece of the sky is faded below, for this camera, not the actual one.
-		if visual.is_in_group(HIGH_SKY_GROUP):
-			self_tint.a = 1.0
-		piece.color = polygon.color * self_tint
+		piece.color = polygon.color * polygon.self_modulate
 		vertex_colors = polygon.vertex_colors
 	if not vertex_colors.is_empty():
 		var total := Color(0, 0, 0, 0)
@@ -468,16 +457,12 @@ func decor(visual: Node2D, layer: DecorLayer, part: DecorPart, camera_center: Ve
 	piece.to_screen = Transform2D(0.0, Vector2(zoom, zoom), 0.0, (shift - camera_center) * zoom + screen_center) \
 		* visual.get_global_transform()
 	var area := Rect2()
-	var top := INF
 	for i in outline.size():
 		var in_world := visual.to_global(outline[i]) + shift
-		top = minf(top, in_world.y)
 		var on_screen := (in_world - camera_center) * zoom + screen_center
 		piece.screen_outline.append(on_screen)
 		area = Rect2(on_screen, Vector2.ZERO) if i == 0 else area.expand(on_screen)
 	piece.screen_area = area
-	if visual.is_in_group(HIGH_SKY_GROUP):
-		piece.color.a *= high_sky_opacity(top)
 	return piece
 
 
@@ -493,10 +478,6 @@ func _draw() -> void:
 	if lowest_point() > GROUND_BOTTOM_Y:
 		draw_rect(Rect2(left, GROUND_BOTTOM_Y, right - left, lowest_point() - GROUND_BOTTOM_Y), sky.ground_color)
 
-
-# How opaque a far piece of the sky is with its top at top_y (see HIGH_SKY_GROUP).
-static func high_sky_opacity(top_y: float) -> float:
-	return clampf((top_y - BORDER_Y) / HIGH_SKY_FADE, 0.0, 1.0)
 
 
 func background_color(y: float) -> Color:
