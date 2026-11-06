@@ -2,11 +2,11 @@ class_name Activity
 extends Node2D
 # A location's signs of work on its Backdrop's structures: red warning lights blinking a little out
 # of step, never dimmed and brighter at night (as CityLights' are), and a few slow movers (a crane's
-# trolley, a hauler, a conveyor's marks), silhouettes filled like the depth they move in. Each piece
-# sits in a parallax layer anchored on the pad (one per depth, DecorKit.Depths), at the scroll scale
-# of the Backdrop depth it stands on, so it stays on its structure. No collider. The lights blink
-# through their own modulate and the movers only change position, so nothing is redrawn as time
-# passes.
+# trolley, a hauler, ore lumps riding a conveyor), silhouettes filled like the depth they move in.
+# Each piece sits in a parallax layer anchored on the pad (one per depth, DecorKit.Depths), at the
+# scroll scale of the Backdrop depth it stands on, so it stays on its structure. No collider. The
+# lights blink through their own modulate and the movers only change position, so nothing is
+# redrawn as time passes.
 
 # Tuning, expected to change in playtests.
 # Sides of the polygon each warning light is drawn as.
@@ -74,14 +74,14 @@ class Mover:
 	var start: float
 	var loops: bool
 
-	func _init(shape: Array, between: Vector2, and_to: Vector2, one_way_seconds: float, scroll_scale: Vector2,
-			started := 0.0, starts_over := false) -> void:
+	func _init(shape: Array, start_point: Vector2, end_point: Vector2, one_way_seconds: float, scroll_scale: Vector2,
+			start_share := 0.0, starts_over := false) -> void:
 		outline = PackedVector2Array(shape)
-		from = between
-		to = and_to
+		from = start_point
+		to = end_point
 		seconds = one_way_seconds
 		scroll = scroll_scale
-		start = started
+		start = start_share
 		loops = starts_over
 
 	# Where it is, time seconds after it started.

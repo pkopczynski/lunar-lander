@@ -47,12 +47,24 @@ func test_the_tallest_crowns_reach_the_ship_well_above_the_pad() -> void:
 		check(not reaching.is_empty(), "a Valley crown should reach the ship's height %s px above the pad at zoom %s" % [CROWN_REACH, zoom])
 
 
+# The glows are lights, listed with the city lights, though drawn in front with the crowns.
+func glows() -> Array[World.Decor]:
+	var pieces: Array[World.Decor] = []
+	for piece in world().shown_decor(pad_top(), 1.0):
+		if piece.part == World.DecorPart.GLOW and piece.layer != World.DecorLayer.BEACON:
+			pieces.append(piece)
+	return pieces
+
+
 func test_some_crowns_glow_faintly_at_night_and_not_by_day() -> void:
 	await choose_ship()
 	await at_hour(13)
-	var by_day := foreground(World.DecorPart.GLOW)
+	var by_day := glows()
 	await at_hour(1)
-	var at_night := foreground(World.DecorPart.GLOW)
+	var at_night := glows()
+	for glow in by_day:
+		check(glow.layer == World.DecorLayer.LIGHTS, "a crown's glow should be listed as a light, its layer %d" % glow.layer)
+		check(glow.scroll_scale.x > 1.0, "a crown's glow should move with the Foreground, in front of the world, its scale %s" % glow.scroll_scale)
 	check(by_day.size() >= 2, "some Valley crowns should have a glow, got %d" % by_day.size())
 	for glow in by_day:
 		check(glow.opacity == 0.0, "a crown's glow should be off by day, its opacity %s" % glow.opacity)

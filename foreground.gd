@@ -203,8 +203,8 @@ static func add_tree(stand: Silhouette, kind: Plant, x: float, height: float, ha
 				var center := Vector2(x + rng.randf_range(-0.2, 0.2) * half_width, y)
 				stand.shapes.append(blob(center, Vector2(radius * 1.1, radius), rng))
 				if lobe < 2:
-					stand.glows.append(ellipse(center, Vector2(radius * 0.6, radius * 0.55), 12))
-					stand.glows.append(ellipse(center, Vector2(radius * 0.3, radius * 0.28), 10))
+					stand.glows.append(DecorKit.ellipse(center, Vector2(radius * 0.6, radius * 0.55), 12))
+					stand.glows.append(DecorKit.ellipse(center, Vector2(radius * 0.3, radius * 0.28), 10))
 				y += radius * 2.6
 				radius *= 1.25
 		Plant.UMBRELLA:
@@ -212,7 +212,7 @@ static func add_tree(stand: Silhouette, kind: Plant, x: float, height: float, ha
 			var canopy := Vector2(x, top_y + half_width * 0.25)
 			stand.shapes.append(trunk(x, foot, canopy.y, half_width * 0.14))
 			stand.shapes.append(blob(canopy, Vector2(half_width, half_width * 0.25), rng))
-			stand.glows.append(ellipse(canopy + Vector2(0, half_width * 0.08), Vector2(half_width * 0.6, half_width * 0.1), 16))
+			stand.glows.append(DecorKit.ellipse(canopy + Vector2(0, half_width * 0.08), Vector2(half_width * 0.6, half_width * 0.1), 16))
 
 
 # A trunk from foot (inside the near ground) up to top, flaring at its foot.
@@ -284,14 +284,6 @@ static func blob(center: Vector2, size: Vector2, rng: RandomNumberGenerator) -> 
 	return points
 
 
-static func ellipse(center: Vector2, size: Vector2, sides: int) -> PackedVector2Array:
-	var points := PackedVector2Array()
-	for i in sides:
-		var angle := TAU * i / sides
-		points.append(center + Vector2(cos(angle) * size.x, sin(angle) * size.y))
-	return points
-
-
 static func metropolis() -> Array[Silhouette]:
 	return [Silhouette.new(METROPOLIS_LEFT_ROOFS, METROPOLIS_SCROLL), Silhouette.new(METROPOLIS_PARAPET, METROPOLIS_SCROLL),
 		Silhouette.new(METROPOLIS_RIGHT_ROOFS, METROPOLIS_SCROLL)]
@@ -334,10 +326,11 @@ func build(from: Array[Silhouette], bottom_y: float, anchor: Vector2) -> void:
 			glows.append(glow)
 
 
-# The silhouettes and their glows, for World.shown_decor().
+# The silhouettes and their glows, for World.shown_decor(). The glows are drawn in front with
+# their crowns but listed as lights, so the Foreground stays near-black but for the wisps.
 func listed_decor() -> Array[World.Listing]:
 	return World.listings(pieces, World.DecorLayer.FOREGROUND, World.DecorPart.SILHOUETTE) \
-		+ World.listings(glows, World.DecorLayer.FOREGROUND, World.DecorPart.GLOW)
+		+ World.listings(glows, World.DecorLayer.LIGHTS, World.DecorPart.GLOW)
 
 
 func show_sky(sky: SkyLook) -> void:

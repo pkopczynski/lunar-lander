@@ -4,12 +4,12 @@ extends Node2D
 # a light, in parallax layers anchored on the pad that move more slowly than the world (one per
 # depth: each vehicle has its own scroll scale, by default SCROLL). Each one
 # wraps around from one side to the other well outside the view. No collider. Moving a vehicle only
-# changes its position, so nothing is redrawn as they fly. The hulls dim with the sky like the
-# scenery; their lights are never dimmed and grow brighter as it darkens (see CityLights).
+# changes its position, so nothing is redrawn as they fly. Each hull is filled like the Backdrop
+# depth it flies in (Backdrop.color_of()), so it steps in tone by depth and follows the sky; their
+# lights are never dimmed and grow brighter as it darkens (see CityLights).
 
 # Tuning, expected to change in playtests.
 const SCROLL := Vector2(0.5, 0.96)
-const HULL_COLOR := Color(0.28, 0.34, 0.5)
 const HULL := [Vector2(-12, 0), Vector2(-8, -4), Vector2(6, -4), Vector2(12, 0), Vector2(8, 3), Vector2(-9, 3)]
 const LIGHT_COLOR := Color(0.6, 0.9, 1.0)
 const LIGHT_RADIUS := 1.5
@@ -76,7 +76,6 @@ func build(from: Array[Vehicle], anchor: Vector2) -> void:
 		# Flying leftwards, the hull faces left.
 		hull.polygon = PackedVector2Array(HULL)
 		hull.scale.x = signf(vehicle.speed) if vehicle.speed != 0.0 else 1.0
-		hull.color = HULL_COLOR
 		hull.position = vehicle.start
 		layers.at(vehicle.scroll).add_child(hull)
 		var light := Polygon2D.new()
@@ -122,9 +121,9 @@ func listed_decor() -> Array[World.Listing]:
 	return listed
 
 
-# Dims the hulls with the sky's darkness, as the scenery is, and brightens their lights and trails.
-func show_sky(sky: SkyLook) -> void:
+# Fills each hull like its depth of the Backdrop, and brightens their lights and trails.
+func show_sky(sky: SkyLook, backdrop: Backdrop) -> void:
 	for i in hulls.size():
-		hulls[i].self_modulate = Color.WHITE.darkened(sky.darkness)
+		hulls[i].color = backdrop.color_of((hulls[i].get_parent() as AnchoredParallax).scroll_scale)
 		lights[i].self_modulate = CityLights.brightness(sky)
 		trails[i].self_modulate = CityLights.brightness(sky)

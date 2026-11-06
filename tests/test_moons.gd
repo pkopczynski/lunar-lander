@@ -79,3 +79,29 @@ func test_the_moons_are_fainter_by_day_than_at_night() -> void:
 		for i in mini(by_day.size(), at_night.size()):
 			check(by_day[i].color.a < at_night[i].color.a,
 				"Moon %d at the %s should be fainter by day (%s) than at night (%s)" % [i, location.name, by_day[i].color, at_night[i].color])
+
+
+# A tall window shows far more sky below the camera than the standard one, and the fast zoom shows
+# the most; even then the Moons have sunk out of view at the Border.
+const TALL_WINDOW := Vector2i(1152, 1600)
+
+
+func test_the_moons_have_sunk_out_of_view_at_the_border_on_a_tall_window() -> void:
+	await choose_ship()
+	var window := world().get_window()
+	var standard := window.size
+	window.size = TALL_WINDOW
+	await frames(1)
+	var view := world().get_viewport_rect()
+	check(view.size.y > view.size.x * 1.3, "the view should be tall for this check, got %s" % view.size)
+	var zoom := FollowCamera.SURFACE_ZOOM * FollowCamera.FAST_ZOOM_FACTOR
+	for location in Location.ALL:
+		clock().move_to(location)
+		await frames(1)
+		var half_view: float = view.size.x / zoom / 2.0
+		for x in [half_view, pad_x(), World.WORLD_WIDTH - half_view]:
+			for moon in moons(Vector2(x, World.BORDER_Y), zoom):
+				check(not in_view(moon), "no Moon should be in view at the %s at the Border on a %s window, camera x %d: %s"
+					% [location.name, TALL_WINDOW, x, moon.screen_area])
+	window.size = standard
+	await frames(1)

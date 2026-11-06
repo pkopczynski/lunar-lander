@@ -22,8 +22,9 @@ const MOUNTAIN_OUTLINE := [
 	Vector2(70, 260), Vector2(110, 240), Vector2(150, 320), Vector2(130, 370), Vector2(190, 410),
 	Vector2(170, 460), Vector2(230, 500), Vector2(210, 550), Vector2(250, 600), Vector2(250, 640),
 ]
-# A location's terrain, such as the Mine's benches: warmer than the ground, like cut rock.
-const TERRAIN_COLOR := Color(0.6, 0.42, 0.3)
+# A location's terrain, such as the Mine's benches: redder than the ground, like cut rock or brick. Light
+# and saturated, like the Mountains' colours, so it never meets the sky-tinted decor at any hour.
+const TERRAIN_COLOR := Color(0.8, 0.4, 0.2)
 
 # The solid scenery the sky's darkness dims (the ground, the mountains, a location's terrain);
 # the pad isn't in it, so it stays easy to find at night.
@@ -165,7 +166,7 @@ func show_sky() -> void:
 	clouds.show_sky(sky, background_color)
 	foreground.show_sky(sky)
 	city_lights.show_sky(sky)
-	vehicles.show_sky(sky)
+	vehicles.show_sky(sky, backdrop)
 	activity.show_sky(sky, backdrop)
 	queue_redraw()
 
@@ -200,7 +201,7 @@ func show_location(to: Location) -> void:
 	city_lights.build(to)
 	city_lights.show_sky(sky)
 	vehicles.build(to.vehicles, anchor)
-	vehicles.show_sky(sky)
+	vehicles.show_sky(sky, backdrop)
 	activity.build(to.activity_lights, to.movers, anchor)
 	activity.show_sky(sky, backdrop)
 	dress_mountains(to.mountains)
@@ -260,7 +261,7 @@ func dress_mountains(look: MountainLook) -> void:
 			var visual := Polygon2D.new()
 			var points := PackedVector2Array()
 			var shapes: Array[PackedInt32Array] = []
-			for shape: PackedVector2Array in dressing[1]:
+			for shape: PackedVector2Array in dressing.shapes[side]:
 				var indices := PackedInt32Array()
 				for point in shape:
 					indices.append(points.size())
@@ -268,7 +269,7 @@ func dress_mountains(look: MountainLook) -> void:
 				shapes.append(indices)
 			visual.polygon = points
 			visual.polygons = shapes
-			visual.color = dressing[0]
+			visual.color = dressing.color
 			mountains.add_child(visual)
 			add_scenery(visual)
 
@@ -345,7 +346,8 @@ enum DecorLayer { BACKDROP, PARALLAX, FOREGROUND, BEACON, LIGHTS }
 # flying vehicle's light) or a flying vehicle; then a Moon, a Vehicle's trail and a translucent
 # cloud wisp in front of the ship; then a skyline depth's lit windows (one mesh), its beacons (one
 # mesh) and a band of haze between skyline depths; then a slow mover on the Backdrop's structures
-# (a crane's trolley, a hauler, a conveyor's marks). New kinds of decor add their part at the end.
+# (a crane's trolley, a hauler, ore lumps riding a conveyor). New kinds of decor add their part at
+# the end.
 enum DecorPart { LIGHT, GLOW, RIDGE, CLOUD, SILHOUETTE, WINDOWS, NEON, WARNING_LIGHT, VEHICLE_LIGHT, VEHICLE, MOON, TRAIL, WISP, SKYLINE_WINDOWS, SKYLINE_BEACON, HAZE, MOVER }
 
 
@@ -354,7 +356,7 @@ enum DecorPart { LIGHT, GLOW, RIDGE, CLOUD, SILHOUETTE, WINDOWS, NEON, WARNING_L
 # of its vertex colours), its opacity as drawn (its colour's alpha: 1 opaque, 0 invisible), how fast
 # it scrolls with the camera (its parallax layer's scroll scale; the world's, 1, if it's in none)
 # and where it appears on screen: its outline (a mesh's is its bounding box) and that outline's
-# bounding box.
+# bounding box, and for a mesh of lights (windows), each light's rectangle (screen_rects()).
 class Decor:
 	var layer: DecorLayer
 	var part: DecorPart
@@ -366,6 +368,19 @@ class Decor:
 	var scroll_scale := Vector2.ONE
 	var screen_outline: PackedVector2Array
 	var screen_area: Rect2
+	# A mesh's triangles, two per light, and how its points map onto the screen.
+	var mesh_vertices: PackedVector2Array
+	var to_screen: Transform2D
+
+	# Each of a mesh's lights on screen, in the order it was built: none for a polygon.
+	func screen_rects() -> Array[Rect2]:
+		var rects: Array[Rect2] = []
+		for i in range(0, mesh_vertices.size(), 6):
+			var rect := Rect2(to_screen * mesh_vertices[i], Vector2.ZERO)
+			for corner in range(i + 1, i + 6):
+				rect = rect.expand(to_screen * mesh_vertices[corner])
+			rects.append(rect)
+		return rects
 
 
 # One decor piece as its module lists it (each decor module's listed_decor()): its visual (a
@@ -417,6 +432,7 @@ func decor(visual: Node2D, layer: DecorLayer, part: DecorPart, camera_center: Ve
 			Vector2(box.end.x, box.end.y), Vector2(box.position.x, box.end.y)])
 		piece.color = visual.self_modulate
 		vertex_colors = mesh.surface_get_arrays(0)[Mesh.ARRAY_COLOR]
+		piece.mesh_vertices = mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
 	else:
 		var polygon := visual as Polygon2D
 		outline = polygon.polygon
@@ -439,6 +455,8 @@ func decor(visual: Node2D, layer: DecorLayer, part: DecorPart, camera_center: Ve
 			shift = parallax.offset_for(camera_center) - parallax.position
 		node = node.get_parent()
 	var screen_center := get_viewport_rect().size / 2.0
+	piece.to_screen = Transform2D(0.0, Vector2(zoom, zoom), 0.0, (shift - camera_center) * zoom + screen_center) \
+		* visual.get_global_transform()
 	var area := Rect2()
 	for i in outline.size():
 		var on_screen := (visual.to_global(outline[i]) + shift - camera_center) * zoom + screen_center

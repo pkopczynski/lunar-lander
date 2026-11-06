@@ -14,6 +14,9 @@ const BELOW_BORDER := 50.0
 const MIN_IN_VIEW := 20.0
 # How visible a piece must be drawn to count as in view (a Moon is faint by day, but shows).
 const MIN_OPACITY := 0.1
+# How far, in RGB, a piece as seen (blended over the sky by its opacity) must be from the sky behind
+# it to count as in view: a cloud drawn as dark as the night sky isn't seen.
+const MIN_CONTRAST := 0.1
 # How far apart two vertical scroll factors must be to read as clearly different speeds.
 const DISTINCT_SCROLL := 0.05
 # The heights the capture tool reviews, in px above the pad's top, where the scenery in view must
@@ -38,16 +41,25 @@ func heights() -> Array[float]:
 
 
 # The scenery in view for a camera at camera_center: every decor piece but the pad's Beacon,
-# drawn visibly enough and far enough on screen.
+# drawn visibly enough, far enough on screen, and standing out from the sky behind it.
 func in_view(camera_center: Vector2, zoom: float) -> Array[World.Decor]:
 	var view := world().get_viewport_rect().grow(-MIN_IN_VIEW)
 	var pieces: Array[World.Decor] = []
 	for piece in world().shown_decor(camera_center, zoom):
 		if piece.layer == World.DecorLayer.BEACON or piece.opacity < MIN_OPACITY:
 			continue
-		if piece.screen_area.intersects(view):
+		if piece.screen_area.intersects(view) and contrast(piece, camera_center, zoom) >= MIN_CONTRAST:
 			pieces.append(piece)
 	return pieces
+
+
+# How far a piece as seen is from the sky behind the middle of its part on screen, in RGB.
+func contrast(piece: World.Decor, camera_center: Vector2, zoom: float) -> float:
+	var view := world().get_viewport_rect()
+	var screen_y := piece.screen_area.intersection(view).get_center().y
+	var sky := world().background_color(camera_center.y + (screen_y - view.size.y / 2.0) / zoom)
+	var seen := sky.lerp(Color(piece.color, 1.0), piece.opacity)
+	return Vector3(seen.r - sky.r, seen.g - sky.g, seen.b - sky.b).length()
 
 
 # The clearly different vertical scroll factors among pieces, each at least DISTINCT_SCROLL apart.
@@ -95,3 +107,22 @@ func test_the_scenery_in_view_moves_at_two_clearly_different_vertical_speeds_at_
 					check(scrolls.size() >= 2,
 						"at the %s at %02d:00 the scenery in view %.0f px above the pad at zoom %s moves at only one vertical speed: %s"
 						% [location.name, hour, height, zoom, scrolls])
+
+
+# Deep space shows no surface decor of any kind: with the whole view above the Border, at every zoom
+# the camera flies at, from just above the Border to the top of space, by day and at night.
+func test_no_decor_is_in_view_with_the_camera_in_deep_space() -> void:
+	await choose_ship()
+	var view := world().get_viewport_rect()
+	for location in Location.ALL:
+		for hour in HOURS:
+			await at(location, hour)
+			for zoom: float in ZOOMS + [FollowCamera.DEEP_SPACE_ZOOM]:
+				var half_view: Vector2 = view.size / zoom / 2.0
+				for x: float in [half_view.x, pad_x(), World.WORLD_WIDTH - half_view.x]:
+					for y: float in [World.BORDER_Y - half_view.y - 1.0, World.BORDER_Y - half_view.y - 300.0,
+							World.SPACE_TOP_Y + half_view.y]:
+						for piece in world().shown_decor(Vector2(x, y), zoom):
+							check(not (piece.opacity > 0.0 and piece.screen_area.intersects(view)),
+								"at the %s at %02d:00 no decor should be in view in deep space, camera %s at zoom %s: layer %d, part %d at %s"
+								% [location.name, hour, Vector2(x, y), zoom, piece.layer, piece.part, piece.screen_area])

@@ -9,13 +9,14 @@ extends Node2D
 # Tuning, expected to change in playtests.
 # The four bodies, giant first: their colour (dusty rose, blue-grey, ochre, bone) and how fast each
 # scrolls with the camera, the world's being 1. Each must have sunk out of view at the Border, at
-# every zoom, from wherever a location places it: a tall window at the fast-flight zoom shows
-# ~680 px above and below the camera, so their vertical factors sit near 0.5. Shaded, each colour
-# must stay 0.1 from every solid terrain colour, however dimmed (see test_tonal_depth.gd).
+# every zoom, from wherever a location places it: a tall window (1152×1600) at the fast-flight
+# zoom shows ~950 px above and below the camera, so their vertical factors sit between 0.6 and 0.7.
+# Shaded, each colour must stay 0.1 from every solid terrain colour, however dimmed (see
+# test_tonal_depth.gd).
 const COLORS: Array[Color] = [
 	Color(0.8, 0.58, 0.58), Color(0.6, 0.65, 0.72), Color(0.77, 0.67, 0.45), Color(0.86, 0.83, 0.75),
 ]
-const SCROLLS: Array[Vector2] = [Vector2(0.1, 0.45), Vector2(0.08, 0.5), Vector2(0.06, 0.55), Vector2(0.06, 0.55)]
+const SCROLLS: Array[Vector2] = [Vector2(0.1, 0.6), Vector2(0.08, 0.65), Vector2(0.06, 0.7), Vector2(0.06, 0.7)]
 # Where each location shows the four, giant first: each centre as seen from the pad's top (with the
 # camera centred there) and radius.
 const VALLEY := [

@@ -38,12 +38,14 @@ func pieces_in(layer: World.DecorLayer) -> Array[World.Decor]:
 	return pieces
 
 
-# The Backdrop's depths, farther first: its pieces grouped by how fast they scroll sideways (the
-# slower, the farther), then the Foreground's opaque silhouettes as the nearest depth (the clouds'
-# translucent wisps and the glows in some crowns aren't a depth).
+# The Backdrop's depths, farther first: its pieces, the flying Vehicles' hulls and the slow movers
+# grouped by how fast they scroll sideways (the slower, the farther), then the Foreground's opaque
+# silhouettes as the nearest depth (the clouds' translucent wisps aren't a depth).
 func depths() -> Array[Array]:
 	var by_scroll := {}
-	for piece in pieces_in(World.DecorLayer.BACKDROP):
+	var stepped := pieces_in(World.DecorLayer.BACKDROP) + pieces_in(World.DecorLayer.PARALLAX).filter(
+		func(piece: World.Decor) -> bool: return piece.part in [World.DecorPart.VEHICLE, World.DecorPart.MOVER])
+	for piece: World.Decor in stepped:
 		if not by_scroll.has(piece.scroll_scale.x):
 			by_scroll[piece.scroll_scale.x] = []
 		by_scroll[piece.scroll_scale.x].append(piece)
@@ -88,25 +90,42 @@ func solid_colors() -> Array[Color]:
 # Foreground. Lights (windows, neon, the Beacon, the glows in some crowns) are small glowing points
 # on top of things.
 func scenery_decor() -> Array[World.Decor]:
-	var surfaces := [World.DecorLayer.BACKDROP, World.DecorLayer.PARALLAX, World.DecorLayer.FOREGROUND]
 	return world().shown_decor(pad_top(), 1.0).filter(func(piece: World.Decor) -> bool:
-		return piece.layer in surfaces and piece.part != World.DecorPart.GLOW)
+		return piece.layer in [World.DecorLayer.BACKDROP, World.DecorLayer.PARALLAX, World.DecorLayer.FOREGROUND])
 
 
 func distance(a: Color, b: Color) -> float:
 	return Vector3(a.r - b.r, a.g - b.g, a.b - b.b).length()
 
 
-func test_solid_terrain_always_looks_different_from_every_decor_piece() -> void:
+# Not only at the sky tests' hours: the sky-tinted decor sweeps through many colours in between
+# (grey before dawn, orange-brown in the evening), and solid terrain must never match it. Each
+# solid visual (the ground, each of the Mountains' colours, each terrain polygon) is reported with
+# the closest it came to any decor all day.
+func test_solid_terrain_always_looks_different_from_every_decor_piece_all_day() -> void:
 	await choose_ship()
 	for index in locations().size():
 		await at_location(index)
 		var where: String = world().location.name
-		for hour: int in HOURS:
-			await at_hour(hour)
-			for solid in solid_colors():
-				check(solid.a == 1.0, "solid terrain at the %s should be opaque, its colour %s" % [where, solid])
-				for piece in scenery_decor():
-					check(distance(solid, piece.color) >= MIN_DISTINCT,
-						"at the %s at %02d:30, solid terrain (%s) should look different from decor (layer %d, part %d, %s), %.3f apart"
-						% [where, hour, solid, piece.layer, piece.part, piece.color, distance(solid, piece.color)])
+		var closest: Array[float] = []
+		var closest_at: Array[String] = []
+		for minute in range(0, 24 * 60, 15):
+			clock().minutes = minute + 0.5
+			await frames(1)
+			var solids := solid_colors()
+			closest.resize(solids.size())
+			closest_at.resize(solids.size())
+			var decor := scenery_decor()
+			for i in solids.size():
+				check(solids[i].a == 1.0, "solid terrain at the %s should be opaque, its colour %s" % [where, solids[i]])
+				if minute == 0:
+					closest[i] = INF
+				for piece in decor:
+					if distance(solids[i], piece.color) < closest[i]:
+						closest[i] = distance(solids[i], piece.color)
+						closest_at[i] = "%02d:%02d, solid %s, decor (layer %d, part %d) %s" % [
+							minute / 60, minute % 60, solids[i], piece.layer, piece.part, piece.color]
+		for i in closest.size():
+			check(closest[i] >= MIN_DISTINCT,
+				"at the %s solid visual %d should look different from every decor piece all day, closest %.3f at %s"
+				% [where, i, closest[i], closest_at[i]])

@@ -33,10 +33,23 @@ func shown_area(piece: World.Decor) -> float:
 
 
 # A Mine wall or structure: a Backdrop silhouette (the ropeway, conveyors), or a ridge nearer
-# than the Himalaya-like peaks (the far walls and upper benches, with their facilities).
-func is_wall_or_structure(piece: World.Decor) -> bool:
+# than the Himalaya-like peaks, the two farthest depths drawn (the far walls and upper benches,
+# with their facilities).
+func is_wall_or_structure(piece: World.Decor, peaks_scroll: float) -> bool:
 	return piece.layer == World.DecorLayer.BACKDROP and (piece.part == World.DecorPart.SILHOUETTE
-		or piece.scroll_scale.x > Backdrop.HIMALAYA_NEAR_SCROLL.x)
+		or piece.scroll_scale.x > peaks_scroll)
+
+
+# How fast the nearer of the Himalaya-like peaks scrolls sideways: the second-farthest Backdrop
+# ridge depth drawn.
+func peaks_scroll(pieces: Array[World.Decor]) -> float:
+	var scrolls: Array[float] = []
+	for piece in pieces:
+		if piece.layer == World.DecorLayer.BACKDROP and piece.part == World.DecorPart.RIDGE \
+				and not piece.scroll_scale.x in scrolls:
+			scrolls.append(piece.scroll_scale.x)
+	scrolls.sort()
+	return scrolls[1]
 
 
 func test_the_mines_walls_or_structures_are_in_view_700_and_1200_px_above_the_pad() -> void:
@@ -46,8 +59,10 @@ func test_the_mines_walls_or_structures_are_in_view_700_and_1200_px_above_the_pa
 	for height in HEIGHTS:
 		var camera := Vector2(pad_x(), world().location.ground_y - Lander.PAD_HEIGHT - height)
 		var shown := 0.0
-		for piece in world().shown_decor(camera, FollowCamera.SURFACE_ZOOM):
-			if is_wall_or_structure(piece):
+		var pieces := world().shown_decor(camera, FollowCamera.SURFACE_ZOOM)
+		var peaks := peaks_scroll(pieces)
+		for piece in pieces:
+			if is_wall_or_structure(piece, peaks):
 				shown += shown_area(piece)
 		check(shown >= MIN_SHOWN,
 			"%d px above the Mine's pad the window should show its walls or structures (at least %d px²), shows %d px²"
