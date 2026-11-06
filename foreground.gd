@@ -37,38 +37,79 @@ const VALLEY_RIGHT_STAND := [
 	Vector2(1690, 540), Vector2(1680, 540), Vector2(1720, 600), Vector2(1760, 600),
 ]
 
-# The Metropolis's near rooftops, well to the sides of its pad's building: on the left a roof with
-# a water tank and a mast, on the right one with a billboard.
+# The Metropolis's near rooftops, rising from one continuous near strip on both sides of the
+# Approach corridor, the tallest just beside it so they stay in view through the landing on the
+# pad's roof. On the left a roof with a water tank and antennas, and a pagoda-like tower whose top
+# reaches far above the pad; under the corridor only a low parapet with pipes, below the pad's roof
+# on screen; on the right a tower with a sloped roof and antennas, then a roof with a billboard.
+# Three pieces, so the tall ones stay left and right of the corridor.
 const METROPOLIS_SCROLL := Vector2(1.4, 1.06)
-const METROPOLIS_LEFT_ROOF := [
-	Vector2(430, 720), Vector2(430, 670), Vector2(470, 670), Vector2(470, 610), Vector2(480, 600),
-	Vector2(530, 600), Vector2(540, 610), Vector2(540, 670), Vector2(600, 670), Vector2(600, 560),
-	Vector2(606, 560), Vector2(606, 670), Vector2(680, 670), Vector2(680, 700), Vector2(720, 700),
+const METROPOLIS_LEFT_ROOFS := [
+	Vector2(-1200, 690), Vector2(80, 690), Vector2(80, 630), Vector2(205, 630), Vector2(205, 575),
+	Vector2(212, 565), Vector2(258, 565), Vector2(265, 575), Vector2(265, 630), Vector2(330, 630),
+	Vector2(330, 600), Vector2(520, 600), Vector2(520, 540), Vector2(640, 540), Vector2(640, 400),
+	Vector2(646, 400), Vector2(646, 540), Vector2(700, 540), Vector2(700, 450), Vector2(704, 450),
+	Vector2(704, 540), Vector2(880, 540),
+	# The pagoda-like tower: three tiers of upturned eaves and a spire.
+	Vector2(880, 425), Vector2(842, 418), Vector2(834, 404), Vector2(868, 396), Vector2(900, 372),
+	Vector2(900, 330), Vector2(860, 322), Vector2(852, 308), Vector2(884, 300), Vector2(912, 280),
+	Vector2(912, 240), Vector2(876, 232), Vector2(868, 218), Vector2(900, 208), Vector2(936, 170),
+	Vector2(938, 90), Vector2(942, 90), Vector2(944, 170), Vector2(980, 208), Vector2(1012, 218),
+	Vector2(1004, 232), Vector2(968, 240), Vector2(968, 280), Vector2(996, 300), Vector2(1028, 308),
+	Vector2(1020, 322), Vector2(980, 330), Vector2(980, 372), Vector2(1012, 396), Vector2(1046, 404),
+	Vector2(1038, 418), Vector2(1000, 425), Vector2(1000, 600), Vector2(1040, 600), Vector2(1040, 588),
+	Vector2(1064, 588), Vector2(1064, 720),
 ]
-const METROPOLIS_RIGHT_ROOF := [
-	Vector2(1640, 720), Vector2(1640, 660), Vector2(1690, 660), Vector2(1690, 580), Vector2(1860, 580),
-	Vector2(1860, 660), Vector2(1900, 660), Vector2(1900, 700), Vector2(1960, 700),
+const METROPOLIS_PARAPET := [
+	Vector2(990, 720), Vector2(1080, 720), Vector2(1080, 700), Vector2(1120, 700), Vector2(1120, 712),
+	Vector2(1240, 712), Vector2(1240, 704), Vector2(1290, 704), Vector2(1290, 712), Vector2(1380, 712),
+	Vector2(1380, 696), Vector2(1396, 696), Vector2(1396, 712), Vector2(1520, 712),
+]
+const METROPOLIS_RIGHT_ROOFS := [
+	Vector2(1440, 712), Vector2(1500, 712), Vector2(1500, 670), Vector2(1540, 670), Vector2(1540, 640),
+	Vector2(1580, 640),
+	# The tower with cornice ledges, its sloped roof and two antennas.
+	Vector2(1580, 430), Vector2(1566, 426), Vector2(1566, 414), Vector2(1580, 414), Vector2(1580, 300),
+	Vector2(1570, 296), Vector2(1570, 286), Vector2(1580, 286), Vector2(1580, 180), Vector2(1598, 189), Vector2(1598, 80), Vector2(1602, 80), Vector2(1602, 191),
+	Vector2(1640, 210), Vector2(1640, 140), Vector2(1646, 140), Vector2(1646, 213), Vector2(1700, 240),
+	Vector2(1700, 600),
+	# The billboard, then a water tank.
+	Vector2(1780, 600), Vector2(1780, 470), Vector2(1950, 470), Vector2(1950, 600), Vector2(2080, 600),
+	Vector2(2080, 545), Vector2(2088, 535), Vector2(2132, 535), Vector2(2140, 545), Vector2(2140, 600),
+	Vector2(2220, 600), Vector2(2220, 650), Vector2(3200, 650),
 ]
 
-# The Mine's silhouettes, scrolling faster than the Valley's (stronger parallax): a spoil heap and a
-# haul truck on the left benches, an ore heap on the pit floor left of the pad, and an ore heap with
-# a conveyor's head tower on the right. All below the crane's arm, so as they only ever move down
-# from where they were designed (the camera is never below the pad), they never hide it.
-const MINE_SCROLL := Vector2(1.7, 1.1)
-const MINE_LEFT_HEAP := [
+# The Mine's silhouettes, scrolling faster than the Valley's (stronger parallax): two continuous
+# near strips of spoil, one on each side of the Approach corridor, each running far out of view on
+# its outer end and dropping steeply below the view toward the corridor, so no block side shows.
+# On the left, a spoil heap and a haul truck on the left benches, then an ore heap on the pit floor
+# with a stacker's tower; on the right, an ore heap under a conveyor's head tower, its gallery
+# sloping down to the right onto the heap. Each tower tops out just below the crane's arm (MINE_TOP_Y), so as the
+# strips only ever move down from where they were designed (the camera is never below the pad),
+# they never hide it; just low enough to stay in view on each side of the corridor through the last
+# ~500 px of the approach. Each strip stays clear of the corridor and of the benches near the pad
+# with the camera following the ship a little to either side.
+const MINE_SCROLL := Vector2(1.7, 1.07)
+# The highest a Mine silhouette reaches: just below the crane's arm (Location.CRANE, bottom 462).
+const MINE_TOP_Y := 463.0
+const MINE_LEFT_STRIP := [
+	Vector2(-1500, 790), Vector2(-900, 770), Vector2(-500, 740), Vector2(-200, 700), Vector2(0, 665),
 	Vector2(40, 640), Vector2(90, 590), Vector2(140, 605), Vector2(190, 560), Vector2(240, 585),
 	Vector2(290, 570), Vector2(330, 610), Vector2(380, 630), Vector2(420, 630), Vector2(420, 590),
 	Vector2(445, 590), Vector2(445, 565), Vector2(480, 565), Vector2(480, 590), Vector2(500, 590),
-	Vector2(505, 555), Vector2(640, 545), Vector2(650, 575), Vector2(660, 600), Vector2(660, 640),
-	Vector2(700, 650),
+	Vector2(505, 555), Vector2(640, 545), Vector2(650, 575), Vector2(660, 600), Vector2(690, 640),
+	Vector2(740, 690), Vector2(790, 715), Vector2(830, 700), Vector2(860, 665), Vector2(880, 640),
+	Vector2(890, 640), Vector2(890, 480), Vector2(882, 480), Vector2(882, MINE_TOP_Y),
+	Vector2(950, MINE_TOP_Y), Vector2(950, 476), Vector2(940, 476), Vector2(905, 500),
+	Vector2(905, 640), Vector2(935, 655), Vector2(965, 690), Vector2(985, 760), Vector2(1000, 1000),
 ]
-const MINE_PIT_HEAP := [
-	Vector2(820, 760), Vector2(870, 720), Vector2(910, 705), Vector2(950, 725), Vector2(1000, 770),
-]
-const MINE_RIGHT_CONVEYOR := [
-	Vector2(1680, 720), Vector2(1720, 690), Vector2(1770, 650), Vector2(1800, 655), Vector2(1820, 640),
-	Vector2(1840, 640), Vector2(1840, 520), Vector2(1880, 520), Vector2(1880, 560), Vector2(1960, 600),
-	Vector2(2050, 640), Vector2(2200, 660),
+const MINE_RIGHT_STRIP := [
+	Vector2(1600, 1000), Vector2(1608, 820), Vector2(1620, 745), Vector2(1636, 712), Vector2(1636, 482),
+	Vector2(1626, 482), Vector2(1626, MINE_TOP_Y), Vector2(1690, MINE_TOP_Y), Vector2(1690, 474),
+	Vector2(2000, 612), Vector2(2000, 628), Vector2(1664, 492), Vector2(1664, 705), Vector2(1700, 722),
+	Vector2(1760, 706), Vector2(1840, 682), Vector2(1920, 657), Vector2(1990, 641), Vector2(2040, 643),
+	Vector2(2140, 656), Vector2(2200, 650), Vector2(2260, 668), Vector2(2500, 710), Vector2(3000, 750),
+	Vector2(3500, 790),
 ]
 
 
@@ -88,12 +129,12 @@ static func valley() -> Array[Silhouette]:
 
 
 static func metropolis() -> Array[Silhouette]:
-	return [Silhouette.new(METROPOLIS_LEFT_ROOF, METROPOLIS_SCROLL), Silhouette.new(METROPOLIS_RIGHT_ROOF, METROPOLIS_SCROLL)]
+	return [Silhouette.new(METROPOLIS_LEFT_ROOFS, METROPOLIS_SCROLL), Silhouette.new(METROPOLIS_PARAPET, METROPOLIS_SCROLL),
+		Silhouette.new(METROPOLIS_RIGHT_ROOFS, METROPOLIS_SCROLL)]
 
 
 static func mine() -> Array[Silhouette]:
-	return [Silhouette.new(MINE_LEFT_HEAP, MINE_SCROLL), Silhouette.new(MINE_PIT_HEAP, MINE_SCROLL),
-		Silhouette.new(MINE_RIGHT_CONVEYOR, MINE_SCROLL)]
+	return [Silhouette.new(MINE_LEFT_STRIP, MINE_SCROLL), Silhouette.new(MINE_RIGHT_STRIP, MINE_SCROLL)]
 
 
 # The silhouettes as drawn.
