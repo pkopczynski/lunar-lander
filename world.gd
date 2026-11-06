@@ -166,7 +166,7 @@ func show_sky() -> void:
 	clouds.show_sky(sky, background_color)
 	foreground.show_sky(sky)
 	city_lights.show_sky(sky)
-	vehicles.show_sky(sky)
+	vehicles.show_sky(sky, backdrop)
 	activity.show_sky(sky, backdrop)
 	queue_redraw()
 
@@ -201,7 +201,7 @@ func show_location(to: Location) -> void:
 	city_lights.build(to)
 	city_lights.show_sky(sky)
 	vehicles.build(to.vehicles, anchor)
-	vehicles.show_sky(sky)
+	vehicles.show_sky(sky, backdrop)
 	activity.build(to.activity_lights, to.movers, anchor)
 	activity.show_sky(sky, backdrop)
 	dress_mountains(to.mountains)

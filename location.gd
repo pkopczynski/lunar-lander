@@ -45,10 +45,11 @@ const METROPOLIS_NEON_SIGNS := [
 # The Metropolis's Vehicle lanes, low to high, up to about two-thirds of the way from the pad to
 # the Border: each lane's height above the pad's top (how high the camera climbs to have it at the
 # middle of the screen), its depth, its speed in px/s (negative: leftwards) and where along it
-# each of its Vehicles is as designed. Tuning, expected to change in playtests.
-const VEHICLE_FAR := Vector2(0.3, 0.86)
-const VEHICLE_MID := Vector2(0.5, 0.92)
-const VEHICLE_NEAR := Vector2(0.7, 0.97)
+# each of its Vehicles is as designed. Tuning, expected to change in playtests. The depths are the
+# skyline's three nearer ones (Skyline.DEPTHS), so each Vehicle takes its depth's tone.
+const VEHICLE_FAR := Vector2(0.52, 0.962)
+const VEHICLE_MID := Vector2(0.64, 0.972)
+const VEHICLE_NEAR := Vector2(0.76, 0.982)
 const METROPOLIS_LANES := [
 	[150.0, VEHICLE_NEAR, 55.0, [200.0, 1500.0]],
 	[300.0, VEHICLE_MID, -40.0, [900.0, -300.0, 2400.0]],

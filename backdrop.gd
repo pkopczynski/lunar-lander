@@ -436,12 +436,20 @@ func listed_decor() -> Array[World.Listing]:
 	return listed
 
 
-# The colour the depth scrolling at scroll is filled with now; transparent if no ridge does.
+# The colour the depth scrolling at scroll is filled with now, or the nearest depth sideways if no
+# ridge scrolls at it; transparent without any ridge.
 func color_of(scroll: Vector2) -> Color:
+	var color := Color.TRANSPARENT
+	var nearest := INF
 	for ridge in ridges:
-		if (ridge.get_parent() as AnchoredParallax).scroll_scale == scroll:
+		var depth := (ridge.get_parent() as AnchoredParallax).scroll_scale
+		if depth == scroll:
 			return ridge.color
-	return Color.TRANSPARENT
+		var away := absf(depth.x - scroll.x)
+		if away < nearest:
+			nearest = away
+			color = ridge.color
+	return color
 
 
 # Fills each ridge and its structures with its depth's colour, from the background gradient

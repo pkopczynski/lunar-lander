@@ -38,12 +38,14 @@ func pieces_in(layer: World.DecorLayer) -> Array[World.Decor]:
 	return pieces
 
 
-# The Backdrop's depths, farther first: its pieces grouped by how fast they scroll sideways (the
-# slower, the farther), then the Foreground's opaque silhouettes as the nearest depth (the clouds'
-# translucent wisps aren't a depth).
+# The Backdrop's depths, farther first: its pieces, the flying Vehicles' hulls and the slow movers
+# grouped by how fast they scroll sideways (the slower, the farther), then the Foreground's opaque
+# silhouettes as the nearest depth (the clouds' translucent wisps aren't a depth).
 func depths() -> Array[Array]:
 	var by_scroll := {}
-	for piece in pieces_in(World.DecorLayer.BACKDROP):
+	var stepped := pieces_in(World.DecorLayer.BACKDROP) + pieces_in(World.DecorLayer.PARALLAX).filter(
+		func(piece: World.Decor) -> bool: return piece.part in [World.DecorPart.VEHICLE, World.DecorPart.MOVER])
+	for piece: World.Decor in stepped:
 		if not by_scroll.has(piece.scroll_scale.x):
 			by_scroll[piece.scroll_scale.x] = []
 		by_scroll[piece.scroll_scale.x].append(piece)
