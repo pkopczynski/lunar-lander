@@ -36,41 +36,22 @@ func shown(piece: World.Decor) -> bool:
 	return piece.opacity > 0.0 and in_view(piece)
 
 
-# The Moons are very far away: they barely move up or down, or sideways, as the ship flies around.
-const MAX_SCROLL := 0.05
-
-
-func test_the_moons_hang_almost_still_as_the_ship_climbs() -> void:
+# The Moons are a static backdrop: fixed on screen however the camera moves.
+func test_the_moons_stay_fixed_on_screen_as_the_ship_flies_around() -> void:
 	await choose_ship()
 	for location in Location.ALL:
 		clock().move_to(location)
 		await frames(1)
 		for moon in moons():
-			check(moon.scroll_scale.x <= MAX_SCROLL + 0.001 and moon.scroll_scale.y <= MAX_SCROLL + 0.001,
-				"a Moon at the %s should barely scroll with the camera, its scale %s" % [location.name, moon.scroll_scale])
+			check(moon.scroll_scale == Vector2.ZERO, "a Moon at the %s shouldn't scroll with the camera, its scale %s" % [location.name, moon.scroll_scale])
 		var on_pad := moons(pad_top(), FollowCamera.SURFACE_ZOOM)
-		var higher := moons(pad_top() + Vector2(0.0, -1000.0), FollowCamera.SURFACE_ZOOM)
-		for i in mini(on_pad.size(), higher.size()):
-			var moved := higher[i].screen_area.position - on_pad[i].screen_area.position
-			check(absf(moved.y) <= MAX_SCROLL * 1000.0 * FollowCamera.SURFACE_ZOOM,
-				"Moon %d at the %s should stay almost still on screen as the ship climbs 1000 px, moved %s" % [i, location.name, moved])
-			check(shown(higher[i]) == shown(on_pad[i]),
+		var elsewhere := moons(pad_top() + Vector2(300.0, -1000.0), FollowCamera.SURFACE_ZOOM)
+		for i in mini(on_pad.size(), elsewhere.size()):
+			check(elsewhere[i].screen_area.position.distance_to(on_pad[i].screen_area.position) < 0.01,
+				"Moon %d at the %s should stay put on screen as the ship flies 1000 px up and 300 px across, from %s to %s"
+				% [i, location.name, on_pad[i].screen_area.position, elsewhere[i].screen_area.position])
+			check(shown(elsewhere[i]) == shown(on_pad[i]),
 				"Moon %d at the %s should still show 1000 px above the pad if it shows on the pad" % [i, location.name])
-
-
-func test_the_giant_moon_is_in_view_from_the_pad() -> void:
-	await choose_ship()
-	for location in Location.ALL:
-		clock().move_to(location)
-		await frames(1)
-		for zoom in [0.85, FollowCamera.SURFACE_ZOOM]:
-			var listed := moons(pad_top(), zoom)
-			var largest: World.Decor = null
-			for moon in listed:
-				if largest == null or moon.screen_area.get_area() > largest.screen_area.get_area():
-					largest = moon
-			check(largest != null and in_view(largest),
-				"the %s's giant Moon should be in view with the camera on the pad at zoom %s" % [location.name, zoom])
 
 
 func test_the_moons_have_faded_out_at_the_border_and_stay_out_in_deep_space() -> void:

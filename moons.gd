@@ -3,22 +3,22 @@ extends Node2D
 # The Moons: the same four other bodies in the surface sky at every location, each location
 # placing and sizing them (see Moon). A giant one low, partly behind the Backdrop and in view from
 # the pad, a medium one higher and two small ones high up. They're very far away: each sits in its
-# own far parallax layer anchored on the pad, hanging almost still as the ship climbs or drops, and
-# fades out as it nears the Border (World.high_sky_opacity()), so deep space never shows them. Muted
+# own static layer anchored on the pad (a backdrop fixed on screen: it doesn't move as the camera
+# does), and fades out as it nears the Border (World.high_sky_opacity()), so deep space never shows them. Muted
 # colours, a fixed lit side and no phases; faint by day, clear at night. No collider.
 
 # Tuning, expected to change in playtests.
-# The four bodies, giant first: their colour (dusty rose, blue-grey, ochre, bone) and how fast each
-# scrolls with the camera, the world's being 1: barely at all, up and down or sideways.
+# The four bodies, giant first: their colour (dusty rose, blue-grey, ochre, bone). They don't scroll
+# with the camera at all (SCROLL).
 # Shaded, each colour must stay 0.1 from every solid terrain colour, however dimmed (see
 # test_tonal_depth.gd).
 const COLORS: Array[Color] = [
 	Color(0.8, 0.58, 0.58), Color(0.6, 0.65, 0.72), Color(0.77, 0.67, 0.45), Color(0.86, 0.83, 0.75),
 ]
-const SCROLLS: Array[Vector2] = [Vector2(0.05, 0.02), Vector2(0.04, 0.025), Vector2(0.03, 0.03), Vector2(0.03, 0.03)]
+const SCROLL := Vector2.ZERO
 # Where each location shows the four, giant first: each centre as seen from the pad's top (with the
 # camera centred there) and radius.
-# They stay about where they're placed, so they're placed within the sky the view shows above the pad
+# They stay where they're placed on screen, so they're placed within the sky the view shows above the pad
 # at the surface zoom.
 const VALLEY := [
 	[Vector2(-170, -170), 150.0], [Vector2(330, -205), 38.0], [Vector2(-390, -225), 14.0], [Vector2(170, -235), 11.0],
@@ -82,7 +82,7 @@ func build(from: Array[Moon], anchor: Vector2) -> void:
 	tops.clear()
 	for i in mini(from.size(), COLORS.size()):
 		var moon := from[i]
-		var visual := DecorKit.add_in_layer(self, DecorKit.disc(anchor + moon.center, moon.radius, SIDES), SCROLLS[i], anchor)
+		var visual := DecorKit.add_in_layer(self, DecorKit.disc(anchor + moon.center, moon.radius, SIDES), SCROLL, anchor)
 		var shades := PackedColorArray()
 		for point in visual.polygon:
 			var lit := ((point - anchor - moon.center) / moon.radius).dot(LIT_FROM.normalized()) * 0.5 + 0.5

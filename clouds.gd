@@ -2,8 +2,8 @@ class_name Clouds
 extends Node2D
 # A location's clouds, in three depths (see sky()): high cirrus streaks and lower puffy cumulus
 # behind the scenery, and near translucent wisps in front of everything, the ship included. The
-# cirrus and cumulus are far away: they hang almost still as the ship climbs or drops (each depth
-# barely scrolls up and down) and drift slowly sideways on their own wind, tinted by the sky colour
+# cirrus and cumulus are a static backdrop: fixed on screen as the camera moves (they don't scroll
+# with it at all), they only drift slowly sideways on their own wind, tinted by the sky colour
 # behind them. Each fades out as it nears the Border (World.high_sky_opacity()), so none shows in
 # deep space. Each cloud wraps around from one side to the other well outside the view, so none ever
 # pops in sight. No collider. Moving a cloud only changes its position (and a wisp's modulate, a far
@@ -22,7 +22,7 @@ enum Form { CIRRUS, CUMULUS }
 
 # Tuning, expected to change in playtests.
 # A cloud's depth and wind by default.
-const SCROLL := Vector2(0.25, 0.15)
+const SCROLL := Vector2.ZERO
 # The wind, in px/s; rightwards (negative: leftwards).
 const WIND_SPEED := 6.0
 # How much of the sky's own colour (at ground level) lights a cloud over the gradient behind it, so
@@ -59,12 +59,12 @@ const WISP_FADE := 260.0
 
 # The two far depths of sky(), highest first: [form, scroll scale, wind (px/s), how many, the
 # heights above the pad's top they're scattered between as seen with the camera on the pad (they
-# barely move from there as the ship climbs), the smallest and largest half size].
+# stay there on screen), the smallest and largest half size].
 const DEPTHS := [
 	# Cirrus streaks high in the sky.
-	[Form.CIRRUS, Vector2(0.1, 0.04), 3.0, 16, Vector2(150, 300), Vector2(150, 6), Vector2(300, 12)],
+	[Form.CIRRUS, Vector2.ZERO, 3.0, 16, Vector2(150, 300), Vector2(150, 6), Vector2(300, 12)],
 	# Cumulus heaps lower down, partly behind the scenery.
-	[Form.CUMULUS, Vector2(0.25, 0.15), 6.0, 14, Vector2(20, 190), Vector2(60, 26), Vector2(130, 48)],
+	[Form.CUMULUS, Vector2.ZERO, 6.0, 14, Vector2(20, 190), Vector2(60, 26), Vector2(130, 48)],
 ]
 # The near wisps in front of the ship, high above the pad: [scroll scale, wind (px/s), how many,
 # the heights above the pad's top they're scattered between (as shares of the climb from the pad's

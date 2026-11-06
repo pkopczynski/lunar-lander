@@ -29,8 +29,8 @@ const TERRAIN_COLOR := Color(0.8, 0.4, 0.2)
 # The solid scenery the sky's darkness dims (the ground, the mountains, a location's terrain);
 # the pad isn't in it, so it stays easy to find at night.
 const SCENERY_GROUP := &"scenery"
-# The far pieces of the sky (the Moons and the far clouds), which hang almost still as the ship
-# climbs, so they fade out as they near the Border instead of sinking out of view: fully gone with
+# The far pieces of the sky (the Moons and the far clouds), a static backdrop fixed on screen, so
+# they fade out as they near the Border instead of sinking out of view: fully gone with
 # their top at the Border, fully there HIGH_SKY_FADE px below it. A piece in this group is listed
 # (shown_decor()) faded for the camera asked about.
 const HIGH_SKY_GROUP := &"high_sky"

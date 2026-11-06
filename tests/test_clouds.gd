@@ -1,13 +1,11 @@
 extends "res://tests/scene_test.gd"
 # Every Location's clouds in three depths: high cirrus streaks and lower cumulus heaps behind the
-# scenery, hanging almost still as the ship climbs, and near translucent wisps in the Foreground, in
+# scenery, a static backdrop fixed on screen, and near translucent wisps in the Foreground, in
 # front of the ship, kept out of the Approach corridor.
 # Each depth drifts on its own wind, wraps around only out of sight and is tinted by the sky.
 # Read through the World's decor listing, World.shown_decor().
 
 const LOCATIONS := ["VALLEY", "MINE", "METROPOLIS"]
-# How far apart neighbouring cloud depths' vertical scroll factors are, at least.
-const DEPTH_STEP := 0.1
 
 
 func pad_top() -> Vector2:
@@ -41,30 +39,23 @@ func clouds(camera_center := pad_top(), zoom := 1.0) -> Array[World.Decor]:
 	return pieces
 
 
-func test_every_location_has_clouds_in_three_clearly_separate_depths() -> void:
+func test_every_location_has_static_far_clouds_and_near_wisps() -> void:
 	await choose_ship()
 	for location_name in LOCATIONS:
 		await at(location_name)
-		var pieces := clouds()
-		var factors: Array[float] = []
 		var wisps := 0
-		for piece in pieces:
+		var far := 0
+		for piece in clouds():
 			check(not piece.has_collider, "a %s cloud should have no collider" % location_name)
 			if piece.part == World.DecorPart.WISP:
 				wisps += 1
 				check(piece.layer == World.DecorLayer.FOREGROUND, "a %s wisp should be in the Foreground" % location_name)
 				check(piece.scroll_scale.y > 1.0, "a %s wisp should scroll faster than the world, its scale %s" % [location_name, piece.scroll_scale])
 			else:
+				far += 1
 				check(piece.layer == World.DecorLayer.PARALLAX, "a %s cloud should be behind the scenery" % location_name)
-				check(piece.scroll_scale.y < 1.0, "a %s cloud should scroll more slowly than the world, its scale %s" % [location_name, piece.scroll_scale])
-			if not piece.scroll_scale.y in factors:
-				factors.append(piece.scroll_scale.y)
 		check(wisps > 0, "the %s should have near wisps" % location_name)
-		factors.sort()
-		check(factors.size() == 3, "the %s's clouds should come in three depths, got vertical factors %s" % [location_name, factors])
-		for i in range(1, factors.size()):
-			check(factors[i] - factors[i - 1] >= DEPTH_STEP,
-				"the %s's cloud depths should scroll clearly differently up and down: %s" % [location_name, factors])
+		check(far > 0, "the %s should have far clouds" % location_name)
 
 
 # How opaque a wisp may be at most, so the ship stays visible through it.
@@ -222,64 +213,56 @@ func test_no_cloud_ever_shows_in_deep_space() -> void:
 				above += SPACE_HEIGHT_STEP
 
 
-# The far clouds barely move up or down as the ship climbs: far less than the world.
-const FAR_MAX_VERTICAL := 0.15
-
-
-func test_the_far_clouds_hang_almost_still_as_the_ship_climbs() -> void:
+# The far clouds are a static backdrop: fixed on screen however the camera moves (only the wind
+# carries them).
+func test_the_far_clouds_stay_fixed_on_screen_as_the_ship_flies_around() -> void:
 	await choose_ship()
 	for location_name in LOCATIONS:
 		await at(location_name)
-		for piece in clouds():
-			if piece.part == World.DecorPart.CLOUD:
-				check(piece.scroll_scale.y <= FAR_MAX_VERTICAL + 0.001,
-					"a %s cloud should barely move up or down as the ship climbs, its scale %s" % [location_name, piece.scroll_scale])
-
-
-# The far depths, highest first, as seen from the pad: their pieces.
-func far_depths() -> Array[Array]:
-	var by_scroll := {}
-	for piece in clouds():
-		if piece.part == World.DecorPart.CLOUD:
-			if not by_scroll.has(piece.scroll_scale.y):
-				by_scroll[piece.scroll_scale.y] = []
-			by_scroll[piece.scroll_scale.y].append(piece)
-	var depths: Array[Array] = []
-	for depth: Array in by_scroll.values():
-		depths.append(depth)
-	depths.sort_custom(func(a: Array, b: Array) -> bool: return mean_center_y(a) < mean_center_y(b))
-	return depths
-
-
-func mean_center_y(pieces: Array) -> float:
-	var total := 0.0
-	for piece: World.Decor in pieces:
-		total += piece.screen_area.get_center().y
-	return total / pieces.size()
+		var on_pad := clouds()
+		var elsewhere := clouds(pad_top() + Vector2(300.0, -1000.0))
+		for i in mini(on_pad.size(), elsewhere.size()):
+			if on_pad[i].part != World.DecorPart.CLOUD:
+				continue
+			check(on_pad[i].scroll_scale == Vector2.ZERO,
+				"a %s cloud shouldn't scroll with the camera, its scale %s" % [location_name, on_pad[i].scroll_scale])
+			check(elsewhere[i].screen_area.position.distance_to(on_pad[i].screen_area.position) < 0.01,
+				"a %s cloud should stay put on screen as the ship flies 1000 px up and 300 px across" % location_name)
 
 
 # How flat a cloud is: its height over its width on screen.
-func flatness(pieces: Array) -> float:
+func flatness(piece: World.Decor) -> float:
+	return piece.screen_area.size.y / piece.screen_area.size.x
+
+
+# A cirrus streak is far flatter than any cumulus heap.
+const STREAK_FLATNESS := 0.15
+
+
+func mean_center_y(pieces: Array[World.Decor]) -> float:
 	var total := 0.0
-	for piece: World.Decor in pieces:
-		total += piece.screen_area.size.y / piece.screen_area.size.x
-	return total / pieces.size()
+	for piece in pieces:
+		total += piece.screen_area.get_center().y
+	return total / maxi(pieces.size(), 1)
 
 
 func test_thin_cirrus_streaks_sit_above_heaped_cumulus() -> void:
 	await choose_ship()
 	for location_name in LOCATIONS:
 		await at(location_name)
-		var depths := far_depths()
-		check(depths.size() == 2, "the %s should have two far cloud depths, got %d" % [location_name, depths.size()])
-		if depths.size() != 2:
-			continue
-		var cirrus: Array = depths[0]
-		var cumulus: Array = depths[1]
-		check(flatness(cirrus) < 0.5 * flatness(cumulus),
-			"the %s's high clouds should be thin streaks (height/width %.2f), much flatter than its low heaps (%.2f)"
-			% [location_name, flatness(cirrus), flatness(cumulus)])
-		for piece: World.Decor in cirrus:
+		var cirrus: Array[World.Decor] = []
+		var cumulus: Array[World.Decor] = []
+		for piece in clouds():
+			if piece.part == World.DecorPart.CLOUD:
+				if flatness(piece) < STREAK_FLATNESS:
+					cirrus.append(piece)
+				else:
+					cumulus.append(piece)
+		check(not cirrus.is_empty() and not cumulus.is_empty(),
+			"the %s should have both thin streaks (%d) and heaps (%d)" % [location_name, cirrus.size(), cumulus.size()])
+		check(mean_center_y(cirrus) < mean_center_y(cumulus),
+			"the %s's thin streaks should sit higher (screen y %.0f) than its heaps (%.0f)" % [location_name, mean_center_y(cirrus), mean_center_y(cumulus)])
+		for piece in cirrus:
 			check(piece.opacity < 1.0, "a %s cirrus streak should be translucent, its opacity %s" % [location_name, piece.opacity])
 
 

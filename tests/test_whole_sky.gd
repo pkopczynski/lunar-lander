@@ -1,5 +1,5 @@
 extends "res://tests/scene_test.gd"
-# The whole surface sky: however high the ship hovers above a pad, up to just below the Border,
+# The whole surface sky: however high the ship hovers above a pad, until the Border comes into view,
 # some scenery is in view, and what's in view moves past at clearly different vertical speeds.
 # Read through the World's decor listing, World.shown_decor().
 
@@ -8,8 +8,6 @@ const ZOOMS := [FollowCamera.SURFACE_ZOOM * FollowCamera.FAST_ZOOM_FACTOR, Follo
 # The hours the sky tests use for full day and full night.
 const HOURS := [13, 1]
 const HEIGHT_STEP := 50.0
-# How far below the Border the sweep stops, so the camera is still on the surface.
-const BELOW_BORDER := 50.0
 # How much of a piece must be on screen, in screen px each way, to count as in view.
 const MIN_IN_VIEW := 20.0
 # How visible a piece must be drawn to count as in view (a Moon is faint by day, but shows).
@@ -20,18 +18,20 @@ const MIN_CONTRAST := 0.1
 # How far apart two vertical scroll factors must be to read as clearly different speeds.
 const DISTINCT_SCROLL := 0.05
 # The heights the capture tool reviews, in px above the pad's top, where the scenery in view must
-# move at two clearly different vertical speeds.
-const REVIEWED_HEIGHTS := [0.0, 300.0, 700.0, 1200.0, 1800.0]
+# move at two clearly different vertical speeds. Higher up (1800 px) only the static sky (the Moons
+# and far clouds, which playtests found looked wrong moving) may be in view.
+const REVIEWED_HEIGHTS := [0.0, 300.0, 700.0, 1200.0]
 
 
 func pad_top() -> Vector2:
 	return Vector2(pad_x(), world().location.ground_y - Lander.PAD_HEIGHT)
 
 
-# Camera heights above the pad's top, from the pad up to just below the Border.
-func heights() -> Array[float]:
+# Camera heights above the pad's top, from the pad up to where the Border comes into view at zoom
+# (above that the static sky fades out toward the Border).
+func heights(zoom: float) -> Array[float]:
 	var list: Array[float] = []
-	var top := pad_top().y - World.BORDER_Y - BELOW_BORDER
+	var top := pad_top().y - World.BORDER_Y - world().get_viewport_rect().size.y / zoom / 2.0
 	var height := 0.0
 	while height < top:
 		list.append(height)
@@ -82,13 +82,13 @@ func at(location: Location, hour: int) -> void:
 	await frames(1)
 
 
-func test_some_scenery_is_in_view_at_every_height_up_to_the_border() -> void:
+func test_some_scenery_is_in_view_at_every_height_until_the_border_comes_into_view() -> void:
 	await choose_ship()
 	for location in Location.ALL:
 		for hour in HOURS:
 			await at(location, hour)
 			for zoom in ZOOMS:
-				for height in heights():
+				for height in heights(zoom):
 					var camera := pad_top() + Vector2(0.0, -height)
 					check(not in_view(camera, zoom).is_empty(),
 						"at the %s at %02d:00 no scenery is in view with the camera %.0f px above the pad at zoom %s"
