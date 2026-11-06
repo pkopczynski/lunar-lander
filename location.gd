@@ -120,8 +120,8 @@ var mountains := MountainLook.valley()
 # Solid polygons added to the shared ground and mountains; touching them crashes the ship.
 var terrain: Array[PackedVector2Array] = []
 # The ridges (or skyline) behind the surface, farther first, with no collision; by default the
-# Tatra-like ones.
-var backdrop: Array[Backdrop.Ridge] = Backdrop.tatras()
+# Valley's.
+var backdrop: Array[Backdrop.Ridge] = Backdrop.valley()
 # Where its sky shows the Moons (see Moons); by default none.
 var moons: Array[Moons.Moon] = []
 # The clouds drifting in its sky, in three depths (see Clouds.sky()); by default none.

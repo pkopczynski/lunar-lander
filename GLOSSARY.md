@@ -21,7 +21,7 @@ Solid side walls of the lower surface, the same shape at every location but dres
 _Avoid_: Side borders, cliffs
 
 **Backdrop**:
-The scenery drawn behind a location's surface, with no collision, each location its own: Tatra-like ridges behind the Valley, Himalaya-like peaks behind the Mine, a far skyline behind the Metropolis.
+The scenery drawn behind a location's surface, with no collision, each location its own: distant ranges, Tatra-like peaks and forested hills behind the Valley, Himalaya-like peaks behind the Mine, a far skyline behind the Metropolis.
 _Avoid_: Mountains (the solid side walls), background mountains
 
 **Foreground**:
