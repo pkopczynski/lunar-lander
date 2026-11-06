@@ -98,7 +98,8 @@ func _ready() -> void:
 	show_location(location)
 	add_scenery(ground_visual)
 	# Drawn over the gradient and under everything in the scene: the stars, the clouds, then the
-	# Backdrop. The Foreground is drawn over everything, the ship included.
+	# Backdrop. The Foreground, then the clouds' near wisps, are drawn over everything, the ship
+	# included.
 	var layers: Array[CanvasItem] = [deep_star_layer, night_star_layer, clouds, backdrop, vehicles]
 	for i in layers.size():
 		add_child(layers[i])
@@ -106,6 +107,7 @@ func _ready() -> void:
 	add_child(city_lights)
 	move_child(city_lights, terrain.get_index() + 1)
 	add_child(foreground)
+	add_child(clouds.near)
 
 	var rng := RandomNumberGenerator.new()
 	rng.seed = STAR_SEED
@@ -176,7 +178,7 @@ func show_location(to: Location) -> void:
 	show_ground_width(to)
 	pad.position.x = to.pad_center_x - ground.position.x
 	queue_redraw()
-	var anchor := Vector2(to.pad_center_x, to.ground_y - Lander.PAD_HEIGHT)
+	var anchor := to.pad_top()
 	backdrop.build(to.backdrop, to.lowest_y, anchor)
 	backdrop.show_sky(background_color)
 	clouds.build(to.clouds, anchor)

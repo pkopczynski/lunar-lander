@@ -48,6 +48,11 @@ const METROPOLIS_VEHICLES := [
 	[Vector2(300, 180), 45.0], [Vector2(1500, 120), -60.0], [Vector2(900, 330), 30.0], [Vector2(-400, 240), -38.0],
 ]
 
+# Each location's clouds (see Clouds.sky()): the variety each is scattered with.
+const VALLEY_CLOUDS := 3
+const MINE_CLOUDS := 11
+const METROPOLIS_CLOUDS := 29
+
 # Location profiles (see Profile): what the Transport offers to each location are like. Kind
 # weights are passengers only, cargo only and both. Tuning, expected to change in playtests.
 # The Valley: every kind alike, varied passengers and supplies, the base pay.
@@ -102,7 +107,7 @@ var terrain: Array[PackedVector2Array] = []
 # The ridges (or skyline) behind the surface, farther first, with no collision; by default the
 # Tatra-like ones.
 var backdrop: Array[Backdrop.Ridge] = Backdrop.tatras()
-# The clouds drifting in its sky; by default none.
+# The clouds drifting in its sky, in three depths (see Clouds.sky()); by default none.
 var clouds: Array[Clouds.Cloud] = []
 # The silhouettes in front of the ship; by default none. They must leave its pad and the ship's
 # last FAIR_HEIGHT of approach uncovered (see Foreground).
@@ -143,6 +148,11 @@ class Profile:
 	var reward_factor := 1.0
 
 
+# The top of its pad, in world coordinates: what its parallax layers are anchored on.
+func pad_top() -> Vector2:
+	return Vector2(pad_center_x, ground_y - Lander.PAD_HEIGHT)
+
+
 # The location after this one in drift order, wrapping to the first.
 func next() -> Location:
 	return ALL[(ALL.find(self) + 1) % ALL.size()]
@@ -152,7 +162,7 @@ static func valley() -> Location:
 	var location := Location.new()
 	location.name = "VALLEY"
 	location.pad_center_x = World.WORLD_WIDTH / 2.0
-	location.clouds = Clouds.valley()
+	location.clouds = Clouds.sky(Clouds.Kind.CUMULUS, location.pad_top(), VALLEY_CLOUDS)
 	location.foreground = Foreground.valley()
 	location.profile.pool_share = VALLEY_POOL_SHARE
 	location.profile.titles = VALLEY_TITLES
@@ -171,6 +181,7 @@ static func mine() -> Location:
 	location.ground_y = World.GROUND_TOP_Y + PIT_DEPTH
 	location.backdrop = Backdrop.mine()
 	location.foreground = Foreground.mine()
+	location.clouds = Clouds.sky(Clouds.Kind.DUST, location.pad_top(), MINE_CLOUDS)
 	location.profile.pool_share = MINE_POOL_SHARE
 	location.profile.kind_weights = PackedFloat32Array(MINE_KIND_WEIGHTS)
 	location.profile.max_passengers = MINE_MAX_PASSENGERS
@@ -224,6 +235,7 @@ static func metropolis() -> Location:
 	location.ground_y = ROOF_Y
 	location.ground_width = PAD_ROOF_WIDTH
 	location.lowest_y = STREET_Y + World.GROUND_DEPTH
+	location.clouds = Clouds.sky(Clouds.Kind.SMOG, location.pad_top(), METROPOLIS_CLOUDS)
 	var left := -World.SIDE_OVERHANG
 	var right := World.WORLD_WIDTH + World.SIDE_OVERHANG
 	var street := STREET_Y
