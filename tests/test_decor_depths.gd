@@ -72,9 +72,12 @@ func test_every_decor_piece_reports_its_opacity() -> void:
 	await choose_ship()
 	for piece in world().shown_decor(pad_top(), 1.0):
 		check(piece.opacity >= 0.0 and piece.opacity <= 1.0, "a piece's opacity should be between 0 and 1, got %s" % piece.opacity)
-	for part in [World.DecorPart.RIDGE, World.DecorPart.CLOUD, World.DecorPart.SILHOUETTE]:
+	for part in [World.DecorPart.RIDGE, World.DecorPart.SILHOUETTE]:
 		for piece in parts(part):
-			check_near(piece.opacity, 1.0, 0.001, "a ridge, cloud or silhouette should be opaque (part %d)" % part)
+			check_near(piece.opacity, 1.0, 0.001, "a ridge or silhouette should be opaque (part %d)" % part)
+	# The cumulus are opaque, the cirrus streaks translucent, but never faint.
+	for piece in parts(World.DecorPart.CLOUD):
+		check(piece.opacity > 0.5, "a cloud should be clearly visible, its opacity %s" % piece.opacity)
 	var glows := parts(World.DecorPart.GLOW).filter(
 		func(piece: World.Decor) -> bool: return piece.layer == World.DecorLayer.BEACON)
 	check(not glows.is_empty(), "the Beacon should list its glows")

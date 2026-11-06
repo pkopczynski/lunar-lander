@@ -68,3 +68,18 @@ class Depths:
 			layers[scroll] = AnchoredParallax.new(scroll, anchor)
 			parent.add_child(layers[scroll])
 		return layers[scroll]
+
+
+# The top (the smallest y) of an outline.
+static func top_of(outline: PackedVector2Array) -> float:
+	var top := INF
+	for point in outline:
+		top = minf(top, point.y)
+	return top
+
+
+# Fades each far piece of the sky out as it nears the Border, where it's drawn now (its self_modulate;
+# see World.high_sky_opacity()): tops are their outlines' tops, in their own coordinates.
+static func fade_toward_border(pieces: Array[Polygon2D], tops: PackedFloat32Array) -> void:
+	for i in pieces.size():
+		pieces[i].self_modulate.a = World.high_sky_opacity(pieces[i].global_position.y + tops[i])

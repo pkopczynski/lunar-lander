@@ -31,6 +31,33 @@ func in_view(piece: World.Decor) -> bool:
 	return piece.screen_area.intersects(world().get_viewport_rect())
 
 
+# Shown: in view and not faded out.
+func shown(piece: World.Decor) -> bool:
+	return piece.opacity > 0.0 and in_view(piece)
+
+
+# The Moons are very far away: they barely move up or down, or sideways, as the ship flies around.
+const MAX_SCROLL := 0.05
+
+
+func test_the_moons_hang_almost_still_as_the_ship_climbs() -> void:
+	await choose_ship()
+	for location in Location.ALL:
+		clock().move_to(location)
+		await frames(1)
+		for moon in moons():
+			check(moon.scroll_scale.x <= MAX_SCROLL + 0.001 and moon.scroll_scale.y <= MAX_SCROLL + 0.001,
+				"a Moon at the %s should barely scroll with the camera, its scale %s" % [location.name, moon.scroll_scale])
+		var on_pad := moons(pad_top(), FollowCamera.SURFACE_ZOOM)
+		var higher := moons(pad_top() + Vector2(0.0, -1000.0), FollowCamera.SURFACE_ZOOM)
+		for i in mini(on_pad.size(), higher.size()):
+			var moved := higher[i].screen_area.position - on_pad[i].screen_area.position
+			check(absf(moved.y) <= MAX_SCROLL * 1000.0 * FollowCamera.SURFACE_ZOOM,
+				"Moon %d at the %s should stay almost still on screen as the ship climbs 1000 px, moved %s" % [i, location.name, moved])
+			check(shown(higher[i]) == shown(on_pad[i]),
+				"Moon %d at the %s should still show 1000 px above the pad if it shows on the pad" % [i, location.name])
+
+
 func test_the_giant_moon_is_in_view_from_the_pad() -> void:
 	await choose_ship()
 	for location in Location.ALL:
@@ -46,7 +73,7 @@ func test_the_giant_moon_is_in_view_from_the_pad() -> void:
 				"the %s's giant Moon should be in view with the camera on the pad at zoom %s" % [location.name, zoom])
 
 
-func test_the_moons_have_sunk_out_of_view_at_the_border_and_stay_out_in_deep_space() -> void:
+func test_the_moons_have_faded_out_at_the_border_and_stay_out_in_deep_space() -> void:
 	await choose_ship()
 	var size := world().get_viewport_rect().size
 	for location in Location.ALL:
@@ -58,7 +85,7 @@ func test_the_moons_have_sunk_out_of_view_at_the_border_and_stay_out_in_deep_spa
 			for x in [half_view, pad_x(), World.WORLD_WIDTH - half_view]:
 				for y in [World.BORDER_Y, World.BORDER_Y - 500.0, World.SPACE_TOP_Y]:
 					for moon in moons(Vector2(x, y), zoom):
-						check(not in_view(moon), "no Moon should be in view at the %s with the camera at %s, zoom %s: %s"
+						check(not shown(moon), "no Moon should show at the %s with the camera at %s, zoom %s: %s"
 							% [location.name, Vector2(x, y), zoom, moon.screen_area])
 
 
@@ -82,11 +109,11 @@ func test_the_moons_are_fainter_by_day_than_at_night() -> void:
 
 
 # A tall window shows far more sky below the camera than the standard one, and the fast zoom shows
-# the most; even then the Moons have sunk out of view at the Border.
+# the most; even then the Moons have faded out at the Border.
 const TALL_WINDOW := Vector2i(1152, 1600)
 
 
-func test_the_moons_have_sunk_out_of_view_at_the_border_on_a_tall_window() -> void:
+func test_the_moons_have_faded_out_at_the_border_on_a_tall_window() -> void:
 	await choose_ship()
 	var window := world().get_window()
 	var standard := window.size
@@ -101,7 +128,7 @@ func test_the_moons_have_sunk_out_of_view_at_the_border_on_a_tall_window() -> vo
 		var half_view: float = view.size.x / zoom / 2.0
 		for x in [half_view, pad_x(), World.WORLD_WIDTH - half_view]:
 			for moon in moons(Vector2(x, World.BORDER_Y), zoom):
-				check(not in_view(moon), "no Moon should be in view at the %s at the Border on a %s window, camera x %d: %s"
+				check(not shown(moon), "no Moon should show at the %s at the Border on a %s window, camera x %d: %s"
 					% [location.name, TALL_WINDOW, x, moon.screen_area])
 	window.size = standard
 	await frames(1)
