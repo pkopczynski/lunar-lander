@@ -123,6 +123,9 @@ var neon_signs: Array[CityLights.Sign] = []
 var warning_lights := PackedVector2Array()
 # The distant vehicles flying in its sky behind the buildings; by default none.
 var vehicles: Array[Vehicles.Vehicle] = []
+# Its signs of work on the Backdrop's structures, with no collision (see Activity); by default none.
+var activity_lights: Array[Activity.Light] = []
+var movers: Array[Activity.Mover] = []
 
 # Its location profile: what the Transport offers to it are like.
 var profile := Profile.new()
@@ -190,6 +193,8 @@ static func mine() -> Location:
 	location.mountains = MountainLook.mine()
 	location.foreground = Foreground.mine()
 	location.clouds = Clouds.sky(Clouds.Kind.DUST, location.pad_top(), MINE_CLOUDS)
+	location.activity_lights = Activity.mine_lights()
+	location.movers = Activity.mine_movers()
 	location.profile.pool_share = MINE_POOL_SHARE
 	location.profile.kind_weights = PackedFloat32Array(MINE_KIND_WEIGHTS)
 	location.profile.max_passengers = MINE_MAX_PASSENGERS

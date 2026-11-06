@@ -315,6 +315,14 @@ func listed_decor() -> Array[World.Listing]:
 	return listed
 
 
+# The colour the depth scrolling at scroll is filled with now; transparent if no ridge does.
+func color_of(scroll: Vector2) -> Color:
+	for ridge in ridges:
+		if (ridge.get_parent() as AnchoredParallax).scroll_scale == scroll:
+			return ridge.color
+	return Color.TRANSPARENT
+
+
 # Fills each ridge and its structures with its depth's colour, from the background gradient
 # (background_color: a world y to its colour) behind the farthest ridge's highest peak, tints each
 # haze band with the sky behind it, and brightens the lights like the city's: never dimmed.

@@ -125,8 +125,14 @@ func _process(delta: float) -> void:
 func blink(delta: float) -> void:
 	blink_time = fposmod(blink_time + delta, BLINK_PERIOD)
 	for i in warning_lights.size():
-		var phase := fposmod(blink_time + i * BLINK_STAGGER, BLINK_PERIOD)
-		warning_lights[i].modulate.a = 1.0 if phase < BLINK_PERIOD / 2.0 else BLINK_OFF_ALPHA
+		warning_lights[i].modulate.a = blink_alpha(blink_time, i)
+
+
+# The opacity of the index-th warning light of a set, time seconds into their blinking: on for the
+# first half of its blink, faint for the rest, each a little later than the one before it.
+static func blink_alpha(time: float, index: int) -> float:
+	var phase := fposmod(time + index * BLINK_STAGGER, BLINK_PERIOD)
+	return 1.0 if phase < BLINK_PERIOD / 2.0 else BLINK_OFF_ALPHA
 
 
 # The windows (one mesh, when there are any), the neon signs and the warning lights, for
