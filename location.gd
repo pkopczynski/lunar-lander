@@ -97,6 +97,9 @@ var ground_width := INF
 var lowest_y := NAN:
 	get:
 		return ground_y + World.GROUND_DEPTH if is_nan(lowest_y) else lowest_y
+# The Mountains' look here (their outline and collision are the same everywhere); by default the
+# Valley's forested slopes.
+var mountains := MountainLook.valley()
 # Solid polygons added to the shared ground and mountains; touching them crashes the ship.
 var terrain: Array[PackedVector2Array] = []
 # The ridges (or skyline) behind the surface, farther first, with no collision; by default the
@@ -174,6 +177,7 @@ static func mine() -> Location:
 	location.pad_center_x = 1300.0
 	location.ground_y = World.GROUND_TOP_Y + PIT_DEPTH
 	location.backdrop = Backdrop.mine()
+	location.mountains = MountainLook.mine()
 	location.foreground = Foreground.mine()
 	location.profile.pool_share = MINE_POOL_SHARE
 	location.profile.kind_weights = PackedFloat32Array(MINE_KIND_WEIGHTS)
@@ -215,6 +219,7 @@ static func metropolis() -> Location:
 	location.profile.reward_factor = METROPOLIS_REWARD_FACTOR
 	location.profile.titles = METROPOLIS_TITLES
 	location.backdrop = Backdrop.skyline()
+	location.mountains = MountainLook.metropolis()
 	location.foreground = Foreground.metropolis()
 	location.windows = CityLights.windows_on(METROPOLIS_FACADES)
 	for neon in METROPOLIS_NEON_SIGNS:
