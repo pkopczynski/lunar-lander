@@ -19,7 +19,7 @@ script = ExtResource("3_world")
 position = Vector2(1000, 628)
 
 [node name="Polygon2D" type="Polygon2D" parent="Ground"]
-color = Color(0.55, 0.55, 0.55, 1)
+color = Color(0.44, 0.33, 0.3, 1)
 polygon = PackedVector2Array(-1300, -20, 1300, -20, 1300, 20, -1300, 20)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Ground"]

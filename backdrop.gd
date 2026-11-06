@@ -31,9 +31,9 @@ const TATRA_NEAR := [
 	Vector2(1530, 305), Vector2(1555, 300), Vector2(1590, 320), Vector2(1650, 345),
 	Vector2(1720, 330), Vector2(1800, 350), Vector2(1880, 370), Vector2(World.WORLD_WIDTH + World.SIDE_OVERHANG, 380),
 ]
-# How much darker than the background behind it each Tatra ridge is.
-const TATRA_FAR_DARKENING := 0.08
-const TATRA_NEAR_DARKENING := 0.16
+# How much darker than the sky behind the peaks each Tatra ridge is, by day.
+const TATRA_FAR_DARKENING := 0.1
+const TATRA_NEAR_DARKENING := 0.28
 # How fast each Tatra ridge scrolls with the camera, the world's being 1: mostly horizontal, so the
 # ridges barely rise into the sky as the ship climbs. Tuning, expected to change in playtests.
 const TATRA_FAR_SCROLL := Vector2(0.6, 0.97)
@@ -58,10 +58,10 @@ const SKYLINE_NEAR: Array[Vector2] = [
 	Vector2(1790, 365), Vector2(1880, 410), Vector2(2100, 380),
 	Vector2(World.WORLD_WIDTH + World.SIDE_OVERHANG, 420),
 ]
-# How much darker than the background behind it each depth is, and how fast it scrolls. Tuning,
-# expected to change in playtests.
-const SKYLINE_FAR_DARKENING := 0.1
-const SKYLINE_NEAR_DARKENING := 0.2
+# How much darker than the sky behind the roofs each depth is by day, and how fast it scrolls.
+# Tuning, expected to change in playtests.
+const SKYLINE_FAR_DARKENING := 0.12
+const SKYLINE_NEAR_DARKENING := 0.3
 const SKYLINE_FAR_SCROLL := Vector2(0.55, 0.97)
 const SKYLINE_NEAR_SCROLL := Vector2(0.7, 0.98)
 # The Mine's Backdrop, farther first, with stronger parallax than the Tatras' (each layer slower).
@@ -108,9 +108,9 @@ const FAR_WALLS := [
 	Vector2(1790, 445), Vector2(1790, 540),
 	Vector2(World.WORLD_WIDTH + World.SIDE_OVERHANG, 540),
 ]
-const HIMALAYA_FAR_DARKENING := 0.06
-const HIMALAYA_NEAR_DARKENING := 0.12
-const FAR_WALLS_DARKENING := 0.22
+const HIMALAYA_FAR_DARKENING := 0.08
+const HIMALAYA_NEAR_DARKENING := 0.23
+const FAR_WALLS_DARKENING := 0.37
 const HIMALAYA_FAR_SCROLL := Vector2(0.4, 0.94)
 const HIMALAYA_NEAR_SCROLL := Vector2(0.55, 0.96)
 const FAR_WALLS_SCROLL := Vector2(0.7, 0.975)
@@ -121,10 +121,18 @@ const BOTTOM_MARGIN := 200.0
 # layer shifts sideways (a layer anchored on a pad off the world's centre is shifted even with a
 # window wider than the world).
 const SIDE_MARGIN := 1000.0
+# The tonal steps between depths, in luminance. Each ridge is at least MIN_STEP darker than the one
+# behind it at every hour, and never darker than NEAR_FLOOR plus a MIN_STEP for each ridge in front
+# of it, which keeps the nearest one clear of the near-black Foreground and lifts the farther ones,
+# faintly moonlit, out of the night. Each nearer ridge is also SATURATION_STEP more saturated.
+# Tuning, expected to change in playtests.
+const MIN_STEP := 0.032
+const NEAR_FLOOR := 0.056
+const SATURATION_STEP := 0.12
 
 
-# One ridge of a location's Backdrop: its top edge, left to right, how much darker than the
-# background gradient behind it it's filled, and how fast it scrolls with the camera (by default
+# One ridge of a location's Backdrop: its top edge, left to right, how much darker than the sky
+# behind the peaks it's filled by day (Backdrop.depth_colors() keeps the steps between ridges), and how fast it scrolls with the camera (by default
 # with the world, as if fixed). Its top edge must reach far enough past both sides of the world to
 # cover the view at the world's side overhang; the Backdrop carries it on further (SIDE_MARGIN).
 class Ridge:
@@ -172,6 +180,8 @@ static func mine() -> Array[Ridge]:
 # The ridges as drawn, farther first.
 var ridges: Array[Polygon2D] = []
 var darkenings: Array[float] = []
+# The world y of the highest peak of any ridge: the sky there is the one they're all coloured from.
+var peak_y := 0.0
 
 
 # Builds the Backdrop afresh from a location's ridges, each carried on past both sides and closing
@@ -180,7 +190,10 @@ func build(from: Array[Ridge], bottom_y: float, anchor: Vector2) -> void:
 	DecorKit.clear(self)
 	ridges.clear()
 	darkenings.clear()
+	peak_y = INF
 	for ridge in from:
+		for point in ridge.top_edge:
+			peak_y = minf(peak_y, point.y)
 		var top := ridge.top_edge.duplicate()
 		top.insert(0, top[0] - Vector2(SIDE_MARGIN, 0))
 		top.append(top[-1] + Vector2(SIDE_MARGIN, 0))
@@ -194,11 +207,28 @@ func listed_decor() -> Array[World.Listing]:
 	return World.listings(ridges, World.DecorLayer.BACKDROP, World.DecorPart.RIDGE)
 
 
-# Fills each ridge with the background gradient (background_color: a world y to its colour),
-# darkened.
+# Fills each ridge with its depth's colour, from the background gradient (background_color: a
+# world y to its colour) behind the highest peak.
 func show_sky(background_color: Callable) -> void:
+	var colors := depth_colors(background_color.call(peak_y), darkenings)
 	for i in ridges.size():
-		var colors := PackedColorArray()
-		for point in ridges[i].polygon:
-			colors.append((background_color.call(point.y) as Color).darkened(darkenings[i]))
-		ridges[i].vertex_colors = colors
+		ridges[i].color = colors[i]
+
+
+# The colours of depths in front of a sky colour, farther first, each darker than that sky by its
+# darkening, then kept at least MIN_STEP darker than the one behind it and lifted to its floor.
+static func depth_colors(sky: Color, darkening: Array[float]) -> Array[Color]:
+	var colors: Array[Color] = []
+	var count := darkening.size()
+	var sky_luminance := maxf(sky.get_luminance(), 0.001)
+	var previous := INF
+	for i in count:
+		var luminance := minf(sky_luminance * (1.0 - darkening[i]), previous - MIN_STEP)
+		previous = luminance
+		luminance = maxf(luminance, NEAR_FLOOR + (count - 1 - i) * MIN_STEP)
+		var color := sky
+		color.s = minf(color.s + i * SATURATION_STEP, 1.0)
+		color = color * (luminance / maxf(color.get_luminance(), 0.001))
+		color.a = 1.0
+		colors.append(color)
+	return colors
