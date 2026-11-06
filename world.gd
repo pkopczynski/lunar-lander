@@ -69,6 +69,8 @@ var foreground := Foreground.new()
 var city_lights := CityLights.new()
 # Its distant flying vehicles, drawn behind its buildings.
 var vehicles := Vehicles.new()
+# Its signs of work (warning lights and slow movers) on its Backdrop's structures, drawn just over the Backdrop.
+var activity := Activity.new()
 # The pad's Beacon; a child of the pad, so it follows it to every location.
 var beacon := Beacon.new()
 # The left and the right mountain's outline, the same at every location.
@@ -104,8 +106,8 @@ func _ready() -> void:
 	show_location(location)
 	add_scenery(ground_visual)
 	# Drawn over the gradient and under everything in the scene: the stars, the Moons, the clouds,
-	# then the Backdrop. The Foreground is drawn over everything, the ship included.
-	var layers: Array[CanvasItem] = [deep_star_layer, night_star_layer, moons, clouds, backdrop, vehicles]
+	# then the Backdrop and its signs of work. The Foreground is drawn over everything, the ship included.
+	var layers: Array[CanvasItem] = [deep_star_layer, night_star_layer, moons, clouds, backdrop, activity, vehicles]
 	for i in layers.size():
 		add_child(layers[i])
 		move_child(layers[i], i)
@@ -162,6 +164,7 @@ func show_sky() -> void:
 	foreground.show_sky(sky)
 	city_lights.show_sky(sky)
 	vehicles.show_sky(sky)
+	activity.show_sky(sky, backdrop)
 	queue_redraw()
 
 
@@ -196,6 +199,8 @@ func show_location(to: Location) -> void:
 	city_lights.show_sky(sky)
 	vehicles.build(to.vehicles, anchor)
 	vehicles.show_sky(sky)
+	activity.build(to.activity_lights, to.movers, anchor)
+	activity.show_sky(sky, backdrop)
 	dress_mountains(to.mountains)
 	for child in terrain.get_children():
 		terrain.remove_child(child)
@@ -336,8 +341,9 @@ enum DecorLayer { BACKDROP, PARALLAX, FOREGROUND, BEACON, LIGHTS }
 # What a decor piece is within its layer: a light, the glow around one, a ridge, a cloud, a
 # silhouette, one of a city's lights (all its windows, one mesh; a neon sign; a warning light; a
 # flying vehicle's light) or a flying vehicle; then a Moon, a Vehicle's trail and a translucent
-# cloud wisp in front of the ship. New kinds of decor add their part at the end.
-enum DecorPart { LIGHT, GLOW, RIDGE, CLOUD, SILHOUETTE, WINDOWS, NEON, WARNING_LIGHT, VEHICLE_LIGHT, VEHICLE, MOON, TRAIL, WISP }
+# cloud wisp in front of the ship, and a slow mover on the Backdrop's structures (a crane's
+# trolley, a hauler, a conveyor's marks). New kinds of decor add their part at the end.
+enum DecorPart { LIGHT, GLOW, RIDGE, CLOUD, SILHOUETTE, WINDOWS, NEON, WARNING_LIGHT, VEHICLE_LIGHT, VEHICLE, MOON, TRAIL, WISP, MOVER }
 
 
 # One decor piece as drawn: its layer and part, whether it has a collider, its colour as drawn
@@ -384,7 +390,7 @@ static func listings(pieces: Array, layer: DecorLayer, part: DecorPart) -> Array
 # camera_center at zoom (the viewport's centre is the camera's). Read-only, for tests.
 func shown_decor(camera_center: Vector2, zoom: float) -> Array[Decor]:
 	var pieces: Array[Decor] = []
-	for module in [backdrop, moons, clouds, vehicles, beacon, foreground, city_lights]:
+	for module in [backdrop, moons, clouds, vehicles, beacon, foreground, city_lights, activity]:
 		for listing: Listing in module.listed_decor():
 			pieces.append(decor(listing.visual, listing.layer, listing.part, camera_center, zoom))
 	return pieces

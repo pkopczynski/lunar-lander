@@ -307,6 +307,14 @@ func listed_decor() -> Array[World.Listing]:
 		+ World.listings(structures, World.DecorLayer.BACKDROP, World.DecorPart.SILHOUETTE)
 
 
+# The colour the depth scrolling at scroll is filled with now; transparent if no ridge does.
+func color_of(scroll: Vector2) -> Color:
+	for ridge in ridges:
+		if (ridge.get_parent() as AnchoredParallax).scroll_scale == scroll:
+			return ridge.color
+	return Color.TRANSPARENT
+
+
 # Fills each ridge with its depth's colour, from the background gradient (background_color: a
 # world y to its colour) behind the farthest ridge's highest peak.
 func show_sky(background_color: Callable) -> void:
