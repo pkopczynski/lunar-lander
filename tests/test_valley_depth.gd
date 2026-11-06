@@ -22,7 +22,7 @@ func test_the_valley_lists_parallax_ridges_clouds_and_a_foreground_without_colli
 	var clouds := pieces_in(World.DecorLayer.PARALLAX).filter(
 		func(piece: World.Decor) -> bool: return piece.part == World.DecorPart.CLOUD)
 	var foreground := pieces_in(World.DecorLayer.FOREGROUND)
-	check(ridges.size() == 2, "the Valley should show two Backdrop ridges, got %d" % ridges.size())
+	check(ridges.size() >= 4, "the Valley should show its Backdrop in at least four depths, got %d" % ridges.size())
 	check(clouds.size() >= 3, "the Valley should show some clouds, got %d" % clouds.size())
 	check(foreground.size() >= 2, "the Valley should show some Foreground pieces, got %d" % foreground.size())
 	for piece in ridges + clouds:
@@ -31,6 +31,36 @@ func test_the_valley_lists_parallax_ridges_clouds_and_a_foreground_without_colli
 		check(piece.scroll_scale.x > 1.0, "a Foreground piece should scroll faster than the world, its scale %s" % piece.scroll_scale)
 	for piece in world().shown_decor(pad_top(), 1.0):
 		check(not piece.has_collider, "no decor piece should have a collider (layer %d, part %d)" % [piece.layer, piece.part])
+
+
+# The Valley's ground-rooted depths separate as the ship climbs or drops: each depth moves
+# vertically at its own speed, the farthest well slower than the world (about 0.85) and the nearest
+# almost with it (about 0.97), so they visibly part in the last ~500 px of a descent.
+func test_the_valleys_backdrop_depths_each_rise_at_their_own_speed() -> void:
+	await choose_ship()
+	var vertical: Array[float] = []
+	for piece in pieces_in(World.DecorLayer.BACKDROP):
+		check(not vertical.has(piece.scroll_scale.y),
+			"each Valley Backdrop depth should have its own vertical scroll factor, %s is shared" % piece.scroll_scale.y)
+		vertical.append(piece.scroll_scale.y)
+	check(vertical.size() >= 4, "the Valley should show at least four Backdrop depths, got %d" % vertical.size())
+	if vertical.is_empty():
+		return
+	check(vertical.min() <= 0.87, "the Valley's farthest depth should rise clearly slower than the world, its factor %s" % vertical.min())
+	check(vertical.max() >= 0.96 and vertical.max() < 1.0,
+		"the Valley's nearest depth should rise almost with the world, its factor %s" % vertical.max())
+	# Listed farther first, each nearer one moves more with the world, both ways.
+	var ridges := pieces_in(World.DecorLayer.BACKDROP)
+	for i in ridges.size() - 1:
+		check(ridges[i].scroll_scale.y < ridges[i + 1].scroll_scale.y and ridges[i].scroll_scale.x < ridges[i + 1].scroll_scale.x,
+			"Valley depth %d should move more slowly than the nearer depth %d: %s vs %s"
+			% [i, i + 1, ridges[i].scroll_scale, ridges[i + 1].scroll_scale])
+	# 500 px above the pad, the farthest and nearest depths have parted by a clearly visible amount.
+	var climb := Vector2(0, -500)
+	var far_shift := screen_shift(0, World.DecorLayer.BACKDROP, climb).y
+	var near_shift := screen_shift(ridges.size() - 1, World.DecorLayer.BACKDROP, climb).y
+	check(near_shift - far_shift >= 40.0,
+		"500 px up, the nearest Valley depth should have sunk clearly more than the farthest: %s vs %s" % [near_shift, far_shift])
 
 
 # The bounding box of a designed top edge, closed down out of sight, as it appears on screen for a
@@ -56,11 +86,11 @@ func test_with_the_camera_on_the_pad_every_layer_sits_where_it_was_designed() ->
 			check_near(area.end.x, designed[i].end.x, 0.01, "spruce stand %d's right edge at zoom %s" % [i, zoom])
 			check_near(area.position.y, designed[i].position.y, 0.01, "spruce stand %d's top at zoom %s" % [i, zoom])
 		var ridges := pieces_in(World.DecorLayer.BACKDROP, pad_top(), zoom)
-		var tops := ridges.map(func(piece: World.Decor) -> float: return piece.screen_area.position.y)
-		tops.sort()
-		var screen_center_y := world().get_viewport_rect().size.y / 2.0
-		check_near(tops[0], (World.MOUNTAIN_TOP_Y - pad_top().y) * zoom + screen_center_y, 0.01, "the farther ridge's peak at zoom %s" % zoom)
-		check_near(tops[1], (248.0 - pad_top().y) * zoom + screen_center_y, 0.01, "Giewont's peak at zoom %s" % zoom)
+		var designed_ridges := world().location.backdrop
+		check(ridges.size() == designed_ridges.size(), "the Valley should show each of its ridges, got %d" % ridges.size())
+		for i in mini(ridges.size(), designed_ridges.size()):
+			check_near(ridges[i].screen_area.position.y, designed_top_area(designed_ridges[i].top_edge, zoom).position.y, 0.01,
+				"ridge %d's peak at zoom %s" % [i, zoom])
 
 
 # How far a piece moves on screen when the camera moves by camera_move from the pad's top.
@@ -74,17 +104,21 @@ func test_ridges_move_more_slowly_than_the_world_and_the_foreground_faster() -> 
 	await choose_ship()
 	# At zoom 1 the world itself shifts on screen by exactly as much as the camera moves, the other way.
 	var sideways := Vector2(300, 0)
-	for i in 2:
+	var ridge_count := pieces_in(World.DecorLayer.BACKDROP).size()
+	for i in ridge_count:
 		var ridge := screen_shift(i, World.DecorLayer.BACKDROP, sideways)
 		check(ridge.x < 0.0 and -ridge.x < 300.0 * 0.9, "ridge %d should move left, but well under the world's 300 px: %s" % [i, ridge])
 		check_near(ridge.y, 0.0, 0.01, "ridge %d shouldn't move up or down when the camera moves sideways" % i)
+	for i in 2:
 		var stand := screen_shift(i, World.DecorLayer.FOREGROUND, sideways)
 		check(-stand.x > 300.0 * 1.1, "spruce stand %d should move left more than the world's 300 px: %s" % [i, stand])
-	# Climbing, the layers move almost as the world does: the ridges barely rise into the sky.
+	# Climbing, the ridges stay planted: they sink with the world, only a little less, so they
+	# rise a little into the sky.
 	var up := Vector2(0, -1000)
-	for i in 2:
+	for i in ridge_count:
 		var ridge := screen_shift(i, World.DecorLayer.BACKDROP, up)
-		check(ridge.y > 1000.0 * 0.9 and ridge.y < 1000.0, "ridge %d should sink a little less than the world's 1000 px: %s" % [i, ridge])
+		check(ridge.y > 1000.0 * 0.8 and ridge.y < 1000.0, "ridge %d should sink a little less than the world's 1000 px: %s" % [i, ridge])
+	for i in 2:
 		var stand := screen_shift(i, World.DecorLayer.FOREGROUND, up)
 		check(stand.y > 1000.0 and stand.y < 1000.0 * 1.1, "spruce stand %d should sink a little more than the world's 1000 px: %s" % [i, stand])
 
@@ -293,15 +327,14 @@ func test_the_mines_parallax_is_stronger_than_the_valleys() -> void:
 	var mine_backdrop := scroll_scales(World.DecorLayer.BACKDROP)
 	var mine_foreground := scroll_scales(World.DecorLayer.FOREGROUND)
 	check(not mine_foreground.is_empty(), "the Mine should have a Foreground")
-	# Each Backdrop layer, farthest to nearest, moves more slowly than the Valley's; the farthest
-	# and the nearest are compared in both directions.
+	# Each Backdrop layer, farthest to nearest, moves more slowly sideways than the Valley's; the
+	# farthest and the nearest are compared. Vertically each location's ground-rooted layers spread
+	# on their own (the Valley's from about 0.85 to 0.97).
+	var valley_xs: Array = valley_backdrop.map(func(s: Vector2) -> float: return s.x)
+	var mine_xs: Array = mine_backdrop.map(func(s: Vector2) -> float: return s.x)
+	check(mine_xs.min() < valley_xs.min(), "the Mine's farthest layer should be slower sideways than the Valley's: %s vs %s" % [mine_xs.min(), valley_xs.min()])
+	check(mine_xs.max() < valley_xs.max(), "the Mine's nearest Backdrop layer should be slower sideways than the Valley's: %s vs %s" % [mine_xs.max(), valley_xs.max()])
 	for axis in 2:
-		var valley_min: float = valley_backdrop.map(func(s: Vector2) -> float: return s[axis]).min()
-		var valley_max: float = valley_backdrop.map(func(s: Vector2) -> float: return s[axis]).max()
-		var mine_min: float = mine_backdrop.map(func(s: Vector2) -> float: return s[axis]).min()
-		var mine_max: float = mine_backdrop.map(func(s: Vector2) -> float: return s[axis]).max()
-		check(mine_min < valley_min, "the Mine's farthest layer should be slower than the Valley's on axis %d: %s vs %s" % [axis, mine_min, valley_min])
-		check(mine_max < valley_max, "the Mine's nearest Backdrop layer should be slower than the Valley's on axis %d: %s vs %s" % [axis, mine_max, valley_max])
 		var valley_fastest: float = valley_foreground.map(func(s: Vector2) -> float: return s[axis]).max()
 		for scale in mine_foreground:
 			check(scale[axis] > valley_fastest, "the Mine's Foreground should be faster than the Valley's on axis %d: %s vs %s" % [axis, scale[axis], valley_fastest])

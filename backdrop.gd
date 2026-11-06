@@ -5,22 +5,36 @@ extends Node2D
 # the sky. Each ridge is one Polygon2D filled with the background gradient, darkened, so it reads
 # as a shadow of the sky behind it, in its own parallax layer anchored on the pad.
 
-# Tatra-like ridges, behind the Valley. Only the top edge is listed; each
-# ridge closes down to the location's lowest point. Most of it sits between the mountains, which
-# cover its ends.
-# The farther ridge: jagged granite High Tatra peaks, tallest near Rysy.
+# The shapes of the trees a forested ridge carries on its top edge.
+enum TreeKind { SPRUCE, SEQUOIA, FORKED }
+# How finely a tree's outline is traced, in px: trees that overlap merge into one canopy.
+const TREE_STEP := 2.0
+# The Valley's Backdrop, farther first: distant ranges, high Tatra-like peaks, the nearer ridge with
+# Giewont, then rolling hills. Only each top edge is listed; each closes down to the location's
+# lowest point. Most of it sits between the mountains, which cover its ends.
+# The distant ranges: long, soft ranges far away, showing between and above the high peaks' saddles.
+const VALLEY_RANGES := [
+	Vector2(-World.SIDE_OVERHANG, 280), Vector2(60, 270), Vector2(160, 235), Vector2(260, 250),
+	Vector2(380, 205), Vector2(470, 215), Vector2(560, 190), Vector2(640, 230), Vector2(730, 245),
+	Vector2(820, 215), Vector2(900, 170), Vector2(960, 160), Vector2(1030, 185), Vector2(1120, 230),
+	Vector2(1210, 255), Vector2(1300, 225), Vector2(1400, 240), Vector2(1500, 205), Vector2(1600, 180),
+	Vector2(1680, 195), Vector2(1780, 240), Vector2(1880, 255), Vector2(1980, 230),
+	Vector2(World.WORLD_WIDTH + World.SIDE_OVERHANG, 265),
+]
+# The high peaks: jagged granite High Tatra peaks towering above the mountain tops, tallest near
+# Rysy, with a lone, oddly thin needle on the right and low saddles the distant ranges show over.
 const TATRA_FAR := [
-	Vector2(-World.SIDE_OVERHANG, 300), Vector2(150, 300), Vector2(230, 260), Vector2(270, 285),
-	Vector2(320, 225), Vector2(350, 250), Vector2(390, 208), Vector2(420, 240),
-	Vector2(455, 222), Vector2(490, 270), Vector2(530, 245), Vector2(570, 290),
-	Vector2(610, 255), Vector2(650, 300), Vector2(700, 275), Vector2(750, 320),
-	Vector2(800, 300), Vector2(860, 340), Vector2(930, 320), Vector2(1000, 350),
-	Vector2(1080, 330), Vector2(1160, 345), Vector2(1250, 320), Vector2(1330, 335),
-	Vector2(1420, 300), Vector2(1500, 320), Vector2(1580, 285), Vector2(1650, 310),
-	Vector2(1720, 290), Vector2(1800, 320), Vector2(1880, 300), Vector2(World.WORLD_WIDTH + World.SIDE_OVERHANG, 300),
+	Vector2(-World.SIDE_OVERHANG, 320), Vector2(120, 320), Vector2(200, 250), Vector2(250, 280),
+	Vector2(300, 190), Vector2(335, 225), Vector2(380, 150), Vector2(405, 175), Vector2(440, 128),
+	Vector2(480, 200), Vector2(520, 170), Vector2(570, 250), Vector2(620, 215), Vector2(680, 300),
+	Vector2(740, 285), Vector2(800, 330), Vector2(880, 315), Vector2(960, 345), Vector2(1040, 320),
+	Vector2(1120, 340), Vector2(1200, 300), Vector2(1270, 315), Vector2(1350, 240), Vector2(1390, 265),
+	Vector2(1440, 185), Vector2(1475, 215), Vector2(1520, 165), Vector2(1570, 240), Vector2(1610, 230),
+	Vector2(1640, 150), Vector2(1652, 120), Vector2(1664, 155), Vector2(1700, 260), Vector2(1760, 290),
+	Vector2(1840, 275), Vector2(1920, 310), Vector2(World.WORLD_WIDTH + World.SIDE_OVERHANG, 310),
 ]
 # The nearer ridge: low rounded ridges and Giewont's sleeping knight (the steep Wielki Giewont,
-# the long Długi Giewont, then the small bump of Mały Giewont).
+# the long Długi Giewont, then the small bump of Mały Giewont), spruce forest on its far slopes.
 const TATRA_NEAR := [
 	Vector2(-World.SIDE_OVERHANG, 420), Vector2(200, 420), Vector2(280, 400), Vector2(360, 380),
 	Vector2(440, 395), Vector2(520, 370), Vector2(600, 385), Vector2(680, 360),
@@ -31,13 +45,47 @@ const TATRA_NEAR := [
 	Vector2(1530, 305), Vector2(1555, 300), Vector2(1590, 320), Vector2(1650, 345),
 	Vector2(1720, 330), Vector2(1800, 350), Vector2(1880, 370), Vector2(World.WORLD_WIDTH + World.SIDE_OVERHANG, 380),
 ]
-# How much darker than the sky behind the peaks each Tatra ridge is, by day.
-const TATRA_FAR_DARKENING := 0.1
+# The nearer ridge's forest: Vector3(x, height, TreeKind), spruces on its left slopes and below
+# Giewont on the right, none on the knight himself.
+const TATRA_NEAR_TREES := [
+	Vector3(300, 26, TreeKind.SPRUCE), Vector3(318, 32, TreeKind.SPRUCE), Vector3(338, 24, TreeKind.SPRUCE),
+	Vector3(470, 30, TreeKind.SPRUCE), Vector3(488, 36, TreeKind.SPRUCE), Vector3(505, 28, TreeKind.SPRUCE),
+	Vector3(524, 34, TreeKind.SPRUCE), Vector3(545, 26, TreeKind.SPRUCE), Vector3(640, 28, TreeKind.SPRUCE),
+	Vector3(660, 34, TreeKind.SPRUCE), Vector3(678, 30, TreeKind.SPRUCE), Vector3(1610, 30, TreeKind.SPRUCE),
+	Vector3(1630, 36, TreeKind.SPRUCE), Vector3(1650, 28, TreeKind.SPRUCE), Vector3(1700, 34, TreeKind.SPRUCE),
+	Vector3(1722, 28, TreeKind.SPRUCE),
+]
+# The rolling hills, nearest: low and open around the pad, rising toward the mountains' feet.
+const VALLEY_HILLS := [
+	Vector2(-World.SIDE_OVERHANG, 470), Vector2(150, 470), Vector2(260, 485), Vector2(360, 470),
+	Vector2(460, 500), Vector2(560, 495), Vector2(660, 525), Vector2(760, 545), Vector2(860, 560),
+	Vector2(1000, 565), Vector2(1140, 560), Vector2(1240, 545), Vector2(1340, 520), Vector2(1440, 500),
+	Vector2(1540, 505), Vector2(1640, 480), Vector2(1760, 470), Vector2(1880, 480),
+	Vector2(World.WORLD_WIDTH + World.SIDE_OVERHANG, 470),
+]
+# The hills' forest, away from the pad: giant sequoias alone and in groups, taller than any tree on
+# Earth, one with an oddly forked crown, among spruces.
+const VALLEY_HILLS_TREES := [
+	Vector3(285, 34, TreeKind.SPRUCE), Vector3(305, 150, TreeKind.SEQUOIA), Vector3(330, 40, TreeKind.SPRUCE),
+	Vector3(350, 190, TreeKind.SEQUOIA), Vector3(378, 130, TreeKind.FORKED), Vector3(405, 36, TreeKind.SPRUCE),
+	Vector3(425, 30, TreeKind.SPRUCE), Vector3(560, 120, TreeKind.SEQUOIA), Vector3(585, 30, TreeKind.SPRUCE),
+	Vector3(605, 26, TreeKind.SPRUCE), Vector3(1370, 28, TreeKind.SPRUCE), Vector3(1392, 34, TreeKind.SPRUCE),
+	Vector3(1440, 140, TreeKind.SEQUOIA), Vector3(1530, 36, TreeKind.SPRUCE), Vector3(1555, 170, TreeKind.FORKED),
+	Vector3(1585, 210, TreeKind.SEQUOIA), Vector3(1612, 160, TreeKind.SEQUOIA), Vector3(1640, 40, TreeKind.SPRUCE),
+	Vector3(1662, 32, TreeKind.SPRUCE), Vector3(1700, 120, TreeKind.SEQUOIA),
+]
+# How much darker than the sky behind the peaks each Valley depth is, by day.
+const VALLEY_RANGES_DARKENING := 0.05
+const TATRA_FAR_DARKENING := 0.14
 const TATRA_NEAR_DARKENING := 0.28
-# How fast each Tatra ridge scrolls with the camera, the world's being 1: mostly horizontal, so the
-# ridges barely rise into the sky as the ship climbs. Tuning, expected to change in playtests.
-const TATRA_FAR_SCROLL := Vector2(0.6, 0.97)
-const TATRA_NEAR_SCROLL := Vector2(0.75, 0.98)
+const VALLEY_HILLS_DARKENING := 0.42
+# How fast each Valley depth scrolls with the camera, the world's being 1. Sideways each nearer one
+# a little faster; vertically they stay planted on the ground but part clearly as the ship climbs
+# or drops, the farthest well slower than the world. Tuning, expected to change in playtests.
+const VALLEY_RANGES_SCROLL := Vector2(0.45, 0.85)
+const TATRA_FAR_SCROLL := Vector2(0.58, 0.89)
+const TATRA_NEAR_SCROLL := Vector2(0.7, 0.93)
+const VALLEY_HILLS_SCROLL := Vector2(0.82, 0.97)
 # The Metropolis's far skyline, in two depths: each a list of blocks left to right, each
 # Vector2(right x, roof y), the first starting at the world's left side overhang and the last
 # reaching its right one. Flat roofs and straight walls, staying below the mountain tops; the
@@ -114,8 +162,8 @@ const FAR_WALLS_DARKENING := 0.37
 const HIMALAYA_FAR_SCROLL := Vector2(0.4, 0.94)
 const HIMALAYA_NEAR_SCROLL := Vector2(0.55, 0.96)
 const FAR_WALLS_SCROLL := Vector2(0.7, 0.975)
-# How far below the location's lowest point each ridge reaches, so its bottom never shows as its
-# layer rises with a camera above the pad.
+# How far below the location's lowest point each ridge reaches, on top of how far its layer rises
+# by the Border, so its bottom never shows as its layer rises with a camera above the pad.
 const BOTTOM_MARGIN := 200.0
 # How far past its first and last points each ridge carries on, level, so its ends never show as its
 # layer shifts sideways (a layer anchored on a pad off the world's centre is shifted even with a
@@ -146,10 +194,83 @@ class Ridge:
 		scroll_scale = scroll
 
 
-# The Tatra-like ridges, farther first.
-static func tatras() -> Array[Ridge]:
-	return [Ridge.new(TATRA_FAR, TATRA_FAR_DARKENING, TATRA_FAR_SCROLL),
-		Ridge.new(TATRA_NEAR, TATRA_NEAR_DARKENING, TATRA_NEAR_SCROLL)]
+# The Valley's Backdrop, farther first: distant ranges, the high Tatra-like peaks, the forested
+# ridge with Giewont and the rolling hills with their sequoias.
+static func valley() -> Array[Ridge]:
+	return [Ridge.new(VALLEY_RANGES, VALLEY_RANGES_DARKENING, VALLEY_RANGES_SCROLL),
+		Ridge.new(TATRA_FAR, TATRA_FAR_DARKENING, TATRA_FAR_SCROLL),
+		Ridge.new(forested(TATRA_NEAR, TATRA_NEAR_TREES), TATRA_NEAR_DARKENING, TATRA_NEAR_SCROLL),
+		Ridge.new(forested(VALLEY_HILLS, VALLEY_HILLS_TREES), VALLEY_HILLS_DARKENING, VALLEY_HILLS_SCROLL)]
+
+
+# A top edge with trees standing on it (each Vector3(x, height, TreeKind)): wherever a tree rises
+# above the edge, the edge follows the tree's outline, so neighbouring trees merge into a forest.
+static func forested(edge: Array, trees: Array) -> Array[Vector2]:
+	var xs := {}
+	for point: Vector2 in edge:
+		xs[point.x] = true
+	for tree: Vector3 in trees:
+		var half := tree_half_width(tree)
+		var x := tree.x - half
+		while x < tree.x + half:
+			xs[x] = true
+			x += TREE_STEP
+		xs[tree.x + half] = true
+		xs[tree.x] = true
+		# Just beside it, back on the ground, so its sides drop straight down.
+		xs[tree.x - half - 0.5] = true
+		xs[tree.x + half + 0.5] = true
+	var sorted := xs.keys()
+	sorted.sort()
+	var result: Array[Vector2] = []
+	for x: float in sorted:
+		var ground := edge_y(edge, x)
+		var top := ground
+		for tree: Vector3 in trees:
+			top = minf(top, tree_top(tree, edge_y(edge, tree.x), x))
+		result.append(Vector2(x, top))
+	return result
+
+
+# A top edge's height at x, between its points.
+static func edge_y(edge: Array, x: float) -> float:
+	for i in edge.size() - 1:
+		var from: Vector2 = edge[i]
+		var to: Vector2 = edge[i + 1]
+		if x >= from.x and x <= to.x:
+			return from.y if to.x == from.x else lerpf(from.y, to.y, (x - from.x) / (to.x - from.x))
+	return edge[0].y if x < edge[0].x else edge[-1].y
+
+
+static func tree_half_width(tree: Vector3) -> float:
+	match int(tree.z):
+		TreeKind.SPRUCE:
+			return tree.y * 0.3
+		_:
+			return tree.y * 0.1
+
+
+# The top of a tree standing at base_y, at x (INF beside it): a spruce a narrow cone with ragged
+# tiers, a sequoia a tall, slightly lumpy column with a domed crown, a forked one a column whose
+# crown splits in two rounded lobes.
+static func tree_top(tree: Vector3, base_y: float, x: float) -> float:
+	var half := tree_half_width(tree)
+	var across := absf(x - tree.x) / half
+	if across > 1.0:
+		return INF
+	var height := tree.y
+	match int(tree.z):
+		TreeKind.SPRUCE:
+			var tiers := 0.12 * height * absf(sin(across * PI * 2.0))
+			return base_y - height * (1.0 - across) + tiers * across
+		TreeKind.SEQUOIA:
+			return base_y - height + height * (0.16 * across * across + 0.02 * absf(sin(across * 7.0)))
+		_:
+			# Two rounded lobes, one each side of a notch.
+			var side := absf(x - tree.x) / half
+			var lobe := side - 0.5
+			var notch := height * 0.12 * maxf(0.0, 1.0 - side / 0.25)
+			return base_y - height + half * (0.5 - sqrt(maxf(0.0, 0.25 - lobe * lobe))) + notch
 
 
 # The Metropolis's skyline in two depths, farther first.
@@ -197,7 +318,9 @@ func build(from: Array[Ridge], bottom_y: float, anchor: Vector2) -> void:
 		var top := ridge.top_edge.duplicate()
 		top.insert(0, top[0] - Vector2(SIDE_MARGIN, 0))
 		top.append(top[-1] + Vector2(SIDE_MARGIN, 0))
-		ridges.append(DecorKit.add_in_layer(self, DecorKit.closed_down(top, bottom_y + BOTTOM_MARGIN),
+		# A layer slower than the world rises as the camera climbs: by the Border, by this much.
+		var rise := maxf(0.0, (1.0 - ridge.scroll_scale.y) * (anchor.y - World.BORDER_Y))
+		ridges.append(DecorKit.add_in_layer(self, DecorKit.closed_down(top, bottom_y + BOTTOM_MARGIN + rise),
 			ridge.scroll_scale, anchor))
 		darkenings.append(ridge.darkening)
 

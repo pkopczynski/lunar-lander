@@ -26,17 +26,20 @@ func at_hour(hour: int) -> void:
 	await frames(1)
 
 
-# Checks the two Tatra-like ridges: the farther peaking at the mountain tops (Rysy), the nearer
-# at Giewont, both reaching down to (past) the location's lowest point.
-func check_tatras(where: String) -> void:
+# Checks the Valley's depths: distant ranges, high peaks towering above the mountain tops, the
+# nearer ridge with Giewont's sleeping knight and rolling hills, each reaching down to (past) the
+# location's lowest point.
+func check_valley(where: String) -> void:
 	var pieces := backdrop()
-	check(pieces.size() == 2, "the %s's Backdrop should be two ridges, got %d pieces" % [where, pieces.size()])
-	if pieces.size() != 2:
+	check(pieces.size() >= 4, "the %s's Backdrop should be at least four depths, got %d pieces" % [where, pieces.size()])
+	if pieces.size() < 4:
 		return
-	var tops := [pieces[0].screen_area.position.y, pieces[1].screen_area.position.y]
-	tops.sort()
-	check_near(tops[0], screen_y(World.MOUNTAIN_TOP_Y), 0.01, "the %s's farther ridge's peak on screen" % where)
-	check_near(tops[1], screen_y(248.0), 0.01, "the %s's nearer ridge's peak (Giewont) on screen" % where)
+	var tops: Array = pieces.map(func(piece: World.Decor) -> float: return piece.screen_area.position.y)
+	check(tops.min() < screen_y(World.MOUNTAIN_TOP_Y) - 40.0,
+		"the %s's high peaks should tower above the mountain tops (screen y %s), its highest at %s"
+		% [where, screen_y(World.MOUNTAIN_TOP_Y), tops.min()])
+	check(tops.any(func(top: float) -> bool: return is_equal_approx(top, screen_y(248.0))),
+		"one of the %s's ridges should peak at Giewont (screen y %s), the tops are %s" % [where, screen_y(248.0), tops])
 	for piece in pieces:
 		check(piece.screen_area.end.y >= screen_y(world().location.lowest_y),
 			"a %s ridge should reach down to the location's lowest point (screen y %s), its bottom at %s"
@@ -44,14 +47,14 @@ func check_tatras(where: String) -> void:
 		check(not piece.has_collider, "a %s ridge shouldn't have a collider" % where)
 
 
-func test_the_valley_backdrop_is_two_tatra_ridges_without_colliders() -> void:
+func test_the_valley_backdrop_is_ranges_peaks_giewont_and_hills_without_colliders() -> void:
 	await choose_ship()
-	check_tatras("Valley")
+	check_valley("Valley")
 
 
-# The Mine's Backdrop: Himalaya-like peaks, towering well above the mountain tops where the Tatras
-# only reach them, then its far walls with their industrial silhouettes and cranes; all down past the pit floor.
-func test_the_mine_shows_himalaya_like_peaks_down_to_its_pit_floor_and_the_valley_still_the_tatras() -> void:
+# The Mine's Backdrop: Himalaya-like peaks, towering well above the mountain tops,
+# then its far walls with their industrial silhouettes and cranes; all down past the pit floor.
+func test_the_mine_shows_himalaya_like_peaks_down_to_its_pit_floor_and_the_valley_still_its_own() -> void:
 	await choose_ship()
 	clock().move_to(Location.MINE)
 	await frames(1)
@@ -69,7 +72,7 @@ func test_the_mine_shows_himalaya_like_peaks_down_to_its_pit_floor_and_the_valle
 		% [screen_y(World.MOUNTAIN_TOP_Y), highest])
 	clock().move_to(Location.VALLEY)
 	await frames(1)
-	check_tatras("Valley, back from the Mine,")
+	check_valley("Valley, back from the Mine,")
 
 
 func test_changing_the_location_rebuilds_its_backdrop() -> void:
@@ -86,7 +89,7 @@ func test_changing_the_location_rebuilds_its_backdrop() -> void:
 		check_near(pieces[0].screen_area.position.y, screen_y(400.0), 0.01, "the one ridge's top on screen")
 	clock().move_to(Location.VALLEY)
 	await frames(1)
-	check_tatras("Valley, back again,")
+	check_valley("Valley, back again,")
 
 
 func test_the_backdrop_follows_the_sky_a_shade_darker_than_the_gradient() -> void:

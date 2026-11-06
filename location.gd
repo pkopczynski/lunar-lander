@@ -100,8 +100,8 @@ var lowest_y := NAN:
 # Solid polygons added to the shared ground and mountains; touching them crashes the ship.
 var terrain: Array[PackedVector2Array] = []
 # The ridges (or skyline) behind the surface, farther first, with no collision; by default the
-# Tatra-like ones.
-var backdrop: Array[Backdrop.Ridge] = Backdrop.tatras()
+# Valley's.
+var backdrop: Array[Backdrop.Ridge] = Backdrop.valley()
 # The clouds drifting in its sky; by default none.
 var clouds: Array[Clouds.Cloud] = []
 # The silhouettes in front of the ship; by default none. They must leave its pad and the ship's
