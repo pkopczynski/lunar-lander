@@ -241,7 +241,7 @@ func test_the_clouds_are_tinted_by_the_sky() -> void:
 			"cloud %d should turn from blue by day (%s) to orange in the evening (%s)" % [i, day[i].color, evening[i].color])
 
 
-# Checks that each Backdrop ridge covers the whole width of the view, and reaches below the
+# Checks that each Backdrop ridge (not the structures standing free of them) covers the whole width of the view, and reaches below the
 # location's lowest point, wherever the camera can be on the surface: at the widest zoom, the
 # surface zoom and the zoom punch, and on a window as wide as the world and its side overhang.
 func check_layers_cover_the_view(where: String) -> void:
@@ -257,6 +257,8 @@ func check_layers_cover_the_view(where: String) -> void:
 				var camera := Vector2(x, y)
 				var lowest_on_screen: float = (world().location.lowest_y - y) * zoom + size.y / 2.0
 				for piece in pieces_in(World.DecorLayer.BACKDROP, camera, zoom):
+					if piece.part != World.DecorPart.RIDGE:
+						continue
 					var area := piece.screen_area
 					check(area.position.x <= 0.0 and area.end.x >= size.x,
 						"at the %s a ridge %s should cover the view's width %s, camera %s at zoom %s" % [where, area, size.x, camera, zoom])
