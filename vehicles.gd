@@ -124,6 +124,6 @@ func listed_decor() -> Array[World.Listing]:
 # Fills each hull like its depth of the Backdrop, and brightens their lights and trails.
 func show_sky(sky: SkyLook, backdrop: Backdrop) -> void:
 	for i in hulls.size():
-		hulls[i].color = backdrop.color_of((hulls[i].get_parent() as AnchoredParallax).scroll_scale)
+		hulls[i].self_modulate = backdrop.color_of((hulls[i].get_parent() as AnchoredParallax).scroll_scale)
 		lights[i].self_modulate = CityLights.brightness(sky)
 		trails[i].self_modulate = CityLights.brightness(sky)

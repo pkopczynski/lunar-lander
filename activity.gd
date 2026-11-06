@@ -162,6 +162,6 @@ func listed_decor() -> Array[World.Listing]:
 # darkness, as the city's; they're never dimmed.
 func show_sky(sky: SkyLook, backdrop: Backdrop) -> void:
 	for i in movers.size():
-		movers[i].color = backdrop.color_of(ways[i].scroll)
+		movers[i].self_modulate = backdrop.color_of(ways[i].scroll)
 	for light in lights:
 		light.self_modulate = CityLights.brightness(sky)

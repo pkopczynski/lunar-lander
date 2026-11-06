@@ -444,23 +444,25 @@ func color_of(scroll: Vector2) -> Color:
 	for ridge in ridges:
 		var depth := (ridge.get_parent() as AnchoredParallax).scroll_scale
 		if depth == scroll:
-			return ridge.color
+			return ridge.self_modulate
 		var away := absf(depth.x - scroll.x)
 		if away < nearest:
 			nearest = away
-			color = ridge.color
+			color = ridge.self_modulate
 	return color
 
 
 # Fills each ridge and its structures with its depth's colour, from the background gradient
 # (background_color: a world y to its colour) behind the farthest ridge's highest peak, tints each
-# haze band with the sky behind it, and brightens the lights like the city's: never dimmed.
+# haze band with the sky behind it, and brightens the lights like the city's: never dimmed. The
+# ridges and structures are white polygons tinted by their self_modulate, so recolouring them
+# doesn't rebuild them (a Polygon2D's color does, every time it changes).
 func show_sky(sky: SkyLook, background_color: Callable) -> void:
 	var colors := depth_colors(background_color.call(peak_y), darkenings)
 	for i in ridges.size():
-		ridges[i].color = colors[i]
+		ridges[i].self_modulate = colors[i]
 	for i in structures.size():
-		structures[i].color = colors[structure_ridges[i]]
+		structures[i].self_modulate = colors[structure_ridges[i]]
 	for haze in hazes:
 		haze.color = background_color.call(haze.polygon[0].y)
 	for lights in windows + beacons:

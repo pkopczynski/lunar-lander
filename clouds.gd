@@ -6,8 +6,9 @@ extends Node2D
 # world (no parallax), so they stay in their spot in the sky as the ship flies around and none ever
 # shows in deep space. They drift slowly
 # sideways on their own wind, tinted by the sky colour behind them. Each cloud wraps around from one side to the other well outside the view, so none ever
-# pops in sight. No collider. Moving a cloud only changes its position (and a wisp's modulate, a far
-# cloud's self_modulate), so nothing is redrawn as they drift.
+# pops in sight. No collider. Moving a cloud only changes its position (and a wisp's modulate), and
+# the sky only its tint (self_modulate), so nothing is rebuilt as they drift or the hour passes:
+# each one's shading is set once, when it's built.
 #
 # A cloud in front of the world (scroll scale above 1 sideways) is a wisp: translucent, drawn in
 # front of the ship, and kept beside the Approach corridor. A wisp left of the pad drifts in a lane
@@ -39,6 +40,10 @@ const PUFF_TOP_LIGHT := 0.18
 const PUFF_BASE_SHADE := 0.3
 # A cumulus's shading, top to base, as a texture filling it (its colour tints it).
 const SHADING_HEIGHT := 64
+# A cirrus is lit along its upper edge, this much lighter than its colour, its underside and fibres
+# a little darker.
+const CIRRUS_TOP_LIGHT := 0.1
+const CIRRUS_UNDERSIDE_SHADE := -0.03
 # A cirrus is translucent: its body this opaque, the tips of its fibres fading to this.
 const CIRRUS_ALPHA := 0.8
 const FIBRE_TIP_ALPHA := 0.15
@@ -143,16 +148,13 @@ var near := Node2D.new()
 # How long the wind has carried the clouds since they were built, in s.
 var drifted := 0.0
 # Every cloud and wisp as drawn, in the order given, each with its designed x, wind, the span its x
-# wraps around (x: left end, y: width), kind, whether it's a wisp, and its outline's shading: per
-# point, how much lighter (above 0) or darker (below 0) than the cloud's colour, and how opaque.
+# wraps around (x: left end, y: width), kind and whether it's a wisp.
 var drawn: Array[Polygon2D] = []
 var designed_x := PackedFloat32Array()
 var winds := PackedFloat32Array()
 var lanes := PackedVector2Array()
 var kinds: Array[Kind] = []
 var translucent: Array[bool] = []
-var shades: Array[PackedFloat32Array] = []
-var alphas: Array[PackedFloat32Array] = []
 
 
 # Builds the clouds afresh, each depth in its own layer anchored on anchor (the pad's top).
@@ -166,8 +168,6 @@ func build(from: Array[Cloud], anchor: Vector2) -> void:
 	lanes.clear()
 	kinds.clear()
 	translucent.clear()
-	shades.clear()
-	alphas.clear()
 	drawn.clear()
 	drifted = 0.0
 	var layers := DecorKit.Depths.new(self, anchor)
@@ -179,6 +179,8 @@ func build(from: Array[Cloud], anchor: Vector2) -> void:
 		if cloud.form == Form.CUMULUS:
 			visual.texture = shading_texture
 			visual.uv = shading_uv(visual.polygon)
+		else:
+			visual.vertex_colors = shading_colors(shaped[1], shaped[2])
 		visual.position = cloud.center
 		if cloud.is_wisp():
 			near_layers.at(cloud.scroll).add_child(visual)
@@ -189,8 +191,6 @@ func build(from: Array[Cloud], anchor: Vector2) -> void:
 			pieces.append(visual)
 			lanes.append(Vector2(DecorKit.WRAP_LEFT, DecorKit.WRAP_WIDTH))
 		drawn.append(visual)
-		shades.append(shaped[1])
-		alphas.append(shaped[2])
 		designed_x.append(cloud.center.x)
 		winds.append(cloud.wind)
 		kinds.append(cloud.kind)
@@ -231,11 +231,11 @@ func listed_decor() -> Array[World.Listing]:
 	return listed
 
 
-# Tints each cloud from the background gradient behind it (background_color: a world y to its
-# colour) and the sky's colour, lighter, drawn a little toward its kind's colour (by day: it fades
-# into the night sky like the rest) and darker as the sky darkens, so at night it never comes close
-# to solid terrain's colour; then shades it point by point (a cumulus lit from above, a cirrus's
-# fibres fading out; a cumulus is shaded by its texture instead).
+# Tints each cloud (its self_modulate) from the background gradient behind it (background_color: a
+# world y to its colour) and the sky's colour, lighter, drawn a little toward its kind's colour (by
+# day: it fades into the night sky like the rest) and darker as the sky darkens, so at night it
+# never comes close to solid terrain's colour; its shading, set when it was built, darkens it from
+# there (a cumulus's base by its texture, a cirrus's underside by its vertex colours).
 func show_sky(sky: SkyLook, background_color: Callable) -> void:
 	for i in drawn.size():
 		var cloud := drawn[i]
@@ -243,25 +243,25 @@ func show_sky(sky: SkyLook, background_color: Callable) -> void:
 		var behind: Color = background_color.call(cloud.position.y)
 		var lightening := LIGHTENING * lerpf(1.0, NIGHT_LIGHTENING, sky.night())
 		var color := behind.lerp(sky.ground_color, SKY_LIGHT).lerp(Color.WHITE, lightening).lerp(kind[1], kind[2] * (1.0 - sky.night())).darkened(sky.darkness * NIGHT_DARKENING)
-		var opacity := WISP_OPACITY if translucent[i] else 1.0
-		var shade := shades[i]
-		var alpha := alphas[i]
-		# A cumulus: its lit top's colour, tinting the shading filling it.
-		if shade.is_empty():
-			cloud.color = color.lightened(PUFF_TOP_LIGHT)
-			cloud.color.a = opacity
-			continue
-		var colors := PackedColorArray()
-		for point in shade.size():
-			var shaded := color.lightened(shade[point]) if shade[point] >= 0.0 else color.darkened(-shade[point])
-			shaded.a = alpha[point] * opacity
-			colors.append(shaded)
-		cloud.color = Color.WHITE
-		cloud.vertex_colors = colors
+		# Its lit top's (or lit upper edge's) colour.
+		var tint := color.lightened(PUFF_TOP_LIGHT if cloud.vertex_colors.is_empty() else CIRRUS_TOP_LIGHT)
+		tint.a = WISP_OPACITY if translucent[i] else 1.0
+		cloud.self_modulate = tint
+
+
+# A cirrus's shading as vertex colours, set once: per point, how much lighter (above 0) or darker
+# (below 0) than the cloud's colour (shade), and how opaque (alpha); white at its lit upper edge
+# (CIRRUS_TOP_LIGHT lighter), so its tint gives that edge's colour, and darker below it.
+static func shading_colors(shade: PackedFloat32Array, alpha: PackedFloat32Array) -> PackedColorArray:
+	var colors := PackedColorArray()
+	for point in shade.size():
+		var level := 1.0 - (CIRRUS_TOP_LIGHT - shade[point])
+		colors.append(Color(level, level, level, alpha[point]))
+	return colors
 
 
 # A cloud's outline around its centre, shaped by its form, and per point its shading and opacity
-# (see shades and alphas): [outline, shading, opacity].
+# (see shading_colors()): [outline, shading, opacity].
 static func outline(cloud: Cloud) -> Array:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = cloud.shape_seed
@@ -371,13 +371,13 @@ static func cirrus(half: Vector2, rng: RandomNumberGenerator) -> Array:
 	var ends := func(i: int) -> float: return 0.3 if i == 0 or i == STREAK_POINTS - 1 else 1.0
 	for i in STREAK_POINTS:
 		points.append(upper[i])
-		shade.append(0.1)
+		shade.append(CIRRUS_TOP_LIGHT)
 		alpha.append(CIRRUS_ALPHA * ends.call(i))
 	var fibres := 0
 	# Its ends are points (no thickness), already on the upper edge.
 	for i in range(STREAK_POINTS - 2, 0, -1):
 		points.append(lower[i])
-		shade.append(-0.03)
+		shade.append(CIRRUS_UNDERSIDE_SHADE)
 		alpha.append(CIRRUS_ALPHA * ends.call(i))
 		# Now and then a fibre falls from between this point and the next one back.
 		if i > 3 and i < STREAK_POINTS - 3 and fibres < 6 and rng.randf() < 0.4:
@@ -405,7 +405,7 @@ static func fibre(points: PackedVector2Array, shade: PackedFloat32Array, alpha: 
 				share = 1.0 - share
 			var t := share * length
 			points.append(along.call(t) + normal.call(t) * root_half * (1.0 - share) * side)
-			shade.append(-0.03)
+			shade.append(CIRRUS_UNDERSIDE_SHADE)
 			alpha.append(lerpf(CIRRUS_ALPHA, FIBRE_TIP_ALPHA, share))
 
 
