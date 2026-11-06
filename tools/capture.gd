@@ -10,6 +10,8 @@ const WINDOW_SIZE := Vector2i(1152, 648)
 const TIMES := {"day": 13 * 60, "night": 1 * 60}
 # Heights of the ship above its resting place on the pad, in px.
 const HEIGHTS: Array[int] = [0, 300, 700, 1200, 1800]
+# Where the ship hovers beside each Mountain, to show its look: just inside each foot, at mid-face.
+const MOUNTAIN_VIEWS := {"left": Vector2(330, 420), "right": Vector2(World.WORLD_WIDTH - 330, 420)}
 const MEASURE_TIME := "day"
 const MEASURE_HEIGHTS: Array[int] = [0, 1000]
 # Frames to let the camera, the sky and moving decor settle before a shot or a measurement.
@@ -46,6 +48,11 @@ func run() -> void:
 				var file := "%s_%s_%04d.png" % [location.name.to_lower(), time_name, height]
 				root.get_texture().get_image().save_png(out_dir.path_join(file))
 				shots += 1
+			for side: String in MOUNTAIN_VIEWS:
+				await place_at(clock, lander, TIMES[time_name], MOUNTAIN_VIEWS[side])
+				var file := "%s_%s_mountains_%s.png" % [location.name.to_lower(), time_name, side]
+				root.get_texture().get_image().save_png(out_dir.path_join(file))
+				shots += 1
 	print("Saved %d screenshots to %s" % [shots, out_dir])
 
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
@@ -67,8 +74,12 @@ func run() -> void:
 # Sets the local time and holds the ship upright at a height above its resting place on the pad.
 func place(clock: PlanetClock, lander: Lander, minutes: float, height: int) -> void:
 	lander.reset_to_pad()
-	var on_pad := lander.position
-	lander.fly_from(on_pad - Vector2(0.0, height))
+	await place_at(clock, lander, minutes, lander.position - Vector2(0.0, height))
+
+
+# Sets the local time and holds the ship upright at a point in the world.
+func place_at(clock: PlanetClock, lander: Lander, minutes: float, at: Vector2) -> void:
+	lander.fly_from(at)
 	lander.hold()
 	clock.minutes = minutes
 	await frames(SETTLE_FRAMES)

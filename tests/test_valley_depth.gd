@@ -8,12 +8,20 @@ func pad_top() -> Vector2:
 	return Vector2(pad_x(), world().location.ground_y - Lander.PAD_HEIGHT)
 
 
+# The pieces in layer; the clouds' translucent wisps in the Foreground are left out (they're clouds,
+# checked in test_clouds.gd, and the Approach corridor test keeps them clear of the pad).
 func pieces_in(layer: World.DecorLayer, camera_center := pad_top(), zoom := 1.0) -> Array[World.Decor]:
 	var pieces: Array[World.Decor] = []
 	for piece in world().shown_decor(camera_center, zoom):
-		if piece.layer == layer:
+		if piece.layer == layer and piece.part != World.DecorPart.WISP:
 			pieces.append(piece)
 	return pieces
+
+
+# The Foreground's silhouettes, without the glows some carry.
+func silhouettes(camera_center := pad_top(), zoom := 1.0) -> Array[World.Decor]:
+	return pieces_in(World.DecorLayer.FOREGROUND, camera_center, zoom).filter(
+		func(piece: World.Decor) -> bool: return piece.part == World.DecorPart.SILHOUETTE)
 
 
 func test_the_valley_lists_parallax_ridges_clouds_and_a_foreground_without_colliders() -> void:
@@ -63,13 +71,17 @@ func test_the_valleys_backdrop_depths_each_rise_at_their_own_speed() -> void:
 		"500 px up, the nearest Valley depth should have sunk clearly more than the farthest: %s vs %s" % [near_shift, far_shift])
 
 
-# The bounding box of a designed top edge, closed down out of sight, as it appears on screen for a
-# camera centred on the pad's top: x and the top only (the bottom is below the view).
-func designed_top_area(top_edge: Array, zoom: float) -> Rect2:
+# The bounding box of a designed silhouette (its top edge, closed down out of sight, and the shapes
+# standing on it) as it appears on screen for a camera centred on the pad's top: x and the top only
+# (the bottom is below the view).
+func designed_top_area(silhouette: Foreground.Silhouette, zoom: float) -> Rect2:
 	var screen_center := world().get_viewport_rect().size / 2.0
+	var points := silhouette.top_edge.duplicate()
+	for shape in silhouette.shapes:
+		points.append_array(shape)
 	var area := Rect2()
-	for i in top_edge.size():
-		var on_screen: Vector2 = (top_edge[i] - pad_top()) * zoom + screen_center
+	for i in points.size():
+		var on_screen: Vector2 = (points[i] - pad_top()) * zoom + screen_center
 		area = Rect2(on_screen, Vector2.ZERO) if i == 0 else area.expand(on_screen)
 	return area
 
@@ -77,19 +89,24 @@ func designed_top_area(top_edge: Array, zoom: float) -> Rect2:
 func test_with_the_camera_on_the_pad_every_layer_sits_where_it_was_designed() -> void:
 	await choose_ship()
 	for zoom in [0.85, FollowCamera.SURFACE_ZOOM, FollowCamera.SURFACE_ZOOM * FollowCamera.PUNCH_ZOOM]:
-		var stands := pieces_in(World.DecorLayer.FOREGROUND, pad_top(), zoom)
-		var designed := [designed_top_area(Foreground.VALLEY_LEFT_STAND, zoom), designed_top_area(Foreground.VALLEY_RIGHT_STAND, zoom)]
-		check(stands.size() == designed.size(), "the Valley should show its two spruce stands, got %d" % stands.size())
+		var stands := silhouettes(pad_top(), zoom)
+		var designed := Location.VALLEY.foreground.map(
+			func(silhouette: Foreground.Silhouette) -> Rect2: return designed_top_area(silhouette, zoom))
+		check(stands.size() == designed.size(), "the Valley should show its two stands, got %d" % stands.size())
 		for i in mini(stands.size(), designed.size()):
 			var area := stands[i].screen_area
-			check_near(area.position.x, designed[i].position.x, 0.01, "spruce stand %d's left edge at zoom %s" % [i, zoom])
-			check_near(area.end.x, designed[i].end.x, 0.01, "spruce stand %d's right edge at zoom %s" % [i, zoom])
-			check_near(area.position.y, designed[i].position.y, 0.01, "spruce stand %d's top at zoom %s" % [i, zoom])
+			check_near(area.position.x, designed[i].position.x, 0.01, "stand %d's left edge at zoom %s" % [i, zoom])
+			check_near(area.end.x, designed[i].end.x, 0.01, "stand %d's right edge at zoom %s" % [i, zoom])
+			check_near(area.position.y, designed[i].position.y, 0.01, "stand %d's top at zoom %s" % [i, zoom])
 		var ridges := pieces_in(World.DecorLayer.BACKDROP, pad_top(), zoom)
 		var designed_ridges := world().location.backdrop
 		check(ridges.size() == designed_ridges.size(), "the Valley should show each of its ridges, got %d" % ridges.size())
 		for i in mini(ridges.size(), designed_ridges.size()):
-			check_near(ridges[i].screen_area.position.y, designed_top_area(designed_ridges[i].top_edge, zoom).position.y, 0.01,
+			var designed_top := INF
+			for point in designed_ridges[i].top_edge:
+				designed_top = minf(designed_top, point.y)
+			var screen_center_y := world().get_viewport_rect().size.y / 2.0
+			check_near(ridges[i].screen_area.position.y, (designed_top - pad_top().y) * zoom + screen_center_y, 0.01,
 				"ridge %d's peak at zoom %s" % [i, zoom])
 
 
@@ -111,7 +128,7 @@ func test_ridges_move_more_slowly_than_the_world_and_the_foreground_faster() -> 
 		check_near(ridge.y, 0.0, 0.01, "ridge %d shouldn't move up or down when the camera moves sideways" % i)
 	for i in 2:
 		var stand := screen_shift(i, World.DecorLayer.FOREGROUND, sideways)
-		check(-stand.x > 300.0 * 1.1, "spruce stand %d should move left more than the world's 300 px: %s" % [i, stand])
+		check(-stand.x > 300.0 * 1.1, "stand %d should move left more than the world's 300 px: %s" % [i, stand])
 	# Climbing, the ridges stay planted: they sink with the world, only a little less, so they
 	# rise a little into the sky.
 	var up := Vector2(0, -1000)
@@ -120,7 +137,7 @@ func test_ridges_move_more_slowly_than_the_world_and_the_foreground_faster() -> 
 		check(ridge.y > 1000.0 * 0.8 and ridge.y < 1000.0, "ridge %d should sink a little less than the world's 1000 px: %s" % [i, ridge])
 	for i in 2:
 		var stand := screen_shift(i, World.DecorLayer.FOREGROUND, up)
-		check(stand.y > 1000.0 and stand.y < 1000.0 * 1.1, "spruce stand %d should sink a little more than the world's 1000 px: %s" % [i, stand])
+		check(stand.y > 1000.0 and stand.y < 1000.0 * 1.1, "stand %d should sink a little more than the world's 1000 px: %s" % [i, stand])
 
 
 # Room around the ship, which the camera centres on, in world px: more than any ship type's size.
@@ -202,7 +219,7 @@ func at_hour(hour: int) -> void:
 	await frames(1)
 
 
-# Checks that every Foreground piece is opaque and darker than every other piece of scenery (the
+# Checks that every Foreground silhouette is opaque and darker than every other piece of scenery (the
 # Backdrop, parallax layers, ground, mountains and terrain) at night, in the morning, by day and in
 # the evening, and a little darker at night than by day.
 func check_foreground_is_darkest(where: String) -> void:
@@ -220,7 +237,7 @@ func check_foreground_is_darkest(where: String) -> void:
 		var darkest_other := INF
 		for color in others:
 			darkest_other = minf(darkest_other, color.get_luminance())
-		var foreground := pieces_in(World.DecorLayer.FOREGROUND)
+		var foreground := silhouettes()
 		check(not foreground.is_empty(), "the %s should have a Foreground" % where)
 		for piece in foreground:
 			check(piece.color.a == 1.0, "a %s Foreground piece should be opaque at %d:30, its colour %s" % [where, hour, piece.color])
@@ -275,7 +292,7 @@ func test_the_clouds_are_tinted_by_the_sky() -> void:
 			"cloud %d should turn from blue by day (%s) to orange in the evening (%s)" % [i, day[i].color, evening[i].color])
 
 
-# Checks that each Backdrop ridge covers the whole width of the view, and reaches below the
+# Checks that each Backdrop ridge (not the structures standing free of them) covers the whole width of the view, and reaches below the
 # location's lowest point, wherever the camera can be on the surface: at the widest zoom, the
 # surface zoom and the zoom punch, and on a window as wide as the world and its side overhang.
 func check_layers_cover_the_view(where: String) -> void:
@@ -291,6 +308,8 @@ func check_layers_cover_the_view(where: String) -> void:
 				var camera := Vector2(x, y)
 				var lowest_on_screen: float = (world().location.lowest_y - y) * zoom + size.y / 2.0
 				for piece in pieces_in(World.DecorLayer.BACKDROP, camera, zoom):
+					if piece.part != World.DecorPart.RIDGE:
+						continue
 					var area := piece.screen_area
 					check(area.position.x <= 0.0 and area.end.x >= size.x,
 						"at the %s a ridge %s should cover the view's width %s, camera %s at zoom %s" % [where, area, size.x, camera, zoom])

@@ -92,6 +92,11 @@ func add_piece(outline: PackedVector2Array, color: Color) -> Polygon2D:
 
 # One mesh of all the windows, each tinted in its vertex colours; none when there are no windows.
 func window_mesh(rects: Array[Rect2]) -> ArrayMesh:
+	return mesh_of(rects, WINDOW_TINTS)
+
+
+# One mesh of rects, tinted in turn from tints in their vertex colours; none when there are no rects.
+static func mesh_of(rects: Array[Rect2], tints: Array[Color]) -> ArrayMesh:
 	if rects.is_empty():
 		return null
 	var vertices := PackedVector2Array()
@@ -102,7 +107,7 @@ func window_mesh(rects: Array[Rect2]) -> ArrayMesh:
 			Vector2(rect.position.x, rect.end.y)])
 		for corner: int in [0, 1, 2, 0, 2, 3]:
 			vertices.append(corners[corner])
-			colors.append(WINDOW_TINTS[i % WINDOW_TINTS.size()])
+			colors.append(tints[i % tints.size()])
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = vertices
@@ -120,8 +125,14 @@ func _process(delta: float) -> void:
 func blink(delta: float) -> void:
 	blink_time = fposmod(blink_time + delta, BLINK_PERIOD)
 	for i in warning_lights.size():
-		var phase := fposmod(blink_time + i * BLINK_STAGGER, BLINK_PERIOD)
-		warning_lights[i].modulate.a = 1.0 if phase < BLINK_PERIOD / 2.0 else BLINK_OFF_ALPHA
+		warning_lights[i].modulate.a = blink_alpha(blink_time, i)
+
+
+# The opacity of the index-th warning light of a set, time seconds into their blinking: on for the
+# first half of its blink, faint for the rest, each a little later than the one before it.
+static func blink_alpha(time: float, index: int) -> float:
+	var phase := fposmod(time + index * BLINK_STAGGER, BLINK_PERIOD)
+	return 1.0 if phase < BLINK_PERIOD / 2.0 else BLINK_OFF_ALPHA
 
 
 # The windows (one mesh, when there are any), the neon signs and the warning lights, for

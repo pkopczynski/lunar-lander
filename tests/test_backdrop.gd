@@ -62,11 +62,13 @@ func test_the_mine_shows_himalaya_like_peaks_down_to_its_pit_floor_and_the_valle
 	check(pieces.size() >= 3, "the Mine's Backdrop should be its peaks and far walls, got %d pieces" % pieces.size())
 	var highest := INF
 	for piece in pieces:
+		check(not piece.has_collider, "a Mine Backdrop piece shouldn't have a collider")
+		if piece.part != World.DecorPart.RIDGE:
+			continue
 		highest = minf(highest, piece.screen_area.position.y)
 		check(piece.screen_area.end.y >= screen_y(world().location.lowest_y),
 			"a Mine ridge should reach down to the pit floor's bottom (screen y %s), its bottom at %s"
 			% [screen_y(world().location.lowest_y), piece.screen_area.end.y])
-		check(not piece.has_collider, "a Mine Backdrop piece shouldn't have a collider")
 	check(highest < screen_y(World.MOUNTAIN_TOP_Y) - 60.0,
 		"the Mine's Himalaya-like peaks should tower well above the mountain tops (screen y %s), its highest at %s"
 		% [screen_y(World.MOUNTAIN_TOP_Y), highest])
