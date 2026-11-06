@@ -261,7 +261,7 @@ func dress_mountains(look: MountainLook) -> void:
 			var visual := Polygon2D.new()
 			var points := PackedVector2Array()
 			var shapes: Array[PackedInt32Array] = []
-			for shape: PackedVector2Array in dressing[1]:
+			for shape: PackedVector2Array in dressing.shapes[side]:
 				var indices := PackedInt32Array()
 				for point in shape:
 					indices.append(points.size())
@@ -269,7 +269,7 @@ func dress_mountains(look: MountainLook) -> void:
 				shapes.append(indices)
 			visual.polygon = points
 			visual.polygons = shapes
-			visual.color = dressing[0]
+			visual.color = dressing.color
 			mountains.add_child(visual)
 			add_scenery(visual)
 

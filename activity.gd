@@ -74,14 +74,14 @@ class Mover:
 	var start: float
 	var loops: bool
 
-	func _init(shape: Array, between: Vector2, and_to: Vector2, one_way_seconds: float, scroll_scale: Vector2,
-			started := 0.0, starts_over := false) -> void:
+	func _init(shape: Array, start_point: Vector2, end_point: Vector2, one_way_seconds: float, scroll_scale: Vector2,
+			start_share := 0.0, starts_over := false) -> void:
 		outline = PackedVector2Array(shape)
-		from = between
-		to = and_to
+		from = start_point
+		to = end_point
 		seconds = one_way_seconds
 		scroll = scroll_scale
-		start = started
+		start = start_share
 		loops = starts_over
 
 	# Where it is, time seconds after it started.

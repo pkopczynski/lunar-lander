@@ -16,9 +16,14 @@ static func wrapped_x(x: float) -> float:
 
 # A disc's outline: sides points around at, radius away.
 static func disc(at: Vector2, radius: float, sides: int) -> PackedVector2Array:
+	return ellipse(at, Vector2(radius, radius), sides)
+
+
+# An ellipse's outline: sides points around at, half.x away sideways and half.y up and down.
+static func ellipse(at: Vector2, half: Vector2, sides: int) -> PackedVector2Array:
 	var points := PackedVector2Array()
 	for side in sides:
-		points.append(at + Vector2.from_angle(TAU * side / sides) * radius)
+		points.append(at + Vector2.from_angle(TAU * side / sides) * half)
 	return points
 
 

@@ -60,17 +60,17 @@ func _init(base_color: Color) -> void:
 	base = base_color
 
 
-# The shapes of each dressing for one side's mountain (0 left, 1 right), clipped to its outline:
-# [color, polygons] per dressing. Clipped once per side, so showing a location again costs nothing.
-func dressed(side: int, outline: PackedVector2Array) -> Array[Array]:
+# The dressings for one side's mountain (0 left, 1 right), each with only that side's shapes,
+# clipped to its outline. Clipped once per side, so showing a location again costs nothing.
+func dressed(side: int, outline: PackedVector2Array) -> Array[Dressing]:
 	if not clipped.has(side):
-		var dressed_shapes: Array[Array] = []
+		var dressed_side: Array[Dressing] = []
 		for dressing in dressings:
-			var inside: Array[PackedVector2Array] = []
+			var inside := Dressing.new(dressing.color)
 			for shape: PackedVector2Array in dressing.shapes[side]:
-				inside.append_array(Geometry2D.intersect_polygons(shape, outline))
-			dressed_shapes.append([dressing.color, inside])
-		clipped[side] = dressed_shapes
+				inside.shapes[side].append_array(Geometry2D.intersect_polygons(shape, outline))
+			dressed_side.append(inside)
+		clipped[side] = dressed_side
 	return clipped[side]
 
 
