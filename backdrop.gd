@@ -398,14 +398,16 @@ func build(from: Array[Ridge], bottom_y: float, anchor: Vector2) -> void:
 		darkenings.append(ridge.darkening)
 		var layer := visual.get_parent()
 		if not is_nan(ridge.haze_top_y):
-			var haze := Polygon2D.new()
-			haze.polygon = PackedVector2Array([Vector2(top[0].x, ridge.haze_top_y), Vector2(top[-1].x, ridge.haze_top_y),
-				Vector2(top[-1].x, ridge.haze_bottom_y), Vector2(top[0].x, ridge.haze_bottom_y)])
+			# In its own layer just behind the ridge's: rising with the ridge, but with no
+			# parallax sideways (it's level all across, so only its ends could show it, and they
+			# lie past the ridge's).
+			var haze := DecorKit.add_in_layer(self, PackedVector2Array([Vector2(top[0].x, ridge.haze_top_y),
+				Vector2(top[-1].x, ridge.haze_top_y), Vector2(top[-1].x, ridge.haze_bottom_y),
+				Vector2(top[0].x, ridge.haze_bottom_y)]), Vector2(1.0, ridge.scroll_scale.y), anchor)
+			move_child(haze.get_parent(), layer.get_index())
 			var clear := Color(1, 1, 1, 0)
 			var veiled := Color(1, 1, 1, HAZE_ALPHA)
 			haze.vertex_colors = PackedColorArray([clear, clear, veiled, veiled])
-			layer.add_child(haze)
-			layer.move_child(haze, 0)
 			hazes.append(haze)
 		if not ridge.windows.is_empty():
 			windows.append(add_lights(layer, ridge.windows, ridge.window_color))
@@ -455,8 +457,9 @@ func color_of(scroll: Vector2) -> Color:
 # Fills each ridge and its structures with its depth's colour, from the background gradient
 # (background_color: a world y to its colour) behind the farthest ridge's highest peak, tints each
 # haze band with the sky behind it, and brightens the lights like the city's: never dimmed. The
-# ridges and structures are white polygons tinted by their self_modulate, so recolouring them
-# doesn't rebuild them (a Polygon2D's color does, every time it changes).
+# ridges, structures and haze are white polygons tinted by their self_modulate, so recolouring them
+# doesn't rebuild them (a Polygon2D's color does, every time it changes, and a haze band's, being
+# filled with vertex colours, would be ignored).
 func show_sky(sky: SkyLook, background_color: Callable) -> void:
 	var colors := depth_colors(background_color.call(peak_y), darkenings)
 	for i in ridges.size():
@@ -464,7 +467,7 @@ func show_sky(sky: SkyLook, background_color: Callable) -> void:
 	for i in structures.size():
 		structures[i].self_modulate = colors[structure_ridges[i]]
 	for haze in hazes:
-		haze.color = background_color.call(haze.polygon[0].y)
+		haze.self_modulate = background_color.call(haze.polygon[0].y)
 	for lights in windows + beacons:
 		lights.modulate = CityLights.brightness(sky)
 

@@ -138,16 +138,37 @@ func test_the_farthest_skyline_and_megastructures_carry_only_sparse_beacons() ->
 
 func test_haze_lies_between_the_skyline_depths() -> void:
 	await at_metropolis()
-	var scrolls := backdrop_scrolls()
+	var scrolls: Array[float] = []
+	for piece in pieces(World.DecorLayer.BACKDROP):
+		if not piece.scroll_scale.y in scrolls:
+			scrolls.append(piece.scroll_scale.y)
+	scrolls.sort()
 	var haze := pieces(World.DecorLayer.PARALLAX, World.DecorPart.HAZE)
 	var haze_scrolls: Array[float] = []
 	for band in haze:
 		check(band.opacity > 0.0 and band.opacity < 0.8, "a haze band should be translucent, got %s" % band.opacity)
 		check(not band.has_collider, "a haze band shouldn't have a collider")
-		haze_scrolls.append(band.scroll_scale.x)
+		check(band.scroll_scale.x == 1.0, "a haze band should have no parallax sideways, its scale %s" % band.scroll_scale)
+		haze_scrolls.append(band.scroll_scale.y)
 	haze_scrolls.sort()
-	check(haze_scrolls == scrolls.slice(1), "a haze band should lie behind each skyline depth but the farthest %s, got %s"
+	check(haze_scrolls == scrolls.slice(1), "a haze band should rise with each skyline depth but the farthest %s, got %s"
 		% [scrolls.slice(1), haze_scrolls])
+
+
+# The haze takes the sky's colour behind it: never a white veil, bluish by day and dark at night.
+func test_haze_is_tinted_by_the_sky() -> void:
+	await at_metropolis()
+	for hour in [13, 1]:
+		clock().minutes = hour * 60 + 30
+		await frames(1)
+		# With the camera on the pad's top at zoom 1, a world y is its screen y less half the view's
+		# height, from the pad's top.
+		var view := world().get_viewport_rect()
+		for band in pieces(World.DecorLayer.PARALLAX, World.DecorPart.HAZE):
+			var drawn := band.color
+			var sky := world().background_color(band.screen_area.position.y - view.size.y / 2.0 + pad_top().y)
+			check(Vector3(drawn.r - sky.r, drawn.g - sky.g, drawn.b - sky.b).length() < 0.01,
+				"at %02d:30 a haze band should take the sky's colour behind it (%s), drawn %s" % [hour, sky, drawn])
 
 
 func lights() -> Array[World.Decor]:

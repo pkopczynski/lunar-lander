@@ -435,8 +435,9 @@ func decor(visual: Node2D, layer: DecorLayer, part: DecorPart, camera_center: Ve
 	else:
 		var polygon := visual as Polygon2D
 		outline = polygon.polygon
-		piece.color = polygon.color * polygon.self_modulate
 		vertex_colors = polygon.vertex_colors
+		# A Polygon2D filled with vertex colours ignores its color, as Godot draws it.
+		piece.color = (polygon.color if vertex_colors.is_empty() else Color.WHITE) * polygon.self_modulate
 	if not vertex_colors.is_empty():
 		var total := Color(0, 0, 0, 0)
 		for color in vertex_colors:
