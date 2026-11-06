@@ -17,12 +17,28 @@ The horizontal line between the surface and deep space.
 _Avoid_: Boundary, edge, atmosphere line
 
 **Mountains**:
-Solid side walls of the lower surface. Touching them crashes the ship.
+Solid side walls of the lower surface, the same shape at every location but dressed in each location's own look. Touching them crashes the ship.
 _Avoid_: Side borders, cliffs
 
 **Backdrop**:
-The two Tatra-like mountain ridges drawn behind the surface. Scenery only: they have no collision.
-_Avoid_: Mountains (the solid side walls), background mountains, skyline
+The scenery drawn behind a location's surface, with no collision, each location its own: distant ranges, Tatra-like peaks and forested hills behind the Valley, Himalaya-like peaks behind the Mine, a far skyline behind the Metropolis.
+_Avoid_: Mountains (the solid side walls), background mountains
+
+**Foreground**:
+Scenery drawn in front of the ship, with no collision. It may hide the ship, or the pad, for a moment as the view moves.
+_Avoid_: Overlay, front layer
+
+**Moons**:
+The other bodies in the planet's sky, seen from the surface: the same few at every location, each location showing them in its own place in the sky. Faint by day, clear at night. They stay in their spot in the sky as the ship flies around, sinking out of view as it climbs, long before the Border, so deep space never shows them.
+_Avoid_: Planets (the planet is the one the ship lands on), sky bodies
+
+**Approach corridor**:
+The column above the pad, a little wider than the pad on each side, which the Foreground never covers at any height, so the way down to the pad always stays in sight. Outside it the Foreground may hide the ship.
+_Avoid_: Landing zone, safe zone
+
+**Vehicles**:
+The Metropolis's distant flying craft, in lanes at several heights and depths of its sky, each leaving a fading trail of light. Only scenery: the ship flies through them.
+_Avoid_: Aircraft, traffic (on its own), trails (a trail is part of a vehicle)
 
 **Border band**:
 The strip around the border where gravity fades out. A ship too slow to cross is bounced back to the side it came from.
@@ -45,20 +61,32 @@ The brief, dramatic camera zoom-in when the ship crosses the border, easing back
 _Avoid_: Zoom pulse, dolly
 
 **Pad**:
-The marked spot on the ground where the ship can land. Every location has one, and landing on the one below delivers the contracts.
+The marked spot where the ship can land: on the ground, or on a rooftop in the Metropolis. Every location has one, and landing on the destination's pad delivers the contracts.
 _Avoid_: Landing zone, base
 
+**Beacon**:
+The pulsing lights on a pad's edges that show where it is. Never dimmed by the sky's darkness; their glow is faint by day and strongest at night. Scenery only: they have no collision.
+_Avoid_: Landing lights, marker
+
 **Location**:
-The place on the planet currently below the station, whose surface the ship flies down to: the Valley or the Mine. It changes when a mission starts, and by itself after the ship has spent two whole days in deep space, to the next one in turn.
-_Avoid_: Level, map, destination (that's the location chosen for a mission)
+The place on the planet currently below the station, whose surface the ship flies down to: the Valley, the Mine or the Metropolis. It changes when a mission starts, and by itself after the ship has spent two whole days in deep space, to the next one in turn.
+_Avoid_: Level, map, destination (that's where a contract is to be delivered)
 
 **Valley**:
 The location the game started with: flat ground between the mountains, with the pad in the middle and the backdrop behind.
 _Avoid_: Mountains (that's the solid side walls), Tatras
 
 **Mine**:
-The open-pit mine location: stepped benches cut down into the ground, with the pad on the pit floor. Touching the benches crashes the ship.
+The open-pit mine location: stepped benches cut down into the ground, with the pad on the pit floor, and one solid crane whose arm reaches over the left benches. Touching the benches or the crane crashes the ship; the cranes in its Backdrop are only scenery.
 _Avoid_: Quarry, pit
+
+**Metropolis**:
+The futuristic city location: buildings of several heights, with the pad on a rooftop, the only place the ship can land there. Touching a solid building, the street or the antenna, or touching down on the pad's roof beside the pad, crashes the ship. It comes after the Mine in drift order.
+_Avoid_: City (on its own), downtown
+
+**Location profile**:
+What a location's transport offers are like: its share of the pool, how often they carry passengers, cargo or both, how many passengers and how much cargo, their titles, and how well they pay compared with the Valley.
+_Avoid_: Offer table, difficulty
 
 **Local time**:
 The planet's clock at the current location, shown in the HUD as HH:MM. A whole day lasts twelve real minutes. It runs whenever the office isn't showing, and carries on unchanged when the location changes. It decides how the sky looks, and nothing else.
@@ -113,19 +141,27 @@ _Avoid_: Respawn, change ship
 ## Transport
 
 **Transport offer**:
-A job on the terminal, not yet accepted: carry passengers, cargo or both from the station to the pad. It is only available for a limited time.
+A job on the terminal, not yet accepted: carry passengers, cargo or both from the station to its destination's pad. It is only available for a limited time.
 _Avoid_: Offer (on its own), job, mission
 
 **Contract**:
-A transport offer the player has accepted. All contracts accepted together are delivered in one flight. A contract stays accepted when transport offers expire or the player leaves the office; before loading, the player can remove it for good.
+A transport offer the player has accepted. All contracts accepted together share one destination and are delivered in one flight. A contract stays accepted when transport offers expire or the player leaves the office; before loading, the player can remove it, and it goes back to the transport offers.
 _Avoid_: Order, accepted offer
 
+**Cancellation**:
+Giving up all of a mission's contracts at once, back in the office after loading, for a cancellation fee instead of a payout: 25% of each contract's reward, taken from the bank account. The load comes off at once, the mission ends, and the contracts are gone for good (they don't go back to the transport offers).
+_Avoid_: Removing (that's dropping one contract before loading), abort, refund
+
 **Mission**:
-Everything from the start of loading until the player next enters the office: loading, the delivery flight, unloading and the way back. A mission has one destination, chosen in the office together with its start period.
+Everything from the start of loading until the player next enters the office: loading, the delivery flight, unloading and the way back. A mission has one destination and a start period chosen in the office.
 _Avoid_: Delivery (that's only the flight from loading to landing), trip, run (that's from restart to crash)
 
+**Free flight**:
+A mission with no contracts: the player picks its destination and start period in the office and flies wherever they like, with nothing to deliver.
+_Avoid_: Practice, sandbox, empty mission
+
 **Destination**:
-The location chosen in the office for a mission. Starting loading takes the ship's surface there.
+Where a mission goes: the location its contracts are to be delivered to, fixed when each transport offer appears, or, on a free flight, the location the player chose. Starting the mission takes the ship's surface there.
 _Avoid_: Target, location (that's wherever the surface is right now)
 
 **Deadline**:
@@ -141,15 +177,15 @@ Putting the load aboard at the parking spot, after the player accepts their cont
 _Avoid_: Boarding, embarking
 
 **Unloading**:
-Taking the load off on the pad, which starts by itself when the ship lands there with contracts aboard. The ship can refuel meanwhile but can't lift off until it finishes.
+Taking the load off on the destination's pad, which starts by itself when the ship lands there with contracts aboard. Landing on any other location's pad unloads too, but the contracts pay nothing. The ship can refuel meanwhile but can't lift off until it finishes.
 _Avoid_: Delivery (the whole flight), disembarking
 
 **Payout**:
-What a contract pays into the bank account once unloaded: its reward less a penalty for each whole second overdue, never below €0. Each contract is settled on its own.
+What a contract pays into the bank account once unloaded: its reward less a penalty for each whole second overdue, never below €0, and nothing at all when unloaded away from its destination. Each contract is settled on its own.
 _Avoid_: Reward (that's before the penalty), income, score
 
 **Transaction**:
-One line in the bank account per delivered contract: its payout, opening to show its reward, penalty, the flight's deadline it was settled against and the landing, both as local times, and the location it was delivered to.
+One line in the bank account per delivered or cancelled contract: its payout (negative for a cancellation fee), opening to show its reward, penalty (or, when unloaded away from its destination, the wrong destination taking the whole reward), the flight's deadline it was settled against and the landing, both as local times, and the location it was delivered to (and its destination, when they differ). A cancelled contract's shows its reward, the cancellation fee and that it was cancelled instead.
 _Avoid_: Receipt, entry, log
 
 **Load**:
@@ -211,7 +247,7 @@ The ship is resting on the pad after a safe touchdown.
 _Avoid_: Touched down, parked
 
 **Docked**:
-The ship is resting inside the parking spot. This is the deep-space counterpart of Landed. From docking until the player declines to enter the office or leaves it, a Docked ship is held: it ignores the controls and doesn't refuel. During loading it also ignores the controls, but refuels.
+The ship is resting inside the parking spot. This is the deep-space counterpart of Landed. From the moment the office popup shows (once the ship has finished easing upright after docking) until the player declines to enter the office or leaves it, a Docked ship is held: it ignores the controls and doesn't refuel. During loading it also ignores the controls, but refuels.
 _Avoid_: Parked, landed (in deep space)
 
 **Crashed**:

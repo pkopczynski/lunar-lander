@@ -10,6 +10,8 @@ const POWER_TIMEOUT_FRAMES := 120
 var tree: SceneTree
 var failures: Array[String] = []
 var checks := 0
+# What this test leaves pending, reported by the runner without failing the test.
+var pending_notes: Array[String] = []
 
 
 func start(scene_tree: SceneTree) -> void:
@@ -149,8 +151,8 @@ func crash_in_deep_space() -> void:
 	check(lander().in_deep_space, "the crash should be in deep space")
 
 
-# Flies the ship into the parking spot from free flight, which docks it (and
-# opens the Enter-the-Office popup).
+# Flies the ship into the parking spot from free flight, which docks it, and waits
+# past the leveling (so the Enter-the-Office popup is open).
 func dock_in_spot() -> void:
 	place(station().parking_spot.get_center())
 	await seconds(0.5)
@@ -396,3 +398,9 @@ func check(condition: bool, description: String) -> void:
 
 func check_near(actual: float, expected: float, tolerance: float, description: String) -> void:
 	check(absf(actual - expected) <= tolerance, "%s: expected %s ± %s, got %s" % [description, expected, tolerance, actual])
+
+
+# Notes that part of what this test checks is pending (for example until the scenery meeting it
+# lands); the runner reports it without failing the test.
+func pending(what: String) -> void:
+	pending_notes.append(what)

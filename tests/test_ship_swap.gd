@@ -18,6 +18,44 @@ func test_docking_asks_to_enter_the_office_with_no_selected() -> void:
 	check(not office().showing, "the Terminal should not be showing behind the Enter-the-Office popup")
 
 
+func test_the_office_popup_waits_for_the_ship_to_finish_leveling() -> void:
+	await choose_ship()
+	var ship := lander()
+	place(station().parking_spot.get_center())
+	ship.rotation = 0.3
+	await frames(2)
+	check(ship.state == Lander.State.DOCKED, "the tilted ship should dock in the parking spot")
+	await seconds(Lander.LEVEL_TIME / 2.0)
+	check(absf(ship.rotation) > 0.01, "the ship should still be easing upright, rotation %s" % ship.rotation)
+	check(office().popup == Office.PopupKind.NONE, "the popup should not show while the ship is easing upright")
+	check(not ship.held, "the ship should not be held while it eases upright")
+	await seconds(Lander.LEVEL_TIME / 2.0 + 0.05)
+	check_near(ship.rotation, 0.0, 0.0001, "rotation once leveled")
+	check(office().popup == Office.PopupKind.ENTER_OFFICE, "the popup should show once the ship is upright")
+	check(ship.held, "the ship should be held once the popup shows")
+
+
+func test_choosing_another_ship_type_shows_no_office_popup() -> void:
+	await choose_ship(ShipType.MULE)
+	await seconds(Lander.LEVEL_TIME + 0.2)
+	check(lander().state == Lander.State.DOCKED, "the Mule should be Docked")
+	check(office().popup == Office.PopupKind.NONE, "choosing a ship type should not open the Enter-the-Office popup")
+
+
+func test_undocking_while_leveling_shows_no_office_popup() -> void:
+	await choose_ship()
+	var ship := lander()
+	place(station().parking_spot.get_center())
+	ship.rotation = 0.3
+	await frames(2)
+	check(ship.state == Lander.State.DOCKED, "the tilted ship should dock in the parking spot")
+	hold(&"ui_up")
+	await seconds(Lander.LEVEL_TIME + 0.2)
+	release(&"ui_up")
+	check(ship.state == Lander.State.FLYING, "Up should undock while the ship eases upright")
+	check(office().popup == Office.PopupKind.NONE, "undocking before the ship is upright should not open the popup")
+
+
 func test_ship_is_frozen_while_the_office_popup_is_open() -> void:
 	await choose_ship()
 	await dock_in_spot()

@@ -5,7 +5,7 @@ extends CanvasLayer
 # the world while showing, and puts the chosen ship type in the parking spot.
 
 enum Screen { MAIN, SHIP_SELECTION, TRANSPORT_OFFERS, BANK_ACCOUNT }
-enum PopupKind { NONE, ARE_YOU_SURE, ENTER_OFFICE, ACCEPT_OFFER, REMOVE_CONTRACT }
+enum PopupKind { NONE, ARE_YOU_SURE, ENTER_OFFICE, ACCEPT_OFFER, REMOVE_CONTRACT, CANCEL_MISSION }
 enum Choice { YES, NO }
 
 const HEADER := "ORBITAL FREIGHT CO. // "
@@ -20,6 +20,7 @@ const ARROWS := "← →"
 const ARE_YOU_SURE_TEXT := "ARE YOU SURE?"
 const ENTER_OFFICE_TEXT := "ENTER THE OFFICE?"
 const REMOVE_CONTRACT_TEXT := "REMOVE CONTRACT?"
+const CANCEL_MISSION_TEXT := "CANCEL MISSION?"
 const IN_SERVICE_TEXT := "IN SERVICE"
 const SHIP_LOCKED_TEXT := "SHIP LOCKED: CONTRACTS ACCEPTED"
 const VERSION_PREFIX := "V"
@@ -234,14 +235,19 @@ func power_off(after_closing: Callable) -> void:
 		after_closing.call())
 
 
-# Loading starts over the flight view once the Terminal is off, and the mission starts at the
-# chosen destination in the chosen start period: the local time is re-rolled within it every time.
-func start_loading() -> void:
+# Once the Terminal is off, the mission starts at the chosen destination in the chosen start
+# period: the local time is re-rolled within it every time. With Contracts, loading starts over
+# the flight view; without, it's a free flight: the ship is released, free to undock at once.
+func start_mission() -> void:
 	var destination := transport_offers.destination
 	var period := transport_offers.start_period
+	var free_flight := economy.contracts.is_empty()
 	power_off(func() -> void:
 		clock.start_mission(destination, period)
-		economy.start_loading())
+		if free_flight:
+			lander.release()
+		else:
+			economy.start_loading())
 
 
 func power_to(target: float, done := Callable()) -> void:
@@ -266,11 +272,11 @@ func close() -> void:
 	get_tree().paused = false
 
 
-# Docking asks whether to enter the Office, over the flight view. The ship is held
-# until the ship is released: by No here, or by leaving the Office. A loaded ship gets
-# no popup: all Contracts go in one flight.
+# Docking asks whether to enter the Office, over the flight view, once the ship is upright. The ship is held
+# until the ship is released: by No here, or by leaving the Office. A delivering ship is asked
+# too, so the mission can be cancelled.
 func ask_to_enter() -> void:
-	if economy.phase != Economy.Phase.NONE:
+	if economy.phase != Economy.Phase.NONE and not economy.mission_under_way():
 		return
 	lander.hold()
 	visible = true
@@ -296,7 +302,7 @@ func answer(choice: Choice) -> void:
 			popup = PopupKind.NONE
 			screen = Screen.MAIN
 		[PopupKind.ARE_YOU_SURE, Choice.NO], [PopupKind.ACCEPT_OFFER, Choice.NO], \
-				[PopupKind.REMOVE_CONTRACT, Choice.NO]:
+				[PopupKind.REMOVE_CONTRACT, Choice.NO], [PopupKind.CANCEL_MISSION, Choice.NO]:
 			popup = PopupKind.NONE
 		[PopupKind.ACCEPT_OFFER, Choice.YES]:
 			popup = PopupKind.NONE
@@ -304,6 +310,9 @@ func answer(choice: Choice) -> void:
 		[PopupKind.REMOVE_CONTRACT, Choice.YES]:
 			popup = PopupKind.NONE
 			transport_offers.confirm_remove()
+		[PopupKind.CANCEL_MISSION, Choice.YES]:
+			popup = PopupKind.NONE
+			transport_offers.confirm_cancel()
 
 
 # Observable state
@@ -579,6 +588,8 @@ func popup_text() -> String:
 			return ENTER_OFFICE_TEXT
 		PopupKind.REMOVE_CONTRACT:
 			return REMOVE_CONTRACT_TEXT
+		PopupKind.CANCEL_MISSION:
+			return CANCEL_MISSION_TEXT
 	return ARE_YOU_SURE_TEXT
 
 

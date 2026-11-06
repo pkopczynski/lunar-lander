@@ -1,6 +1,7 @@
 class_name TransportOffer
 extends RefCounted
-# A Transport offer: a job to carry passengers, cargo or both from the station to the pad.
+# A Transport offer: a job to carry passengers, cargo or both from the station to its
+# destination's pad.
 # Once accepted it's a Contract, the same object. Holds its own settlement maths and the
 # random generator.
 
@@ -11,7 +12,6 @@ const MIN_EXPIRY := 180
 const MAX_EXPIRY := 600
 const MIN_DEADLINE := 60
 const MAX_DEADLINE := 180
-const MIN_CARGO := 500
 const CARGO_STEP := 100
 # Rewards at the reference deadline, scaled by (REFERENCE_DEADLINE / deadline)^URGENCY_EXPONENT,
 # then by a random factor between MIN_LUCK and MAX_LUCK.
@@ -25,6 +25,8 @@ const MAX_LUCK := 1.3
 # Settlement: share of each reward lost per whole overdue second.
 const PASSENGER_PENALTY_SHARE := 0.02
 const CARGO_PENALTY_SHARE := 0.01
+# Cancelling a loaded mission costs this share of each Contract's reward.
+const CANCELLATION_FEE_SHARE := 0.25
 
 enum Kind { PASSENGERS, CARGO, MIXED }
 
@@ -33,16 +35,12 @@ const KIND_LABELS := {
 	Kind.CARGO: "CARGO",
 	Kind.MIXED: "PASSENGERS + CARGO",
 }
-const TITLES := {
-	Kind.PASSENGERS: ["Crew rotation", "Mining shift", "Survey team", "Medical staff", "Tourist party"],
-	Kind.CARGO: ["Mining supplies", "Water ice", "Spare parts", "Hydroponics kit", "Ore samples"],
-	Kind.MIXED: ["Field camp", "Relief mission", "Drill crew and rig", "Science outpost", "Repair team"],
-}
 const TRADERS: Array[String] = ["Tycho Haulage", "Selene Mining", "Mare Logistics", "Copernicus Labs",
 	"Kepler Supply", "Apollo Freight", "Regolith & Sons", "Crater Works"]
 
 const NOT_ENOUGH_SEATS := "Not enough passenger seats"
 const OVERLOADED := "Overloaded"
+const OTHER_DESTINATION := "Other destination"
 
 
 # A delivered Contract's line in the Bank account, in euros, with the flight's deadline it was
@@ -58,10 +56,17 @@ class Transaction:
 	# before loading finished: at or past PlanetClock.MINUTES_PER_DAY on the next day.
 	var deadline_at: float
 	var landed_at: float
-	# The name of the location it was delivered to.
+	# The names of the location it was delivered to and of its destination.
 	var delivered_to: String
+	var destination: String
 	# The name of the ship type that delivered it.
 	var ship: String
+	# Given up with its mission: the penalty is the cancellation fee, and nothing was delivered.
+	var cancelled := false
+
+	# Landed on another location's pad (drift took the destination away): it pays nothing.
+	func wrong_destination() -> bool:
+		return not cancelled and delivered_to != destination
 
 	# Whole seconds overdue, rounded down like the red counter.
 	func overdue_seconds() -> int:
@@ -83,6 +88,8 @@ var deadline: float
 var time_left: float
 var passenger_reward: int
 var cargo_reward: int
+# Where it's to be delivered, fixed when it appears.
+var destination := Location.VALLEY
 
 
 func kind() -> Kind:
@@ -99,13 +106,16 @@ func reward() -> int:
 	return passenger_reward + cargo_reward
 
 
-# Its number and title, as #004 MINING SUPPLIES.
+# Its number and title, as #004 INDUSTRIAL SUPPLIES.
 func label() -> String:
 	return "#%03d %s" % [number, title.to_upper()]
 
 
-# Why it doesn't fit the seats and cargo left, or "" when it does.
-func misfit_reason(seats_left: int, cargo_left: float) -> String:
+# Why it doesn't fit the mission's destination (null for any) and the seats and cargo left, or ""
+# when it does.
+func misfit_reason(seats_left: int, cargo_left: float, mission_destination: Location = null) -> String:
+	if mission_destination != null and destination != mission_destination:
+		return OTHER_DESTINATION
 	if passengers > seats_left:
 		return NOT_ENOUGH_SEATS
 	if cargo_mass > cargo_left:
@@ -115,7 +125,8 @@ func misfit_reason(seats_left: int, cargo_left: float) -> String:
 
 # What it pays when delivered after delivery_time against the flight's deadline, for each
 # whole second overdue. The passenger and cargo parts are penalised separately, each never
-# below €0. The local times and the location are only recorded, for the payout's breakdown.
+# below €0. Delivered anywhere but its destination, it pays €0 instead, its whole reward lost.
+# The local times and the location are only recorded, for the payout's breakdown.
 func settlement(flight_deadline: float, delivery_time: float, deadline_at: float, landed_at: float,
 		delivered_to: Location) -> Transaction:
 	var transaction := Transaction.new()
@@ -125,37 +136,64 @@ func settlement(flight_deadline: float, delivery_time: float, deadline_at: float
 	transaction.deadline_at = deadline_at
 	transaction.landed_at = landed_at
 	transaction.delivered_to = delivered_to.name
+	transaction.destination = destination.name
 	var overdue := transaction.overdue_seconds()
 	transaction.reward = reward()
-	transaction.penalty = mini(roundi(passenger_reward * PASSENGER_PENALTY_SHARE * overdue), passenger_reward) \
-		+ mini(roundi(cargo_reward * CARGO_PENALTY_SHARE * overdue), cargo_reward)
+	if transaction.wrong_destination():
+		transaction.penalty = transaction.reward
+	else:
+		transaction.penalty = mini(roundi(passenger_reward * PASSENGER_PENALTY_SHARE * overdue), passenger_reward) \
+			+ mini(roundi(cargo_reward * CARGO_PENALTY_SHARE * overdue), cargo_reward)
 	transaction.payout = transaction.reward - transaction.penalty
 	return transaction
 
 
-# A random offer of at most max_passengers (at least 1) and max_cargo (at least MIN_CARGO).
+# What it costs when its mission is cancelled: the fee, a share of its reward, as a negative payout.
+func cancellation() -> Transaction:
+	var transaction := Transaction.new()
+	transaction.contract = self
+	transaction.cancelled = true
+	transaction.destination = destination.name
+	transaction.reward = reward()
+	transaction.penalty = roundi(transaction.reward * CANCELLATION_FEE_SHARE)
+	transaction.payout = -transaction.penalty
+	return transaction
+
+
+# A random offer: its destination drawn by pool share, the rest from that location's profile,
+# with at most max_passengers and max_cargo (the largest ship type's).
 static func generate(rng: RandomNumberGenerator, offer_number: int, max_passengers: int,
 		max_cargo: float) -> TransportOffer:
-	var kinds: Array[Kind] = []
-	if max_passengers >= 1:
-		kinds.append(Kind.PASSENGERS)
-	if max_cargo >= MIN_CARGO:
-		kinds.append(Kind.CARGO)
-	if kinds.size() == 2:
-		kinds.append(Kind.MIXED)
-	var offer_kind: Kind = kinds[rng.randi_range(0, kinds.size() - 1)]
+	var shares := PackedFloat32Array()
+	for location in Location.ALL:
+		shares.append(location.profile.pool_share)
+	var destination: Location = Location.ALL[rng.rand_weighted(shares)]
+	var profile := destination.profile
+	var most_passengers := mini(profile.max_passengers, max_passengers)
+	var most_cargo := minf(profile.max_cargo, max_cargo)
+	var weights := profile.kind_weights.duplicate()
+	if most_passengers < profile.min_passengers:
+		weights[Kind.PASSENGERS] = 0.0
+		weights[Kind.MIXED] = 0.0
+	if most_cargo < profile.min_cargo:
+		weights[Kind.CARGO] = 0.0
+		weights[Kind.MIXED] = 0.0
+	var offer_kind := rng.rand_weighted(weights) as Kind
 	var offer := TransportOffer.new()
 	offer.number = offer_number
-	var titles: Array = TITLES[offer_kind]
+	offer.destination = destination
+	var titles: Array = profile.titles[offer_kind]
 	offer.title = titles[rng.randi_range(0, titles.size() - 1)]
 	offer.trader = TRADERS[rng.randi_range(0, TRADERS.size() - 1)]
 	if offer_kind != Kind.CARGO:
-		offer.passengers = rng.randi_range(1, max_passengers)
+		offer.passengers = rng.randi_range(profile.min_passengers, most_passengers)
 	if offer_kind != Kind.PASSENGERS:
-		offer.cargo_mass = rng.randi_range(MIN_CARGO / CARGO_STEP, floori(max_cargo / CARGO_STEP)) * CARGO_STEP
+		offer.cargo_mass = rng.randi_range(ceili(profile.min_cargo / CARGO_STEP),
+			floori(most_cargo / CARGO_STEP)) * CARGO_STEP
 	offer.deadline = rng.randi_range(MIN_DEADLINE, MAX_DEADLINE)
 	offer.time_left = rng.randi_range(MIN_EXPIRY, MAX_EXPIRY)
-	var scale := pow(REFERENCE_DEADLINE / offer.deadline, URGENCY_EXPONENT) * rng.randf_range(MIN_LUCK, MAX_LUCK)
+	var scale := pow(REFERENCE_DEADLINE / offer.deadline, URGENCY_EXPONENT) \
+		* rng.randf_range(MIN_LUCK, MAX_LUCK) * profile.reward_factor
 	offer.passenger_reward = roundi(PASSENGER_REWARD * offer.passengers * scale)
 	offer.cargo_reward = roundi(CARGO_REWARD_PER_TONNE * offer.cargo_mass / 1000.0 * scale)
 	return offer

@@ -11,16 +11,16 @@ func test_the_start_period_row_sits_above_start_loading_and_is_reachable_without
 	check(offers().mission_lines()[1] == "START PERIOD EVENING",
 		"a run starts in the Evening, so the row should read START PERIOD EVENING, got %s" % offers().mission_lines())
 	await press(&"ui_right")
-	check(offers().on_start_loading(), "Right should land on START LOADING")
+	check(offers().on_start_button(), "Right should land on START LOADING")
 	await press(&"ui_up")
 	check(offers().selected_mission_line() == "START PERIOD", "Up from START LOADING should reach START PERIOD")
 	await press(&"ui_up")
 	check(offers().selected_mission_line() == "DESTINATION", "Up from START PERIOD should reach DESTINATION")
 	await press(&"ui_down")
 	await press(&"ui_down")
-	check(offers().on_start_loading(), "Down should go back to START LOADING")
+	check(offers().on_start_button(), "Down should go back to START LOADING")
 	await press(&"ui_down")
-	check(offers().on_start_loading(), "Down should stop at START LOADING")
+	check(offers().on_start_button(), "Down should stop at START LOADING")
 
 
 func test_return_cycles_morning_day_evening_night_and_wraps() -> void:
@@ -52,7 +52,7 @@ func test_the_row_is_reachable_with_contracts_between_them_and_start_loading() -
 	await press(&"ui_down")
 	check(offers().selected_mission_line() == "START PERIOD", "Down from the Contract should reach START PERIOD")
 	await press(&"ui_down")
-	check(offers().on_start_loading(), "Down from START PERIOD should reach START LOADING")
+	check(offers().on_start_button(), "Down from START PERIOD should reach START LOADING")
 
 
 # Sets the local time half a minute past hh:mm, so whole-minute readings aren't on a boundary.

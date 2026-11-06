@@ -13,6 +13,7 @@ signal paid_out(total: int)
 const Hud := preload("res://hud.gd")
 
 const PILOT := "PILOT"
+const MISSION_UNDER_WAY := "Mission under way"
 # Each run starts with START_OFFERS. While fewer than MAX_OFFERS are listed, one more arrives
 # every MIN_OFFER_INTERVAL to MAX_OFFER_INTERVAL seconds.
 const START_OFFERS := 5
@@ -165,6 +166,33 @@ func finish_unloading() -> void:
 	paid_out.emit(total)
 
 
+# A loaded mission is under way from the end of loading until it's unloaded or cancelled.
+func mission_under_way() -> bool:
+	return phase == Phase.DELIVERING
+
+
+# DELIVERING → NONE, at the station: every Contract is settled as cancelled for its fee and
+# paid from the Bank account (which may go negative), the Load comes off and the Contracts are
+# gone for good, which unlocks accepting offers and ship swap.
+func cancel_mission() -> void:
+	if phase != Phase.DELIVERING:
+		return
+	phase = Phase.NONE
+	for contract in contracts:
+		var transaction := contract.cancellation()
+		transaction.ship = lander.ship_type.name
+		transactions.push_front(transaction)
+		balance += transaction.payout
+	contracts.clear()
+	lander.load_mass = 0.0
+	lander.show_status("")
+
+
+# Where the Contracts are to be delivered: they all share one destination. Null without any.
+func destination() -> Location:
+	return null if contracts.is_empty() else contracts[0].destination
+
+
 # The shortest deadline among the Contracts: they're all delivered in one flight.
 func deadline() -> float:
 	var shortest := INF
@@ -218,11 +246,19 @@ func accept(offer: TransportOffer) -> bool:
 	return true
 
 
-# Discards a Contract before loading, for good: no payout, no transaction, and it doesn't
-# return to the pool.
+# Gives up a Contract before loading: no payout, no transaction. It goes back to the pool in
+# number order, even past MAX_OFFERS, with the time left it had when accepted (a Contract's
+# time doesn't run).
 func remove_contract(contract: TransportOffer) -> void:
-	if phase == Phase.NONE:
-		contracts.erase(contract)
+	if phase != Phase.NONE or not contract in contracts:
+		return
+	contracts.erase(contract)
+	var at := offers.size()
+	for i in offers.size():
+		if offers[i].number > contract.number:
+			at = i
+			break
+	offers.insert(at, contract)
 
 
 # Generated up to the largest ship type, so some won't fit a smaller one.
@@ -239,9 +275,12 @@ func closest_to_expiring() -> TransportOffer:
 	return closest
 
 
-# Why the ship can't take this offer on top of the Contracts, or "" when it can.
+# Why the ship can't take this offer on top of the Contracts, or "" when it can. Nothing can be
+# added once the Load is aboard.
 func misfit_reason(offer: TransportOffer) -> String:
-	return offer.misfit_reason(seats_left(), cargo_left())
+	if mission_under_way():
+		return MISSION_UNDER_WAY
+	return offer.misfit_reason(seats_left(), cargo_left(), destination())
 
 
 func seats_left() -> int:

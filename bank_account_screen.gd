@@ -8,6 +8,7 @@ extends RefCounted
 const ROW_HEIGHT := TransportOffersScreen.ROW_HEIGHT
 const ROW_PADDING := TransportOffersScreen.ROW_PADDING
 const BALANCE_LABEL := "BALANCE"
+const CANCELLED_LABEL := "CANCELLED"
 
 var office: Office
 var economy: Economy
@@ -63,7 +64,7 @@ func lines() -> PackedStringArray:
 	return PackedStringArray([Economy.PILOT, "%s %s" % [BALANCE_LABEL, Economy.eur(economy.balance)]])
 
 
-# Newest first, e.g. #004 MINING SUPPLIES  CARGO  €544.
+# Newest first, e.g. #004 INDUSTRIAL SUPPLIES  CARGO  €544.
 func rows() -> PackedStringArray:
 	var texts := PackedStringArray()
 	for transaction in economy.transactions:
@@ -77,20 +78,31 @@ func details(row: int) -> PackedStringArray:
 	if not row in list.expanded_rows():
 		return texts
 	for detail: Array in detail_pairs(economy.transactions[row]):
-		texts.append("%s %s" % detail)
+		texts.append(("%s %s" % detail).strip_edges())
 	return texts
 
 
 # How the payout was worked out, as [label, text] pairs, times local. The deadline is the
-# flight's, which the penalty was counted against.
+# flight's, which the penalty was counted against. A wrong destination replaces the penalty
+# and names the destination after where it was delivered. A cancelled Contract shows its fee
+# and CANCELLED (a label without a value) in place of the delivery.
 static func detail_pairs(transaction: TransportOffer.Transaction) -> Array[Array]:
-	var penalty := Economy.eur(0)
-	if transaction.overdue_seconds() > 0:
-		penalty = "%s (%d MIN OVERDUE)" % [Economy.eur(-transaction.penalty), transaction.overdue_minutes()]
-	return [["BASE VALUE", Economy.eur(transaction.reward)], ["PENALTY", penalty],
+	if transaction.cancelled:
+		return [["BASE VALUE", Economy.eur(transaction.reward)],
+			["CANCELLATION FEE", Economy.eur(-transaction.penalty)], ["PAYOUT", Economy.eur(transaction.payout)],
+			[CANCELLED_LABEL, ""], ["SHIP", transaction.ship.to_upper()]]
+	var deduction := ["PENALTY", Economy.eur(0)]
+	if transaction.wrong_destination():
+		deduction = ["WRONG DESTINATION", Economy.eur(-transaction.penalty)]
+	elif transaction.overdue_seconds() > 0:
+		deduction[1] = "%s (%d MIN OVERDUE)" % [Economy.eur(-transaction.penalty), transaction.overdue_minutes()]
+	var pairs: Array[Array] = [["BASE VALUE", Economy.eur(transaction.reward)], deduction,
 		["PAYOUT", Economy.eur(transaction.payout)], ["DEADLINE", PlanetClock.local_time(transaction.deadline_at)],
-		["LANDED", PlanetClock.local_time(transaction.landed_at)], ["DELIVERED TO", transaction.delivered_to],
-		["SHIP", transaction.ship.to_upper()]]
+		["LANDED", PlanetClock.local_time(transaction.landed_at)], ["DELIVERED TO", transaction.delivered_to]]
+	if transaction.wrong_destination():
+		pairs.append(["DESTINATION", transaction.destination])
+	pairs.append(["SHIP", transaction.ship.to_upper()])
+	return pairs
 
 
 # The row's right-hand part: the kind and the payout.
