@@ -1,6 +1,12 @@
 # CLAUDE.md
 
-`README.md` is the main context for this repo: read it first. This file adds only how commits and releases work.
+`README.md` is the main context for this repo: read it first. This file adds only where architecture docs live and how commits and releases work.
+
+## Architecture docs
+
+- `docs/README.md` indexes the docs and says which one owns which kind of knowledge.
+- Before changing how systems depend on each other, who owns state, a lifecycle or an invariant, read `docs/architecture/overview.md`, `docs/architecture/domain-model.md` and the ADRs in `docs/adr/`.
+- A change that alters what those documents describe updates them in the same PR. A significant architectural decision (hard to reverse, surprising without context, a real trade-off) gets a new ADR proposed in the PR.
 
 ## Commits & releases
 
