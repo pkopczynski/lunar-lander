@@ -10,7 +10,8 @@
 
 ## Commits & releases
 
-- Every commit message and PR title is a [conventional commit](https://www.conventionalcommits.org/): `type(scope): summary`, scope optional and free-form. Types: `feat`, `fix`, `perf`, `revert`, `refactor`, `test`, `docs`, `chore`, `ci`, `build`, `style`. The `PR title` check flags a bad PR title but can't block the merge (rulesets need GitHub Pro on a private repo), so check the title before merging.
+- Every commit message and PR title is a [conventional commit](https://www.conventionalcommits.org/): `type(scope): summary`, scope optional and free-form. Types: `feat`, `fix`, `perf`, `revert`, `refactor`, `test`, `docs`, `chore`, `ci`, `build`, `style`. The `PR title` check (job `conventional-commit`) must pass before a merge.
+- `main` is protected by the "Protect main" ruleset: no direct or force pushes, every change through a squash-merged PR with 1 approval (the repo admin may merge without one, through a PR only), resolved review threads, and the `test` and `conventional-commit` checks passing. `CONTRIBUTING.md` explains it to new contributors.
 - PRs are squash-merged, so the **PR title** becomes the one commit on `main` and the one changelog line. Write it for a player: what changed in the game, not how the code changed.
 - `CHANGELOG.md` is player-facing: only `feat`, `fix` and `perf` appear in it and trigger a release. Pick the type by what the player notices: an internal cleanup is `refactor`, even if it touched gameplay code.
 - Versions are SemVer, still in `0.x`: `feat` bumps the minor, `fix`/`perf` the patch, and a breaking change (`feat!:`, e.g. controls or save data changed) also only bumps the minor. Going to 1.0 is deliberate: a `Release-As: 1.0.0` footer in the merged commit.
