@@ -10,6 +10,7 @@ Where each kind of project knowledge lives. Start here when you need more than t
 | How domain concepts relate: lifecycles, invariants, where each lives in code | [`architecture/domain-model.md`](architecture/domain-model.md) |
 | Why a significant choice was made | [`adr/`](adr/) (below) |
 | What to build next: specs, requirements, tasks | [GitHub Issues](https://github.com/pkopczynski/lunar-lander/issues) |
+| How work flows from a roadmap map to specs, tickets and PRs; issue conventions for agents | [`agents/`](agents/) (start with [`workflow.md`](agents/workflow.md)) |
 | Commits, PR titles, versions, releases | [`CLAUDE.md`](../CLAUDE.md) |
 | What changed for the player | [`CHANGELOG.md`](../CHANGELOG.md) (written by release-please) |
 
