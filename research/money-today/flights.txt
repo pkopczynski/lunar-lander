@@ -1,0 +1,38 @@
+
+spot (635.0, -4830.0)
+Sparrow VALLEY     load      0 fuel0   5000 | down landed   26.7s fuel   3325 | up docked   27.1s fuel   3368
+Sparrow VALLEY     load   3500 fuel0   5000 | down landed   28.4s fuel   4549 | up docked   27.2s fuel   3368
+Sparrow VALLEY     load   7000 fuel0   5000 | down CRASHED  28.3s fuel   5000 (EMPTY) | up -        -1.0s fuel     -1
+Sparrow VALLEY     load   8000 fuel0   4000 | down CRASHED  26.7s fuel   4000 (EMPTY) | up -        -1.0s fuel     -1
+Sparrow MINE       load      0 fuel0   5000 | down landed   27.3s fuel   3365 | up docked   27.8s fuel   3387
+Sparrow MINE       load   3500 fuel0   5000 | down landed   29.0s fuel   4616 | up docked   27.5s fuel   3379
+Sparrow MINE       load   7000 fuel0   5000 | down CRASHED  28.4s fuel   5000 (EMPTY) | up -        -1.0s fuel     -1
+Sparrow MINE       load   8000 fuel0   4000 | down CRASHED  26.7s fuel   4000 (EMPTY) | up -        -1.0s fuel     -1
+Sparrow METROPOLIS load      0 fuel0   5000 | down landed   26.1s fuel   3152 | up docked   26.9s fuel   3358
+Sparrow METROPOLIS load   3500 fuel0   5000 | down landed   27.9s fuel   4294 | up docked   26.9s fuel   3359
+Sparrow METROPOLIS load   7000 fuel0   5000 | down CRASHED  27.8s fuel   5000 (EMPTY) | up -        -1.0s fuel     -1
+Sparrow METROPOLIS load   8000 fuel0   4000 | down CRASHED  26.2s fuel   4000 (EMPTY) | up -        -1.0s fuel     -1
+Mule    VALLEY     load      0 fuel0  12000 | down landed   35.2s fuel   7233 | up docked   38.5s fuel   6710
+Mule    VALLEY     load  12700 fuel0   8300 | down CRASHED  33.1s fuel   8300 (EMPTY) | up -        -1.0s fuel     -1
+Mule    VALLEY     load   9000 fuel0  12000 | down landed   38.1s fuel  11553 | up -        -1.0s fuel     -1
+Mule    VALLEY     load  16000 fuel0   5000 | down CRASHED  29.7s fuel   5000 (EMPTY) | up -        -1.0s fuel     -1
+Mule    MINE       load      0 fuel0  12000 | down landed   35.8s fuel   7396 | up docked   38.6s fuel   6771
+Mule    MINE       load  12700 fuel0   8300 | down CRASHED  33.5s fuel   8300 (EMPTY) | up -        -1.0s fuel     -1
+Mule    MINE       load   9000 fuel0  12000 | down landed   38.8s fuel  11796 | up -        -1.0s fuel     -1
+Mule    MINE       load  16000 fuel0   5000 | down CRASHED  30.4s fuel   5000 (EMPTY) | up -        -1.0s fuel     -1
+Mule    METROPOLIS load      0 fuel0  12000 | down landed   35.0s fuel   7164 | up docked   38.2s fuel   6683
+Mule    METROPOLIS load  12700 fuel0   8300 | down CRASHED  33.1s fuel   8300 (EMPTY) | up -        -1.0s fuel     -1
+Mule    METROPOLIS load   9000 fuel0  12000 | down landed   37.9s fuel  11378 | up -        -1.0s fuel     -1
+Mule    METROPOLIS load  16000 fuel0   5000 | down CRASHED  29.9s fuel   5000 (EMPTY) | up -        -1.0s fuel     -1
+Halo    VALLEY     load      0 fuel0   8000 | down landed   29.6s fuel   4766 | up docked   30.5s fuel   4936
+Halo    VALLEY     load   3260 fuel0   8000 | down landed   30.6s fuel   5979 | up docked   30.6s fuel   4935
+Halo    VALLEY     load  10000 fuel0   8000 | down CRASHED  31.8s fuel   8000 (EMPTY) | up -        -1.0s fuel     -1
+Halo    VALLEY     load  11000 fuel0   7000 | down CRASHED  30.4s fuel   7000 (EMPTY) | up -        -1.0s fuel     -1
+Halo    MINE       load      0 fuel0   8000 | down landed   30.6s fuel   5142 | up docked   30.6s fuel   4942
+Halo    MINE       load   3260 fuel0   8000 | down landed   31.7s fuel   6261 | up docked   30.6s fuel   4954
+Halo    MINE       load  10000 fuel0   8000 | down CRASHED  31.5s fuel   8000 (EMPTY) | up -        -1.0s fuel     -1
+Halo    MINE       load  11000 fuel0   7000 | down CRASHED  30.3s fuel   7000 (EMPTY) | up -        -1.0s fuel     -1
+Halo    METROPOLIS load      0 fuel0   8000 | down landed   29.4s fuel   4798 | up docked   30.3s fuel   4909
+Halo    METROPOLIS load   3260 fuel0   8000 | down landed   30.3s fuel   5951 | up docked   30.4s fuel   4909
+Halo    METROPOLIS load  10000 fuel0   8000 | down CRASHED  31.5s fuel   8000 (EMPTY) | up -        -1.0s fuel     -1
+Halo    METROPOLIS load  11000 fuel0   7000 | down CRASHED  29.8s fuel   7000 (EMPTY) | up -        -1.0s fuel     -1

@@ -1,0 +1,10 @@
+
+capacity            Sparrow | EUR/min   212 | EUR/mission   528 | missions/h 24.1 | contracts/mission 1.01 | idle 42.5%
+capacity            Mule    | EUR/min   489 | EUR/mission   954 | missions/h 30.7 | contracts/mission 1.17 | idle  4.3%
+capacity            Halo    | EUR/min   711 | EUR/mission  1155 | missions/h 36.9 | contracts/mission 1.21 | idle  1.9%
+full-tank           Sparrow | EUR/min   183 | EUR/mission   499 | missions/h 22.0 | contracts/mission 1.01 | idle 47.7%
+full-tank           Mule    | EUR/min   236 | EUR/mission   572 | missions/h 24.8 | contracts/mission 1.04 | idle 26.1%
+full-tank           Halo    | EUR/min   670 | EUR/mission  1096 | missions/h 36.7 | contracts/mission 1.17 | idle  3.2%
+autopilot-landable  Sparrow | EUR/min   145 | EUR/mission   464 | missions/h 18.7 | contracts/mission 1.01 | idle 56.0%
+autopilot-landable  Mule    | EUR/min   236 | EUR/mission   572 | missions/h 24.8 | contracts/mission 1.04 | idle 26.1%
+autopilot-landable  Halo    | EUR/min   586 | EUR/mission  1003 | missions/h 35.0 | contracts/mission 1.11 | idle  8.7%

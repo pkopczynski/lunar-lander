@@ -1,0 +1,62 @@
+
+== Reward per offer (EUR), all offers generated (up to Halo seats / Mule cargo)
+ALL                                n=200000 mean=   1021 p10=   252 p50=   923 p90=  1914 min=    18 max=  4270
+METROPOLIS ALL                     n= 60113 mean=   1099 p10=   195 p50=  1029 p90=  2097 min=    25 max=  4102
+METROPOLIS CARGO                   n=  5880 mean=    146 p10=    56 p50=   137 p90=   249 min=    25 max=   419
+METROPOLIS PASSENGERS              n= 36209 mean=   1153 p10=   288 p50=  1092 p90=  2087 min=   117 max=  3697
+METROPOLIS PASSENGERS + CARGO      n= 18024 mean=   1300 p10=   438 p50=  1230 p90=  2250 min=   150 max=  4102
+MINE ALL                           n= 59843 mean=   1094 p10=   416 p50=  1006 p90=  1879 min=   138 max=  4270
+MINE CARGO                         n= 35899 mean=    938 p10=   400 p50=   884 p90=  1545 min=   169 max=  2763
+MINE PASSENGERS                    n=  5963 mean=    616 p10=   226 p50=   587 p90=  1046 min=   138 max=  1712
+MINE PASSENGERS + CARGO            n= 17981 mean=   1564 p10=   836 p50=  1487 p90=  2387 min=   317 max=  4270
+VALLEY ALL                         n= 80044 mean=    908 p10=   207 p50=   796 p90=  1752 min=    18 max=  4235
+VALLEY CARGO                       n= 26819 mean=    513 p10=   116 p50=   486 p90=   939 min=    18 max=  1711
+VALLEY PASSENGERS                  n= 26514 mean=    845 p10=   210 p50=   795 p90=  1528 min=    86 max=  2721
+VALLEY PASSENGERS + CARGO          n= 26711 mean=   1366 p10=   598 p50=  1296 p90=  2218 min=   120 max=  4235
+== Passengers per offer
+VALLEY                             n= 53225 mean=      5 p10=     1 p50=     5 p90=     9 min=     1 max=    10
+METROPOLIS                         n= 54233 mean=      5 p10=     1 p50=     5 p90=    10 min=     1 max=    10
+MINE                               n= 23944 mean=      2 p10=     1 p50=     2 p90=     4 min=     1 max=     4
+== Cargo kg per offer
+VALLEY                             n= 53530 mean=   8254 p10=  2000 p50=  8300 p90= 14500 min=   500 max= 16000
+METROPOLIS                         n= 23904 mean=   1746 p10=   700 p50=  1700 p90=  2800 min=   500 max=  3000
+MINE                               n= 53880 mean=   9452 p10=  4300 p50=  9400 p90= 14700 min=  3000 max= 16000
+deadline s                         n=200000 mean=    120 p10=    72 p50=   120 p90=   168 min=    60 max=   180
+== Offers that fit an empty ship, reward
+Sparrow fits 42% of offers (38% with a full tank)
+Sparrow fitting offer              n= 83195 mean=    526 p10=   148 p50=   460 p90=   985 min=    18 max=  2945
+Mule fits 68% of offers (45% with a full tank)
+Mule fitting offer                 n=135137 mean=    788 p10=   195 p50=   675 p90=  1530 min=    18 max=  4299
+Halo fits 81% of offers (77% with a full tank)
+Halo fitting offer                 n=162293 mean=    934 p10=   218 p50=   815 p90=  1814 min=    18 max=  4037
+== Best mission from a 6-offer pool (one destination, fits capacity)
+Sparrow [capacity] reward          n= 20000 mean=    794 p10=   276 p50=   759 p90=  1349 min=     0 max=  2908
+Sparrow [capacity] shortest deadline n= 20000 mean=    106 p10=    64 p50=   104 p90=   162 min=     0 max=   180
+Sparrow [capacity] contracts       n= 20000 mean=      1 p10=     1 p50=     1 p90=     2 min=     0 max=     4
+Sparrow [capacity] load kg         n= 20000 mean=   3573 p10=   240 p50=  3500 p90=  7460 min=     0 max=  8320
+   destinations: { "MINE": 8390, "METROPOLIS": 6054, "VALLEY": 4790, "": 766 }
+Mule [capacity] reward             n= 20000 mean=   1544 p10=   846 p50=  1472 p90=  2348 min=     0 max=  4140
+Mule [capacity] shortest deadline  n= 20000 mean=    105 p10=    66 p50=    99 p90=   156 min=     0 max=   180
+Mule [capacity] contracts          n= 20000 mean=      1 p10=     1 p50=     1 p90=     2 min=     0 max=     5
+Mule [capacity] load kg            n= 20000 mean=  11313 p10=  3920 p50= 12700 p90= 15600 min=     0 max= 16320
+   destinations: { "MINE": 14408, "VALLEY": 4117, "METROPOLIS": 1458, "": 17 }
+Halo [capacity] reward             n= 20000 mean=   1922 p10=  1234 p50=  1908 p90=  2634 min=     0 max=  4212
+Halo [capacity] shortest deadline  n= 20000 mean=    100 p10=    65 p50=    93 p90=   148 min=     0 max=   180
+Halo [capacity] contracts          n= 20000 mean=      2 p10=     1 p50=     2 p90=     3 min=     0 max=     5
+Halo [capacity] load kg            n= 20000 mean=   4553 p10=   640 p50=  3260 p90= 10440 min=     0 max= 11800
+   destinations: { "METROPOLIS": 10304, "VALLEY": 6370, "MINE": 3324, "": 2 }
+Sparrow [full-tank] reward         n= 20000 mean=    708 p10=   199 p50=   686 p90=  1220 min=     0 max=  2566
+Sparrow [full-tank] shortest deadline n= 20000 mean=    105 p10=    63 p50=   104 p90=   162 min=     0 max=   180
+Sparrow [full-tank] contracts      n= 20000 mean=      1 p10=     1 p50=     1 p90=     2 min=     0 max=     4
+Sparrow [full-tank] load kg        n= 20000 mean=   2763 p10=   160 p50=  2520 p90=  6300 min=     0 max=  7000
+   destinations: { "METROPOLIS": 6882, "MINE": 7156, "VALLEY": 4865, "": 1097 }
+Mule [full-tank] reward            n= 20000 mean=    857 p10=   344 p50=   816 p90=  1423 min=     0 max=  3083
+Mule [full-tank] shortest deadline n= 20000 mean=    107 p10=    65 p50=   104 p90=   161 min=     0 max=   180
+Mule [full-tank] contracts         n= 20000 mean=      1 p10=     1 p50=     1 p90=     2 min=     0 max=     4
+Mule [full-tank] load kg           n= 20000 mean=   4271 p10=   240 p50=  4520 p90=  8340 min=     0 max=  9000
+   destinations: { "MINE": 9350, "METROPOLIS": 5379, "": 548, "VALLEY": 4723 }
+Halo [full-tank] reward            n= 20000 mean=   1855 p10=  1142 p50=  1839 p90=  2582 min=     0 max=  4058
+Halo [full-tank] shortest deadline n= 20000 mean=    101 p10=    65 p50=    94 p90=   150 min=     0 max=   180
+Halo [full-tank] contracts         n= 20000 mean=      2 p10=     1 p50=     1 p90=     2 min=     0 max=     5
+Halo [full-tank] load kg           n= 20000 mean=   3708 p10=   640 p50=  2800 p90=  8820 min=     0 max= 10000
+   destinations: { "METROPOLIS": 11126, "VALLEY": 5982, "MINE": 2888, "": 4 }
