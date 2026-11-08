@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(*Godot* --headless --path . *)",
+      "Bash(*godot* --headless --path . *)",
+      "Bash(*Godot* --path . -s tools/capture.gd *)",
+      "Bash(*godot* --path . -s tools/capture.gd *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git branch *)",
+      "Bash(git fetch *)",
+      "Bash(gh issue view *)",
+      "Bash(gh issue list *)",
+      "Bash(gh pr view *)",
+      "Bash(gh pr list *)",
+      "Bash(gh pr checks *)",
+      "Bash(gh pr diff *)"
+    ]
+  }
+}
