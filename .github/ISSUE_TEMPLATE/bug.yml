@@ -1,0 +1,55 @@
+name: Bug / playtest finding
+description: Something in the game broke, looked wrong or felt off while playing.
+labels: [needs-triage]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: The version at the bottom right of the Terminal, or the commit / PR you played.
+      placeholder: 0.4.0, or abc1234, or PR #101
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where
+      options:
+        - Office (Terminal)
+        - Valley
+        - Mine
+        - Metropolis
+        - Deep space / Station
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps
+      description: What you did, from the start of a run, so someone else can see it too.
+      placeholder: |
+        1. Pick the Mule, accept a Transport offer to the Mine
+        2. Lift off and fly over the Border
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual
+      description: What happened instead. Screenshots or a short recording help a lot.
+    validations:
+      required: true
+  - type: input
+    id: setup
+    attributes:
+      label: Setup
+      description: OS, and how you ran it (editor F5 or an exported build).
+      placeholder: macOS 15, editor F5

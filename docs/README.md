@@ -12,6 +12,7 @@ Where each kind of project knowledge lives. Start here when you need more than t
 | What to build next: specs, requirements, tasks | [GitHub Issues](https://github.com/pkopczynski/lunar-lander/issues) |
 | How work flows from a roadmap map to specs, tickets and PRs; issue conventions for agents | [`agents/`](agents/) (start with [`workflow.md`](agents/workflow.md)) |
 | Commits, PR titles, versions, releases | [`CLAUDE.md`](../CLAUDE.md) |
+| Onboarding a new contributor (in Polish): setup, ticket to PR, review and the protected `main`, reporting playtest findings | [`CONTRIBUTING.md`](../CONTRIBUTING.md) |
 | What changed for the player | [`CHANGELOG.md`](../CHANGELOG.md) (written by release-please) |
 
 ## Decisions
