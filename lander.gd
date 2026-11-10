@@ -101,6 +101,7 @@ var can_dock := true
 # A line the resting message adds under Docked!/Landed!, such as the loading countdown.
 # Set it through show_status(): the message is rewritten every frame while resting.
 var status := ""
+var proto: PrototypeUpgrades
 # Whether the last rest refuelled, so a new status keeps the Refueling… line.
 var refueling := false
 
@@ -117,6 +118,9 @@ var refueling := false
 func _ready() -> void:
 	rng.randomize()
 	start_docked(ShipType.SPARROW)
+	# PROTOTYPE (issue #94): candidate upgrades, toggled in flight.
+	proto = PrototypeUpgrades.new()
+	add_child(proto)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -235,6 +239,8 @@ func _physics_process(delta: float) -> void:
 		var burn_factor := (dry_mass + fuel + LOAD_BURN_SHARE * load_mass) / REFERENCE_MASS
 		fuel = maxf(fuel - ship_type.burn_rate * burn_factor * burn_multiplier(thrust_dir) * delta, 0.0)
 		velocity += thrust_dir * ship_type.thrust / mass_factor * delta
+	if proto:
+		proto.fly(delta)
 	since_liftoff += delta
 
 	if bouncing:
