@@ -102,6 +102,20 @@ var can_dock := true
 var condition := 100.0
 var last_hit_text := ""
 var tipped_time := 0.0
+# PROTOTYPE (#102): the ship as a rigid body on the ground. angular is its spin (rad/s) about its
+# centre of mass com_local; gyration_sq is I/m from the hull's area.
+var angular := 0.0
+var touching := false
+var com_local := Vector2.ZERO
+var gyration_sq := 100.0
+var contacts_debug: Array = []
+var pad_severity := 0.0
+var settle_time := 0.0
+var airborne_time := 0.0
+var last_impact := 0.0
+var drop_pose := 0
+const CONTACT_MARGIN := 1.5
+const DROP_POSES := [30.0, 60.0, 100.0, 175.0, 90.0, -45.0]
 # A line the resting message adds under Docked!/Landed!, such as the loading countdown.
 # Set it through show_status(): the message is rewritten every frame while resting.
 var status := ""
@@ -133,6 +147,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			reset_to_pad()
 		else:
 			get_tree().reload_current_scene()
+	# PROTOTYPE (#102): F6 drops the ship from 70 px up in the next awkward pose.
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F6:
+		var at := position - Vector2(0, 70)
+		fly_from(at)
+		rotation = deg_to_rad(DROP_POSES[drop_pose % DROP_POSES.size()])
+		drop_pose += 1
 
 
 func become(type: ShipType) -> void:
@@ -141,6 +161,7 @@ func become(type: ShipType) -> void:
 	hull.polygon = type.hull
 	flame.polygon = type.flame
 	dry_mass = type.default_dry_mass
+	compute_mass_props()
 	fuel = type.tank
 
 
@@ -180,6 +201,11 @@ func enter(new_state: State) -> void:
 	can_dock = true
 	status = ""
 	refueling = false
+	angular = 0.0
+	touching = false
+	pad_severity = 0.0
+	settle_time = 0.0
+	tipped_time = 0.0
 	if level_tween:
 		level_tween.kill()
 	match new_state:
@@ -233,7 +259,7 @@ func _physics_process(delta: float) -> void:
 
 	if disturb_left > 0.0:
 		disturb(delta)
-	else:
+	elif not (tip_on() and touching):
 		rotation += Input.get_axis("ui_left", "ui_right") * ship_type.turn_rate * delta
 
 	var mass_factor := total_mass() / REFERENCE_MASS
@@ -255,14 +281,18 @@ func _physics_process(delta: float) -> void:
 
 	# move_and_slide() cancels velocity into the ground, so keep the impact velocity.
 	var impact_velocity := velocity
-	move_and_slide()
-
-	if get_slide_collision_count() > 0:
-		handle_contact(impact_velocity, thrusting, delta)
+	if tip_on():
+		ground_step(delta)
 		if state != State.FLYING:
 			return
 	else:
-		tipped_time = 0.0
+		move_and_slide()
+		if get_slide_collision_count() > 0:
+			handle_contact(impact_velocity, thrusting, delta)
+			if state != State.FLYING:
+				return
+		else:
+			tipped_time = 0.0
 
 	keep_inside_world()
 	cross_border()
@@ -488,6 +518,217 @@ func take_damage(loss: float) -> bool:
 		crash()
 		return true
 	return false
+
+
+# ---- PROTOTYPE (#102): tipping and rolling -------------------------------------------------
+
+func tip_on() -> bool:
+	return ImpactTuning.v("tip_physics") > 0.5
+
+
+# Centre of mass and I/m of the hull, as a flat plate of even density.
+func compute_mass_props() -> void:
+	var poly := hull.polygon
+	var area := 0.0
+	var moment := Vector2.ZERO
+	var second := 0.0
+	for i in poly.size():
+		var p := poly[i]
+		var q := poly[(i + 1) % poly.size()]
+		var cr := p.cross(q)
+		area += cr
+		moment += (p + q) * cr
+		second += cr * (p.dot(p) + p.dot(q) + q.dot(q))
+	area *= 0.5
+	com_local = moment / (6.0 * area)
+	gyration_sq = second / 12.0 / area - com_local.length_squared()
+	print("PROTOTYPE %s: centre of mass %s, radius of gyration %.1f px" % [ship_type.name, com_local, sqrt(gyration_sq)])
+
+
+# Every point where the hull touches (within CONTACT_MARGIN) a solid: {p, n, collider}.
+func find_contacts() -> Array:
+	var space := get_world_2d().direct_space_state
+	var found: Array = []
+	var c := global_position + com_local.rotated(rotation)
+	for owner_id in get_shape_owners():
+		var xf := global_transform * shape_owner_get_transform(owner_id)
+		for i in shape_owner_get_shape_count(owner_id):
+			var q := PhysicsShapeQueryParameters2D.new()
+			q.shape = shape_owner_get_shape(owner_id, i)
+			q.transform = xf
+			q.margin = CONTACT_MARGIN
+			q.collision_mask = collision_mask
+			q.exclude = [get_rid()]
+			var pts := space.collide_shape(q, 16)
+			if pts.is_empty():
+				continue
+			var rest := space.get_rest_info(q)
+			for j in range(0, pts.size(), 2):
+				var p: Vector2 = (pts[j] + pts[j + 1]) * 0.5
+				var dup := false
+				for k in found:
+					if k.p.distance_to(p) < 3.0:
+						dup = true
+				if dup:
+					continue
+				var n: Vector2 = rest.get("normal", Vector2.UP)
+				var collider: Object = instance_from_id(rest.get("collider_id", 0)) if rest.has("collider_id") else null
+				var dir := (p - c).normalized()
+				var ray := PhysicsRayQueryParameters2D.create(p - dir * 4.0, p + dir * 4.0, collision_mask, [get_rid()])
+				var hit := space.intersect_ray(ray)
+				if hit and hit.normal != Vector2.ZERO:
+					n = hit.normal
+					collider = hit.collider
+				found.append({"p": p, "n": n, "collider": collider})
+	return found
+
+
+func point_velocity(c: Vector2, p: Vector2) -> Vector2:
+	var r := p - c
+	return velocity + Vector2(-angular * r.y, angular * r.x)
+
+
+func apply_impulse_at(j: Vector2, r: Vector2, inertia: float) -> void:
+	velocity += j
+	angular += r.cross(j) / inertia
+
+
+func ground_step(delta: float) -> void:
+	var contacts := find_contacts()
+	contacts_debug = contacts
+	touching = not contacts.is_empty()
+	var inertia := gyration_sq * ImpactTuning.v("inertia_scale")
+	if touching:
+		airborne_time = 0.0
+		angular += Input.get_axis("ui_left", "ui_right") * ImpactTuning.v("ground_turn") * ship_type.turn_rate / 3.0 * delta
+		angular *= exp(-ImpactTuning.v("ground_spin_damping") * delta)
+	else:
+		airborne_time += delta
+		angular *= exp(-ImpactTuning.v("air_spin_damping") * delta)
+		if airborne_time > 1.0:
+			pad_severity = 0.0
+	var c := global_position + com_local.rotated(rotation)
+	if touching and contact_damage(contacts, c, delta):
+		return
+	solve_contacts(contacts, c, inertia)
+	var dtheta := angular * delta
+	global_position = c + (global_position - c).rotated(dtheta)
+	rotation += dtheta
+	move_and_collide(velocity * delta)
+	var tilt := absf(angle_difference(0.0, rotation))
+	if touching and tilt > deg_to_rad(ImpactTuning.v("tip_angle")):
+		tipped_time += delta
+		if tipped_time >= ImpactTuning.v("tip_time"):
+			last_hit_text = "CRASH: tipped over"
+			crash()
+	else:
+		tipped_time = 0.0
+
+
+func contact_on_pad(k: Dictionary) -> bool:
+	return k.collider == ground and absf(k.p.x - pad_center_x()) <= PAD_WIDTH / 2.0
+
+
+# Damage and the pad's landing rules. Returns true when the ship left FLYING.
+func contact_damage(contacts: Array, c: Vector2, delta: float) -> bool:
+	var impact := 0.0
+	var normal := Vector2.UP
+	var all_on_pad := true
+	for k in contacts:
+		var s := -point_velocity(c, k.p).dot(k.n)
+		if s > impact:
+			impact = s
+			normal = k.n
+		if not contact_on_pad(k):
+			all_on_pad = false
+	last_impact = impact
+	if not in_deep_space and all_on_pad and normal.y < -0.5:
+		var severity := landing_severity(velocity)
+		if ImpactTuning.v("pad_settle") < 0.5:
+			# As in #101: touching the pad lands at once, levelled.
+			return pad_touchdown(severity, velocity)
+		if impact > 3.0:
+			if severity > 1.0:
+				last_hit_text = "CRASH: touchdown past the bands (%s)" % touchdown_text(velocity)
+				crash()
+				return true
+			pad_severity = maxf(pad_severity, severity)
+		var tilt := rad_to_deg(absf(angle_difference(0.0, rotation)))
+		if velocity.length() < 4.0 and absf(angular) < 0.15 and tilt <= ImpactTuning.v("tilt_crash"):
+			settle_time += delta
+		else:
+			settle_time = 0.0
+		if settle_time >= 0.3:
+			return pad_touchdown(pad_severity, velocity)
+		return false
+	settle_time = 0.0
+	if impact >= ImpactTuning.v("crash_speed"):
+		last_hit_text = "CRASH: impact %d px/s" % roundi(impact)
+		crash()
+		return true
+	if impact > ImpactTuning.v("no_damage"):
+		var share := (impact - ImpactTuning.v("no_damage")) / maxf(ImpactTuning.v("crash_speed") - ImpactTuning.v("no_damage"), 1.0)
+		var loss := share * ImpactTuning.v("max_hit")
+		last_hit_text = "HIT %d px/s −%d%%" % [roundi(impact), roundi(loss)]
+		if take_damage(loss):
+			return true
+	return false
+
+
+func pad_touchdown(severity: float, at_velocity: Vector2) -> bool:
+	if severity > 1.0:
+		last_hit_text = "CRASH: touchdown past the bands (%s)" % touchdown_text(at_velocity)
+		crash()
+		return true
+	if severity > 0.0:
+		var loss := severity * ImpactTuning.v("hard_max")
+		last_hit_text = "HARD LANDING −%d%%" % roundi(loss)
+		if take_damage(loss):
+			return true
+	else:
+		last_hit_text = "landed (%s)" % touchdown_text(at_velocity)
+	ImpactTuning.end_leg("landed")
+	land()
+	return true
+
+
+# Sequential impulses: contacts push (never pull), bounce above rest_speed, and friction holds
+# each contact point: Coulomb (ground_friction / g) at rest, keeping tangent_keep of the sliding
+# speed on a hit.
+func solve_contacts(contacts: Array, c: Vector2, inertia: float) -> void:
+	var mu := ImpactTuning.v("ground_friction") / GRAVITY
+	var settle := ImpactTuning.v("pad_settle") > 0.5
+	for k in contacts:
+		var vp := point_velocity(c, k.p)
+		var vn0 := vp.dot(k.n)
+		var e := ImpactTuning.v("pad_restitution") if settle and contact_on_pad(k) else ImpactTuning.v("restitution")
+		k.impact = vn0 < -ImpactTuning.v("rest_speed")
+		k.target = -e * vn0 if k.impact else 0.0
+		k.vt0 = absf(vp.dot(Vector2(-k.n.y, k.n.x)))
+		k.jn = 0.0
+		k.jt = 0.0
+	for _iteration in 10:
+		for k in contacts:
+			var r: Vector2 = k.p - c
+			var n: Vector2 = k.n
+			var vn := point_velocity(c, k.p).dot(n)
+			var rn := r.cross(n)
+			var dj: float = (k.target - vn) / (1.0 + rn * rn / inertia)
+			var acc := maxf(k.jn + dj, 0.0)
+			dj = acc - k.jn
+			k.jn = acc
+			apply_impulse_at(n * dj, r, inertia)
+			var t := Vector2(-n.y, n.x)
+			var vt := point_velocity(c, k.p).dot(t)
+			var rt := r.cross(t)
+			var djt := -vt / (1.0 + rt * rt / inertia)
+			var limit: float = mu * k.jn
+			if k.impact:
+				limit = maxf(limit, (1.0 - ImpactTuning.v("tangent_keep")) * k.vt0)
+			var acct := clampf(k.jt + djt, -limit, limit)
+			djt = acct - k.jt
+			k.jt = acct
+			apply_impulse_at(t * djt, r, inertia)
 
 
 func land() -> void:
