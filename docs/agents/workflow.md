@@ -19,7 +19,7 @@ Done when you can state, for this ticket: what to build, how it will be checked,
 1. Read the ticket with its comments. Find its parent (`.../issues/<n>/parent`) and read the spec with its comments, then the decision tickets and map its **Origin** links, as far as the ticket needs.
 2. Read the ticket's blockers (`.../dependencies/blocked_by`). Each should be closed; for each, read the PR that closed it, since it may have changed what this ticket builds on.
 3. Read the documents the ticket's **Context** names, plus `docs/agents/domain.md`'s list for the area.
-4. Verify against `main`: the code, scenes and tests the ticket touches, and `git log` since the spec was opened for that area. Then run "Stale specs" below.
+4. Verify against `main`: the code, scenes and tests the ticket touches, and `git log` since the spec was opened for that area. Then run "Stale specs" below. A comment from another PR (see "Notify affected tickets" under Pull requests) counts only once that PR has merged; until then, the ticket stands as written.
 
 ## Stale specs
 
@@ -36,6 +36,7 @@ Either way, when the spec itself is now wrong for later tickets, comment on the 
 - Update the documents listed under the ticket's **Documentation to update**, and any other the change touches per "Keeping docs current" in `docs/README.md`, in the same PR.
 - Land each ADR candidate the ticket delivers as a new ADR in `docs/adr/`, linking the decision ticket it came from, and add it to the table in `docs/README.md`.
 - Record every discrepancy you adapted to, and anything the next ticket should know.
+- **Notify affected tickets.** When you open the PR, find every other open implementation ticket that the change will make wrong: one that assumes something this PR makes untrue (the "Stale specs" test). Look at the parent spec's other tickets, and at open tickets in every area the PR touches (`gh issue list --search 'is:open label:ready-for-agent,ready-for-human label:"area:<feature>"'`). On each one, comment: link the PR, say what changes once it merges, and what the ticket now has to do differently. Leave the ticket body alone. When the change shifts that ticket's scope or accepted behaviour, also swap `ready-for-agent` for `ready-for-human`. List the tickets you notified in the PR body, or write "Notified: none".
 
 ## After merge
 

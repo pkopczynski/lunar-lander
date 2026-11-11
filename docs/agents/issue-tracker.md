@@ -23,12 +23,21 @@ GitHub Issues on `pkopczynski/lunar-lander` are the one backlog for human develo
 |---|---|---|---|
 | Map | `/wayfinder` | `wayfinder:map` | none |
 | Decision ticket | `/wayfinder` | `wayfinder:research` / `prototype` / `grilling` / `task` | sub-issue of its map |
-| Spec | `/to-spec` | `spec` | none; links its map in **Origin** |
-| Implementation ticket | `/to-tickets` | `ready-for-agent` or `ready-for-human` | sub-issue of its spec |
+| Spec | `/to-spec` | `spec`, plus its `area:` labels | none; links its map in **Origin** |
+| Implementation ticket | `/to-tickets` | `ready-for-agent` or `ready-for-human`, plus its `area:` labels | sub-issue of its spec |
 
 A spec is **not** a sub-issue of its map: as an open, unassigned child it would show up on the wayfinder frontier as a decision to take. Link it from the body instead, and comment on the map with a link to each spec made from it.
 
 A spec carries `spec`, never `ready-for-agent`: it is a parent, not a unit of work. `ready-for-agent` marks only an implementation ticket an agent can pick up and finish alone. (Specs before this convention, like #51, carry `ready-for-agent`; read them as specs.)
+
+## Area labels
+
+An `area:<feature>` label (`area:money-loop`, `area:scenery`) names the player-facing feature an issue touches, so anyone can see and filter the work on a feature across specs: `gh issue list --search 'is:open label:"area:money-loop"'`.
+
+- **Who carries them:** specs and implementation tickets, and bugs or requests once `/triage` knows the feature. Maps and decision tickets never do: their only labels are `wayfinder:` ones.
+- **Choosing one:** `/to-spec` picks the spec's areas. Reuse an existing label (`gh label list --search area:`) before creating one with `gh label create "area:<feature>" --description "<the feature, in a player's words>"`. Name the feature, not the code: `area:money-loop`, not `area:bank-account`.
+- **On tickets:** `/to-tickets` copies the spec's areas onto every ticket, and adds another area when a ticket also changes that feature.
+- An issue may carry several areas. The area says what a ticket touches; its parent still says which spec it belongs to.
 
 ## Spec body
 
