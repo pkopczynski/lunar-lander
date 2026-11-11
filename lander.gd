@@ -98,6 +98,10 @@ var disturb_offset := 0.0
 # Seedable, for tests.
 var rng := RandomNumberGenerator.new()
 var can_dock := true
+# PROTOTYPE (#101): condition, the last hit shown on screen, and how long the ship has rested tipped over.
+var condition := 100.0
+var last_hit_text := ""
+var tipped_time := 0.0
 # A line the resting message adds under Docked!/Landed!, such as the loading countdown.
 # Set it through show_status(): the message is rewritten every frame while resting.
 var status := ""
@@ -116,6 +120,9 @@ var refueling := false
 
 func _ready() -> void:
 	rng.randomize()
+	var tuner := ImpactTuning.new()
+	tuner.lander = self
+	add_child.call_deferred(tuner)
 	start_docked(ShipType.SPARROW)
 
 
@@ -147,6 +154,8 @@ func start_docked(type: ShipType) -> void:
 
 # Puts the ship Landed on the pad, upright and at rest, keeping its ship type, dry mass and fuel.
 func reset_to_pad() -> void:
+	if state == State.CRASHED:
+		condition = 100.0
 	var hull_bottom := 0.0
 	for point in hull.polygon:
 		hull_bottom = maxf(hull_bottom, point.y)
@@ -249,11 +258,11 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 	if get_slide_collision_count() > 0:
-		if touched_only_ground() and is_safe_landing(impact_velocity):
-			land()
-		else:
-			crash()
-		return
+		handle_contact(impact_velocity, thrusting, delta)
+		if state != State.FLYING:
+			return
+	else:
+		tipped_time = 0.0
 
 	keep_inside_world()
 	cross_border()
@@ -400,6 +409,87 @@ func is_safe_landing(impact_velocity: Vector2) -> bool:
 		and on_pad
 
 
+# PROTOTYPE (#101): contact damages and bounces instead of crashing.
+func handle_contact(impact_velocity: Vector2, thrusting: bool, delta: float) -> void:
+	var normal := Vector2.UP
+	var impact := 0.0
+	for i in get_slide_collision_count():
+		var c := get_slide_collision(i)
+		var s := -impact_velocity.dot(c.get_normal())
+		if s > impact:
+			impact = s
+			normal = c.get_normal()
+	var on_pad := absf(position.x - pad_center_x()) <= PAD_WIDTH / 2.0
+	if not in_deep_space and touched_only_ground() and on_pad and normal.y < -0.5:
+		var severity := landing_severity(impact_velocity)
+		if severity > 1.0:
+			last_hit_text = "CRASH: touchdown past the bands (%s)" % touchdown_text(impact_velocity)
+			crash()
+			return
+		if severity > 0.0:
+			var loss := severity * ImpactTuning.v("hard_max")
+			last_hit_text = "HARD LANDING −%d%% (%s)" % [roundi(loss), touchdown_text(impact_velocity)]
+			if take_damage(loss):
+				return
+		else:
+			last_hit_text = "landed (%s)" % touchdown_text(impact_velocity)
+		ImpactTuning.end_leg("landed")
+		land()
+		return
+	if impact >= ImpactTuning.v("crash_speed"):
+		last_hit_text = "CRASH: impact %d px/s" % roundi(impact)
+		crash()
+		return
+	if impact > ImpactTuning.v("no_damage"):
+		var share := (impact - ImpactTuning.v("no_damage")) / maxf(ImpactTuning.v("crash_speed") - ImpactTuning.v("no_damage"), 1.0)
+		var loss := share * ImpactTuning.v("max_hit")
+		last_hit_text = "HIT %d px/s −%d%%" % [roundi(impact), roundi(loss)]
+		if take_damage(loss):
+			return
+	if impact > ImpactTuning.v("rest_speed"):
+		var along := impact_velocity + normal * impact
+		velocity = along * ImpactTuning.v("tangent_keep") + normal * impact * ImpactTuning.v("restitution")
+	elif is_on_floor() and not thrusting:
+		velocity.x = move_toward(velocity.x, 0.0, ImpactTuning.v("ground_friction") * delta)
+	var tilt := absf(angle_difference(0.0, rotation))
+	if is_on_floor() and tilt > deg_to_rad(ImpactTuning.v("tip_angle")):
+		tipped_time += delta
+		if tipped_time >= ImpactTuning.v("tip_time"):
+			last_hit_text = "CRASH: tipped over"
+			crash()
+	else:
+		tipped_time = 0.0
+
+
+# 0 is a clean landing, (0, 1] inside the damaging bands, above 1 past them.
+func landing_severity(impact_velocity: Vector2) -> float:
+	var tilt := rad_to_deg(absf(angle_difference(0.0, rotation)))
+	var worst := 0.0
+	for axis in [[impact_velocity.y, "v"], [absf(impact_velocity.x), "h"], [tilt, "tilt"]]:
+		var lo: float = ImpactTuning.v(axis[1] + "_safe")
+		var hi: float = ImpactTuning.v(axis[1] + "_crash")
+		if axis[0] > lo:
+			worst = maxf(worst, (axis[0] - lo) / maxf(hi - lo, 0.001))
+	return worst
+
+
+func touchdown_text(impact_velocity: Vector2) -> String:
+	return "fall %d, side %d px/s, tilt %d°" % [roundi(impact_velocity.y), roundi(absf(impact_velocity.x)),
+		roundi(rad_to_deg(absf(angle_difference(0.0, rotation))))]
+
+
+# Returns true when the damage wrecked the ship.
+func take_damage(loss: float) -> bool:
+	condition = maxf(condition - loss, 0.0)
+	ImpactTuning.record_hit(loss)
+	print(last_hit_text, " -> condition %.1f%%" % condition)
+	if condition <= 0.0:
+		last_hit_text += " → 0%, CRASH"
+		crash()
+		return true
+	return false
+
+
 func land() -> void:
 	enter(State.LANDED)
 	settle()
@@ -409,6 +499,7 @@ func land() -> void:
 
 
 func dock() -> void:
+	ImpactTuning.end_leg("docked")
 	enter(State.DOCKED)
 	settle()
 	level_tween.tween_callback(docked_at_station.emit)
@@ -490,4 +581,5 @@ func lift_off() -> void:
 
 
 func crash() -> void:
+	ImpactTuning.end_leg("crash")
 	enter(State.CRASHED)
