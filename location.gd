@@ -3,6 +3,34 @@ extends RefCounted
 # The location table: every place on the planet the station can be above, with its pad and
 # terrain, its ground's height and its Backdrop. The mountain side walls, deep space and station
 # are shared.
+#
+# Each location's display name, pad centre x, ground height (`ground_y`, the top of its ground,
+# where the pad sits), landing surface width (`ground_width`, centred on the pad; `INF`, the
+# default, spans the whole world), lowest point (`lowest_y`, how far down its surface reaches; by
+# default the ground's bottom), the Mountains' look (`mountains`, a `MountainLook`; by default the
+# Valley's), extra solid terrain polygons, Backdrop (`backdrop`, its `Backdrop.Ridge`s, farther
+# first; by default `Backdrop.valley()`), Moons (`moons`, `Moons.Moon`s; none by default), clouds
+# (`clouds`, `Clouds.Cloud`s; by default none), Foreground (`foreground`, `Foreground.Silhouette`s;
+# by default none), city lights (`windows`, `neon_signs`, `warning_lights`; by default none) and
+# flying vehicles (`vehicles`, `Vehicles.Vehicle`s; by default none) and its location profile for
+# the Transport offers generated for it (`profile`, a `Location.Profile`: `pool_share`,
+# `kind_weights` indexed by `TransportOffer.Kind`, `min_passengers`/`max_passengers`,
+# `min_cargo`/`max_cargo`, `titles` by kind, `reward_factor`; see Transport offers). The Valley
+# (`Location.VALLEY`: `VALLEY`, pad in the middle of the world, ground at `World.GROUND_TOP_Y`, no
+# extra terrain, the Valley's cumulus and sequoia stands) and the Mine (`Location.MINE`: `MINE`, an
+# open-pit mine: two polygons of benches stepping down `BENCH_STEP` at a time from the Valley's
+# ground level to a pit floor `PIT_DEPTH` below it, pad off-centre on the pit floor, and one solid
+# crane (`CRANE`, a terrain polygon: its mast on the top left bench, its arm over the left benches);
+# the Mine's Backdrop, dust haze and Foreground) and the Metropolis (`Location.METROPOLIS`:
+# `METROPOLIS`: the street at `STREET_Y`, towers, the pad's building with its antenna and two lower
+# roofs as terrain polygons, and a landing surface `PAD_ROOF_WIDTH` wide at `ROOF_Y` in a notch in
+# the pad building's roof; `lowest_y` is the street's bottom; the skyline Backdrop, smog and haze,
+# near rooftops on both sides of the Approach corridor as Foreground, windows on
+# `METROPOLIS_FACADES`, four neon signs, five warning lights (one on the antenna's tip) and flying
+# vehicles in eight lanes (`METROPOLIS_LANES`, two or three Vehicles each, in three depths,
+# `VEHICLE_FAR`/`MID`/`NEAR`, up to about two-thirds of the way to the Border)), listed in
+# `Location.ALL` in drift order; `next()` is the location after one, wrapping; `pad_top()` is its
+# pad's top, which its parallax layers are anchored on. Named like constants, as `ShipType`'s are.
 
 # The open-pit mine's benches step down from the Valley's ground level, three steps a side, the
 # last one onto the pit floor.

@@ -55,7 +55,7 @@ The map this spec came from and the decision tickets it rests on, each as a link
 
 ## Documentation impact
 
-Which documents the implementation changes, per the "Keeping docs current" list in `docs/README.md`: README sections, GLOSSARY terms, `docs/architecture/` sections, new ADRs.
+Which documents the implementation changes, per the "Keeping docs current" list in `docs/README.md`: `docs/gameplay/` sections, script header comments, README sections, GLOSSARY terms, `docs/architecture/` sections, new ADRs.
 ```
 
 ## Implementation ticket body
@@ -80,7 +80,7 @@ The end-to-end behaviour this ticket makes work, from the player's perspective: 
 
 - The parent spec's user stories and implementation decisions this ticket delivers, by number or heading.
 - Decision tickets and ADRs that bind it, each linked.
-- The README, GLOSSARY and `docs/architecture/` sections to read before starting.
+- The `docs/gameplay/`, GLOSSARY and `docs/architecture/` sections to read before starting.
 
 ## Documentation to update
 

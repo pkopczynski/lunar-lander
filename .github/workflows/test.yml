@@ -19,6 +19,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Every agent reads the README on every task, so it stays an index.
+      - name: README size
+        run: |
+          size=$(wc -c < README.md)
+          if [ "$size" -gt 16384 ]; then
+            echo "::error file=README.md::README.md is $size bytes, over the 16384-byte limit. Move detail out per \"Keeping docs current\" in docs/README.md."
+            exit 1
+          fi
+
       - name: Cache Godot
         id: cache-godot
         uses: actions/cache@v4

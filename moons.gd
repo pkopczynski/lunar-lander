@@ -6,6 +6,18 @@ extends Node2D
 # two small ones high up. Each sits in its own layer anchored on
 # the pad, fixed in the world (SCROLL, no parallax), so it stays in its spot in the sky and sinks
 # out of view as the ship climbs, long before the Border, so deep space never shows them. Muted colours, a fixed lit side and no phases; faint by day, clear at night. No collider.
+#
+# The same four bodies at every location (`COLORS`, giant first: dusty rose, blue-grey, ochre, bone,
+# each kept at least 0.1 from every solid colour as drawn), each location placing and sizing them
+# (`Moons.Moon`: centre from the pad's top, and radius; `VALLEY`, `MINE`, `METROPOLIS`).
+# `build(moons, anchor)` puts one shaded disc `Polygon2D` per Moon (vertex colours darker away from
+# `LIT_FROM`: a fixed lit side, no phases) in its own `AnchoredParallax` layer (`SCROLL`: fixed in
+# the world, no parallax; each location places them where they first show above its own scenery: the
+# Valley's as seen with the ship resting on its pad, the Mine's and the Metropolis's as seen with it
+# 700 px up), so they stay in their spot in the sky and sink out of view as the ship climbs, long
+# before the Border: deep space never shows them, at every zoom, even on a tall 1152×1600 window
+# (`tests/test_moons.gd` resizes the window to check). `show_sky(sky)` sets their alpha from
+# `DAY_ALPHA` by day to 1 at full night. No collider.
 
 # Tuning, expected to change in playtests.
 # The four bodies, giant first: their colour (dusty rose, blue-grey, ochre, bone).

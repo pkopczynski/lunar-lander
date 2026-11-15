@@ -2,6 +2,16 @@ class_name SkyLook
 extends RefCounted
 # The sky look: one pure step from the local time (later also the weather) to how the
 # surface's sky looks. It knows nothing about the clock or the World; the World draws from it.
+#
+# The sky look (Godot already has a `Sky` class): one pure step, `SkyLook.at(local_minutes)`, from
+# the local time to how the surface's sky looks: `ground_color` (the gradient's ground-level
+# colour), `darkness` (how much the solid scenery is darkened, 0–1) and `star_brightness` (the
+# surface's night stars, 0–1, faint at most), plus `night()`, how far into the night it is (0 by
+# day, 1 from full night's darkness, `NIGHT_DARKNESS`, on), which every light and look that fades in
+# with the night (the Beacon's glows, the city and vehicle lights, the Foreground's darkening)
+# reads. Blended smoothly between keyframes (`SkyLook.KEYFRAMES`, typed `SkyLook.Keyframe`s) that
+# wrap around midnight. It knows nothing about the clock or the World; weather can later become its
+# second input.
 
 const MINUTES_PER_DAY := 1440.0
 

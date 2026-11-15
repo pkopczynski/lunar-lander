@@ -7,6 +7,18 @@ extends Node2D
 # scroll scale of the Backdrop depth it stands on, so it stays on its structure. No collider. The
 # lights blink through their own modulate and the movers only change position, so nothing is
 # redrawn as time passes.
+#
+# `build(lights, movers, anchor)` puts one red warning-light `Polygon2D` per `Activity.Light` (a
+# designed position and the scroll scale of the Backdrop depth it stands on) and one silhouette
+# `Polygon2D` per `Activity.Mover` (an outline, two designed points, seconds one way, its depth, a
+# start along its way and whether it starts over at the end or turns back) in one `AnchoredParallax`
+# layer per depth (`DecorKit.Depths`), drawn just over the Backdrop (`lights`, `movers`).
+# `_process()` only moves the movers and blinks the lights through their own `modulate`
+# (`CityLights.blink_alpha()`). `show_sky(sky, backdrop)` fills each mover like its depth
+# (`Backdrop.color_of()`) and brightens the lights as `CityLights` does.
+# `mine_lights()`/`mine_movers()`: the Mine's, on its chimneys, towers, headframe and crane masts,
+# and a crane trolley, a hauler on the far walls' deep floor and ore riding the conveyor. No
+# collider.
 
 # Tuning, expected to change in playtests.
 # Sides of the polygon each warning light is drawn as.

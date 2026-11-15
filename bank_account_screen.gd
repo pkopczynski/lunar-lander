@@ -3,6 +3,9 @@ extends RefCounted
 # The Office's BANK ACCOUNT screen: the pilot, the balance and the transactions, newest first.
 # Each transaction opens to show how its payout was worked out, several at once, as in the
 # Transport offers list. The Office owns the Terminal and calls this while the screen is showing.
+#
+# The pilot, the balance and the transactions, each opening to show how its payout was worked out:
+# input, observable text and drawing. The Office creates it and calls it while that screen shows.
 
 # The rows and details share the Transport offers list's layout.
 const ROW_HEIGHT := TransportOffersScreen.ROW_HEIGHT

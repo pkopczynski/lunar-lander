@@ -4,6 +4,34 @@ extends Node2D
 # builds it afresh from the location's ridges whenever it shows a location, and recolours it from
 # the sky. Each ridge is one Polygon2D filled with the background gradient, darkened, so it reads
 # as a shadow of the sky behind it, in its own parallax layer anchored on the pad.
+#
+# The current location's ridges behind the surface, with no collision. `build(ridges, bottom_y,
+# anchor)` replaces its children with one `AnchoredParallax` layer per `Backdrop.Ridge` (a top edge,
+# a darkening, a scroll scale, by default `Vector2.ONE`, fixed in the world, and optional
+# `structures`: outlines standing free of the top edge, such as the Mine's ropeway, drawn in the
+# ridge's layer and colour and listed as `SILHOUETTE`s), each holding one `Polygon2D` (and, when the
+# ridge has them, its lit windows and beacons as one mesh each over it, and a band of haze behind
+# it, in its own layer just behind the ridge's, rising with the ridge but fixed in the world
+# sideways), carried on level `SIDE_MARGIN` past both ends and closed down `BOTTOM_MARGIN` past the
+# location's lowest point, plus however far its layer rises with the camera up at the Border, so no
+# edge shows however the layer is shifted (`ridges` lists the polygons, farther first; `structures`
+# their structures); `show_sky(sky, background_color)` fills each with one colour from
+# `Backdrop.depth_colors(sky, darkenings)`: the background gradient's colour behind the farthest
+# ridge's highest peak (`peak_y`, but no higher than `HIGHEST_SKY_Y`, so the Metropolis's
+# megastructures don't turn its skyline near-black by day), darkened by each ridge's darkening, each
+# nearer ridge `SATURATION_STEP` more saturated (up to `MAX_SATURATION_STEPS`), then kept at least
+# `MIN_STEP` darker in luminance than the ridge behind it and never below its floor (`NEAR_FLOOR`
+# plus a `MIN_STEP` per ridge in front of it), so the steps hold at full night too; it tints each
+# haze band (its `self_modulate`, over white vertex colours fading from clear to `HAZE_ALPHA` at its
+# bottom) with the sky behind its top and brightens the lights like the city lights'
+# (`CityLights.brightness()`). The ridges must be listed farther first, one per depth. Holds the
+# Valley's Backdrop in four depths (`VALLEY_RANGES`, `TATRA_FAR`, `TATRA_NEAR`, `VALLEY_HILLS`,
+# their darkenings and scroll scales; `Backdrop.valley()`), whose two nearer ridges carry forests
+# (`TATRA_NEAR_TREES`, `VALLEY_HILLS_TREES`, each tree a `Vector3(x, height, Backdrop.TreeKind)`)
+# traced into their top edges by `Backdrop.forested()`, the Mine's Backdrop (`HIMALAYA_FAR`,
+# `HIMALAYA_NEAR`, `UPPER_WALLS` with the ropeway (`rope()`) and a conveyor, `FAR_WALLS`, their
+# darkenings and scroll scales, each slower sideways than the Valley's; `Backdrop.mine()`). The
+# Metropolis's skyline comes from `skyline.gd`.
 
 # The shapes of the trees a forested ridge carries on its top edge.
 enum TreeKind { SPRUCE, SEQUOIA, FORKED }

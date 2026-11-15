@@ -14,6 +14,36 @@ extends Node2D
 # front of the ship, and kept beside the Approach corridor. A wisp left of the pad drifts in a lane
 # from far out of sight on the left up to the corridor, one right of it from the corridor out of
 # sight on the right; it fades out toward the corridor's end of its lane, so it wraps there unseen.
+#
+# A location's clouds: `build(clouds, anchor)` puts one `Polygon2D` per `Clouds.Cloud` (centre, half
+# size, and optionally its depth and wind: a scroll scale and px/s, by default `SCROLL` and
+# `WIND_SPEED`, its `Clouds.Kind`, its `Clouds.Form` and the seed its outline is drawn from) in one
+# `AnchoredParallax` layer per depth (`DecorKit.Depths`); each moves at its own wind speed in
+# `_process()` (only its position changes; nothing is redrawn) and wraps around a span wider than
+# any view, so none pops in sight. Its outline (`outline()`) is shaped by its form: a `CUMULUS` is
+# rows of overlapping puffs, each row narrower than the one below, cut flat along its base and
+# rounded off (`rounded()`, Chaikin's corner cutting), filled with a shared vertical gradient
+# texture (`shading_texture`) so its top is lit and its base in shade; a `CIRRUS` is a long, thin,
+# curved streak tapering at both ends with a few fibres falling from its underside and curling
+# sideways (mares' tails), translucent, its fibres fading toward their tips (vertex colours); every
+# fibre of a streak has the same shape and never curls tighter than twice its width, so no outline
+# crosses itself (a crossing outline isn't drawn at all). The far clouds (`DEPTHS`) are fixed in the
+# world (scroll scale 1, no parallax), so they stay in their spot in the sky as the ship flies
+# around; only the wind carries them. A cloud in front of the world (scroll scale above 1 sideways)
+# is a wisp: a small translucent cumulus (`WISP_OPACITY`), built in `near`, a node the World adds
+# over the Foreground (so it passes in front of the ship), listed as a `FOREGROUND` `WISP`, and kept
+# beside the Approach corridor: it wraps around a lane from far out of sight up to `WISP_CLEARANCE`
+# from the corridor on its side of the pad (`wisp_lane()`), fading out (`modulate`) over `WISP_FADE`
+# toward the lane's ends, so it wraps there unseen. `Clouds.sky(kind, pad_top, variety)` gives a
+# location's clouds: the two far `DEPTHS`, cirrus high in the sky and cumulus lower, partly behind
+# the scenery, each scattered evenly around the wrap span and between heights given as shares of the
+# climb from the pad's top to the Border (cirrus in its upper half, up to just below the Border,
+# cumulus in its lower half), as many as their density per 100 px of those heights (about 30 cirrus
+# and 25 cumulus a location), then the `WISPS`, between heights given the same way; the kind
+# (`KINDS`: `CUMULUS` white, `SMOG` grey, `DUST` dusty) stretches their shape and tints them.
+# `show_sky(sky, background_color)` tints each (its `self_modulate`; its shading is set once in
+# `build()`) from the gradient behind it and the sky's own colour (`SKY_LIGHT`), lightened (less at
+# night), drawn a little toward its kind's colour and darkened with the sky. No collider.
 
 # The kind of a location's clouds, which tints them and stretches their shape: white (the Valley),
 # grey smog (the Metropolis) or dust (the Mine).

@@ -1,6 +1,6 @@
 # Domain model
 
-How the game's concepts relate, how they change over time, and which rules always hold. Each term's definition lives in [`GLOSSARY.md`](../../GLOSSARY.md) and isn't repeated here; the numbers live in the README's Gameplay rules and the scripts' constants.
+How the game's concepts relate, how they change over time, and which rules always hold. Each term's definition lives in [`GLOSSARY.md`](../../GLOSSARY.md) and isn't repeated here; the rules live in [`docs/gameplay/`](../gameplay/) and the numbers in the scripts' constants.
 
 ## Relationships
 

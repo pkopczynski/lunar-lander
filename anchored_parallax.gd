@@ -4,6 +4,15 @@ extends Parallax2D
 # everything in it sits exactly where it was designed; elsewhere it's shifted by how far the
 # camera is from the anchor, times (1 - scroll_scale). Below 1 it moves more slowly than the world
 # (behind it), above 1 faster (in front of it). Godot's Parallax2D follows the camera itself.
+#
+# A parallax layer anchored on a point (a Godot `Parallax2D`, which follows the camera itself):
+# `AnchoredParallax.new(scroll_scale, anchor)`; with the camera centred on the anchor (the World
+# passes the current pad's top) everything in it sits exactly where it was designed, and elsewhere
+# it's shifted by `offset_for(camera_center)`, `(camera_center - anchor) * (1 - scroll_scale)`: a
+# scale below 1 moves more slowly than the world, above 1 faster. It sets `scroll_offset` from the
+# viewport's size (again whenever that changes), since `Parallax2D` places itself at `(camera centre
+# - half the viewport) * (1 - scroll_scale) + scroll_offset`, whatever the zoom. Every Backdrop,
+# cloud, vehicle and Foreground layer is one.
 
 var anchor := Vector2.ZERO
 

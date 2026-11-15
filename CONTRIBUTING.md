@@ -8,7 +8,7 @@ Ten plik jest po polsku, ale **kod, komentarze, commity, tytuły i opisy PR-ów,
 
 ## Co przeczytać najpierw
 
-1. [`README.md`](README.md) — czym jest gra, jej zasady, ograniczenia, konwencje kodu, pułapki („Gotchas”) i jak uruchamiać testy. To główny kontekst także dla agentów.
+1. [`README.md`](README.md) — czym jest gra, ograniczenia, konwencje kodu, przekrojowe pułapki („Gotchas”), indeks plików i jak uruchamiać testy. To główny kontekst także dla agentów, więc jest krótki: szczegółowe zasady gry są w [`docs/gameplay/`](docs/gameplay/), opis każdego skryptu w komentarzu na jego początku, a pisanie testów w [`tests/README.md`](tests/README.md).
 2. [`CLAUDE.md`](CLAUDE.md) — konwencje commitów, PR-ów i wydań (conventional commits, squash merge, release-please).
 3. [`docs/agents/workflow.md`](docs/agents/workflow.md) — droga od ticketu do zmergowanego kodu.
 4. [`docs/README.md`](docs/README.md) — indeks dokumentacji architektury i ADR-ów.
@@ -37,7 +37,7 @@ Ten plik jest po polsku, ale **kod, komentarze, commity, tytuły i opisy PR-ów,
 5. **Otwórz PR:**
    - Tytuł to conventional commit pisany dla gracza: `feat: …`, `fix: …`, `refactor: …` itd. (zasady w `CLAUDE.md`). Tytuł staje się jedynym commitem na `main` i linią w changelogu.
    - Opis zaczyna się od `Closes #<ticket>`, opisuje rozbieżności z ticketem i to, co powinien wiedzieć następny ticket.
-   - PR aktualizuje dokumenty, których dotyczy zmiana (README, `docs/`, ADR) — patrz „Pull requests” w `docs/agents/workflow.md`.
+   - PR aktualizuje dokumenty, których dotyczy zmiana (`docs/gameplay/`, komentarze w skryptach, README, `docs/`, ADR) — patrz „Pull requests” w `docs/agents/workflow.md`.
 
 ## Review i merge
 

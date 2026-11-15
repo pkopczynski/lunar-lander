@@ -3,6 +3,12 @@ extends RefCounted
 # The Office's TRANSPORT OFFERS screen: input and drawing for the offer list in the left
 # column and the Contracts in the right one. The Office owns the Terminal and calls this
 # while the screen is showing.
+#
+# The offer list and the Contracts column (Contracts with their X, load summary, FUEL LIMITED,
+# DELIVER WITHIN, TOTAL VALUE, the mission rows (DESTINATION, set by the first Contract and locked
+# while there are any, START PERIOD), START LOADING (START without Contracts, CANCEL MISSION during
+# a loaded mission)) and the rows' red FUEL LIMITED notes: input, observable text and drawing. The
+# Office creates it and calls it while that screen shows.
 
 enum Column { OFFERS, CONTRACTS }
 # The mission rows, top to bottom: what the start button passes to the planet clock.

@@ -1,10 +1,46 @@
 # Architecture overview
 
-How the game's scripts group into systems, which way they depend on each other, and who owns which state. Per-file roles, the scene tree and the gotchas are in the root [`README.md`](../../README.md) (file table, "Scene tree", "Gotchas"); this page is the map between them. Terms are defined in [`GLOSSARY.md`](../../GLOSSARY.md), and their relationships in [`domain-model.md`](domain-model.md).
+How the game's scripts group into systems, which way they depend on each other, and who owns which state. Each script's role is in its header comment, the cross-cutting gotchas in the root [`README.md`](../../README.md), and the rules each system implements in [`docs/gameplay/`](../gameplay/); this page is the map between them. Terms are defined in [`GLOSSARY.md`](../../GLOSSARY.md), and their relationships in [`domain-model.md`](domain-model.md).
 
 ## Shape
 
 One Godot 4.7 project, GDScript only, one scene (`main.tscn`). Every script sits at the repo root; tests in `tests/`, the capture tool in `tools/`. Each script either is attached to a node in `main.tscn`, is a node another script builds at runtime, or is a plain data class (`RefCounted`) with no node.
+
+## Scene tree
+
+`main.tscn`; names in parentheses are nodes a script adds at runtime.
+
+```
+Main (Node2D)                  world.gd; draws the surface gradient behind everything
+├── (MeshInstance2D) ×2        world.gd adds the deep-space and night star layers at runtime
+├── (Moons)                    moons.gd; world.gd adds it at runtime and builds the current location's Moons in it (an AnchoredParallax holding a Polygon2D each)
+├── (Clouds)                   clouds.gd; world.gd adds it at runtime and builds the current location's clouds in it (one AnchoredParallax of Polygon2Ds per depth; its wisps go in its near node, added after the Foreground)
+├── (Backdrop)                 backdrop.gd; world.gd adds it at runtime and builds the current location's ridges in it (an AnchoredParallax holding a Polygon2D each)
+├── (Activity)                 activity.gd; world.gd adds it at runtime and builds the current location's warning lights and slow movers in it (one AnchoredParallax per Backdrop depth)
+├── (Vehicles)                 vehicles.gd; world.gd adds it at runtime and builds the current location's flying vehicles in it (one AnchoredParallax per depth of hulls, each with its light and trail)
+├── Ground (StaticBody2D)      flat floor, wider than the world; world.gd moves it to the current location's height
+│   ├── Polygon2D              visual; scenery, dimmed at night
+│   ├── CollisionShape2D
+│   └── Pad (Polygon2D)        visual only; world.gd sets its shape and puts it at the current location's pad centre
+│       └── (Beacon)           beacon.gd; world.gd adds it at runtime: the pad's edge lights and their glows
+├── PlanetClock (Node)         planet_clock.gd; the local time, the current location and the drift count; pauses with the tree
+├── Terrain (StaticBody2D)     empty; world.gd builds the current location's terrain (scenery) here, afresh on each location change
+├── (CityLights)               city_lights.gd; world.gd adds it at runtime, just after Terrain: the window mesh, neon signs and warning lights
+├── Mountains (StaticBody2D)   empty; world.gd adds both mountains' colliders and, per location, their visuals (scenery) at runtime
+├── Station (StaticBody2D)     station.gd; adds its wall polygons at runtime
+├── Lander (CharacterBody2D)   lander.gd; moved into the parking spot by start_docked(type) in _ready()
+│   ├── Body (Polygon2D)       ship type's hull, set at runtime by become()
+│   ├── Flame (Polygon2D)      ship type's flame, shown while thrusting
+│   ├── CollisionPolygon2D     same hull as Body
+│   └── Camera (Camera2D)      camera.gd
+├── UI (CanvasLayer)
+│   ├── Message (Label)        shows Docked!/Landed!/Crashed!, hidden in flight
+│   └── Hud (Control)          hud.gd; full-rect, draws itself on the right edge
+├── Economy (Node)             economy.gd; process mode Always, so it keeps running while the Office pauses the tree
+├── Office (CanvasLayer)       office.gd; layer 10, process mode Always; pauses the tree while showing
+│   └── Terminal (Control)     full-rect; office.gd draws the Terminal and popups on it
+└── (Foreground)               foreground.gd; world.gd adds it at runtime, last, so it's drawn over the ship; an AnchoredParallax holding a Polygon2D per silhouette
+```
 
 ## Systems
 
@@ -63,7 +99,7 @@ Camera ──► Lander (its parent), World and Station constants
 - **Gameplay ticks in `_physics_process`** (Lander, PlanetClock, Economy, World's sky check and drift feed), so `--fixed-fps 60` tests are deterministic. Decor movement (clouds, vehicles, Activity) and the Office's animations use `_process`.
 - **The Office pauses the whole tree** while showing. The Economy runs with process mode Always (offer timers keep running); the planet clock stays pausable (time stops). See [ADR 0003](../adr/0003-run-state-in-scene-nodes.md).
 - **Restart reloads the scene.** That is the whole reset mechanism; see ADR 0003.
-- **Ready order matters:** `Station` must stay above `Lander` in `main.tscn` (README, Gotchas).
+- **Ready order matters:** `Station` must stay above `Lander` in `main.tscn` (see the README's Gotchas).
 
 ## Building a location
 
@@ -73,7 +109,7 @@ Camera ──► Lander (its parent), World and Station constants
 2. Builds each decor script afresh from the location's data, anchored on `to.pad_top()`, then applies the current sky.
 3. Dresses the Mountains in `to.mountains` (their colliders never change) and rebuilds `Terrain` (colliders and visuals) from `to.terrain`.
 
-Adding a location means adding data to `location.gd` and listing it in `Location.ALL` (which is also the drift order); its Foreground must keep the Approach corridor rules in the README's Gameplay rules.
+Adding a location means adding data to `location.gd` and listing it in `Location.ALL` (which is also the drift order); its Foreground must keep the Approach corridor rules in [`docs/gameplay/world-and-scenery.md`](../gameplay/world-and-scenery.md) (Foreground).
 
 ## Rendering rules
 
