@@ -2,7 +2,7 @@ extends SceneTree
 # A developer tool, not a test: captures every Location by day and at night at several heights
 # above its pad, then measures the surface's frame time at the pad and 1000 px up. It sets the
 # planet clock and places the ship only through the game's own functions, never touching scenery.
-# Needs a real window (it renders), so run it without --headless; see the README.
+# Needs a real window (it renders), so run it without --headless; see the README's "Running and validating".
 
 const MAIN_SCENE := "res://main.tscn"
 const WINDOW_SIZE := Vector2i(1152, 648)

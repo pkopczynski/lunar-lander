@@ -7,6 +7,20 @@ extends Node2D
 # changes its position, so nothing is redrawn as they fly. Each hull is filled like the Backdrop
 # depth it flies in (Backdrop.color_of()), so it steps in tone by depth and follows the sky; their
 # lights are never dimmed and grow brighter as it darkens (see CityLights).
+#
+# `build(vehicles, anchor)` puts one small hull `Polygon2D` per `Vehicles.Vehicle` (a designed
+# position, a speed, negative leftwards, and optionally its depth, a scroll scale, by default
+# `SCROLL`, slower than the world), each with a light and a trail `Polygon2D` child (the trail
+# streams behind it, as long as it flies in `TRAIL_SECONDS`, fading out through its vertex colours),
+# in one `AnchoredParallax` layer per depth (`DecorKit.Depths`) behind the buildings (`hulls`,
+# `lights`, `trails`). `Vehicles.in_lanes(lanes, pad_top_y)` turns a table of lanes (height above
+# the pad, depth, speed, each Vehicle's x) into Vehicles, placed so each lane is at the middle of
+# the screen when the camera has climbed its height. `_process()` only moves the hulls (their lights
+# and trails with them), wrapping around a span wider than any view (`DecorKit.wrapped_x()`).
+# `show_sky(sky, backdrop)` fills each hull like the Backdrop depth it flies in
+# (`Backdrop.color_of()`, the nearest depth if none scrolls at its own; the Metropolis's lanes fly
+# in the skyline's three nearer depths), so the hulls step in tone by depth and follow the sky, and
+# brightens the lights and trails as `CityLights` does. No collider.
 
 # Tuning, expected to change in playtests.
 const SCROLL := Vector2(0.5, 0.96)

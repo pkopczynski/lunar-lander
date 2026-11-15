@@ -3,6 +3,15 @@ extends CanvasLayer
 # The player's Office: a full-window Terminal with a main screen of tiles opening Ship
 # selection (one Ship offer per ship type), Transport offers and the Bank account. It pauses
 # the world while showing, and puts the chosen ship type in the parking spot.
+#
+# The Office: resetting the mission rows from the planet clock on every opening and starting the
+# mission at the chosen destination in the chosen start period at START LOADING (or START, a free
+# flight), the Terminal's colours (green, dim green and black, white and red for values, and faint
+# green list tints, alternating by row), the Terminal's screens (the main screen's tiles, Ship
+# selection with its Ship offers and browsing, Transport offers, Bank account), the "ARE YOU SURE?"
+# popups (for a Ship offer and a Transport offer), "REMOVE CONTRACT?", "CANCEL MISSION?" and "ENTER
+# THE OFFICE?" (also while delivering), pausing the world while showing, and drawing the Terminal.
+# Attached to `Office`.
 
 enum Screen { MAIN, SHIP_SELECTION, TRANSPORT_OFFERS, BANK_ACCOUNT }
 enum PopupKind { NONE, ARE_YOU_SURE, ENTER_OFFICE, ACCEPT_OFFER, REMOVE_CONTRACT, CANCEL_MISSION }

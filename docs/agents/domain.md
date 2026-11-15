@@ -8,7 +8,7 @@ How the engineering skills consume this repo's domain documentation. Layout: **s
 - **`docs/architecture/overview.md`** and **`docs/architecture/domain-model.md`** when the work touches how systems depend on each other, who owns state, a lifecycle or an invariant.
 - **`docs/adr/`**: the ADRs that touch the area you're about to work in.
 
-These, the root `README.md` and the code on `main` are the source of truth. An issue written earlier describes intent at the time it was written; where it disagrees with them, follow `docs/agents/workflow.md` → "Stale specs".
+These, the root `README.md`, `docs/gameplay/` and the code on `main` are the source of truth. An issue written earlier describes intent at the time it was written; where it disagrees with them, follow `docs/agents/workflow.md` → "Stale specs".
 
 ## Use the glossary's vocabulary
 

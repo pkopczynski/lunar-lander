@@ -15,4 +15,4 @@ Reconstructed, not recorded: one seam keeps tests valid through refactors, which
 - Production scripts carry read-only accessors that exist for tests: the Office's and screens' observable text, the HUD's `clock_text()`, `World.shown_decor()` and `shown_stars()`. A new decor script joins `shown_decor()` through its `listed_decor()`.
 - Gameplay ticks in `_physics_process` so `--fixed-fps 60` runs are deterministic.
 - Visuals and game feel still need a human playtest; `tools/capture.gd` produces screenshots for review but no test depends on it.
-- How to run and write tests: README, "Running and validating".
+- How to run tests: root README, "Running and validating"; how to write them: [`tests/README.md`](../../tests/README.md).

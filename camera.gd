@@ -1,5 +1,6 @@
 class_name FollowCamera
 extends Camera2D
+# Follows the lander, zooms with speed, shakes on border crossings. Attached to `Lander/Camera`.
 
 const SURFACE_ZOOM := 1.3
 const DEEP_SPACE_ZOOM := 0.6

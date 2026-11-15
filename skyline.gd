@@ -8,6 +8,16 @@ extends RefCounted
 # megastructures carry only sparse beacons; a band of haze lies behind each nearer depth. The rows
 # come from a seeded generator, so the city is the same every run. Tuning, expected to change in
 # playtests.
+#
+# `Skyline.metropolis()` builds its Backdrop ridges, farther first, from `DEPTHS` (each depth's
+# scroll, darkening, cluster and district roof heights, tower widths, and window size, spacing, lit
+# share and brightness) with a seeded generator (`SEED`), the same every run: rows of towers
+# alternating clusters (tallest in the middle; flat, shed, spire, radio-mast or pagoda-like roofs)
+# and low districts (flat or gabled), built `ROW_MARGIN` past the world's sides; the farthest row
+# holds the `MEGASTRUCTURES` (centre x, base half width, top y) and carries the beacons
+# (`BEACON_COLOR`) on them and its `ROW_BEACONS` tallest towers; the three nearer rows hold pale
+# windows (`WINDOW_TINT` times the depth's brightness) on their facades, and a haze band from
+# `HAZE_RISE` above their tallest roofs down to their districts.
 
 # How far past the world's sides each row is built, so a slow layer shifted sideways still shows
 # towers rather than the Backdrop's level carry-on.

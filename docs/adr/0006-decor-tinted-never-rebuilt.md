@@ -6,7 +6,7 @@ Decor is built when the World shows a location (`World.show_location()`), and is
 
 ## Why
 
-Measured, and recorded in the README's Gotchas. A `Polygon2D` re-triangulates whenever its `color` or `vertex_colors` change: on the big ridge, skyline and cloud outlines that cost a ~20–50 ms hitch every in-game minute (every 0.5 s). Thousands of `draw_circle` stars cost ~8–13 ms every frame. [#68](https://github.com/pkopczynski/lunar-lander/issues/68) set the target: "Nothing is redrawn every frame… against a 60 fps target on an integrated-GPU laptop, and rechecked once a Web export exists." The fix that established the tint-only rule ("perf: stop the view stuttering every half second") shipped in [#67](https://github.com/pkopczynski/lunar-lander/pull/67).
+Measured, and recorded in the root README's Gotchas (the stars' cost in `world.gd`'s header). A `Polygon2D` re-triangulates whenever its `color` or `vertex_colors` change: on the big ridge, skyline and cloud outlines that cost a ~20–50 ms hitch every in-game minute (every 0.5 s). Thousands of `draw_circle` stars cost ~8–13 ms every frame. [#68](https://github.com/pkopczynski/lunar-lander/issues/68) set the target: "Nothing is redrawn every frame… against a 60 fps target on an integrated-GPU laptop, and rechecked once a Web export exists." The fix that established the tint-only rule ("perf: stop the view stuttering every half second") shipped in [#67](https://github.com/pkopczynski/lunar-lander/pull/67).
 
 ## Consequences
 

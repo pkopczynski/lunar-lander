@@ -8,6 +8,14 @@ extends RefCounted
 # It also keeps what the list's drawing shares: details grow open and shrink closed over OPEN_TIME, the
 # list scrolls to keep the cursor in view, and drawn ▲/▼ markers (Silkscreen has no arrow
 # glyphs) show when content lies above or below.
+#
+# A Terminal list whose rows open to show details, several at once: the set of open items and one
+# cursor walking each row and, under an open row, its button when it can be selected, all kept by
+# item as rows come and go; plus what drawing such a list shares: the details' opening animation,
+# scrolling to keep the cursor in view, the ▲/▼ markers and clipping helpers (Godot's drawing has no
+# clip). The caller gives it the items, whether an open item's button can be selected, and their
+# heights; tests read it directly. The Transport offers list and the Bank account's transactions use
+# it.
 
 # Opening and closing animation: seconds the details take to grow open or shrink closed, and
 # its ease (below 1 eases out).

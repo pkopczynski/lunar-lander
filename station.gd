@@ -1,5 +1,6 @@
 class_name Station
 extends StaticBody2D
+# Builds the station maze and picks the parking spot. Attached to `Station`.
 
 const PASSAGE_WIDTH := 100.0
 const ENTRY_LENGTH := 300.0
@@ -44,6 +45,9 @@ func _ready() -> void:
 	parking_spot = Rect2(spot_center - SPOT_SIZE / 2.0, SPOT_SIZE)
 	passages.append(Rect2(spot_center - chamber_size / 2.0, chamber_size))
 
+	# The walls are the block minus the union of the passages. The entry cut reaches below the
+	# block, so the result is one polygon with no holes; keep passages overlapping when changing
+	# the layout, or the union splits.
 	var open := rect_polygon(passages[0])
 	for passage in passages.slice(1):
 		open = Geometry2D.merge_polygons(open, rect_polygon(passage))[0]

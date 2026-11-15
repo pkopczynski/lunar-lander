@@ -2,6 +2,12 @@ class_name ShipType
 extends RefCounted
 # The ship type table: every ship type's shapes and numbers. The source of truth
 # for per-ship values; rules shared by all ship types stay in lander.gd.
+#
+# Each ship type's name, flavour line, hull and flame shapes, default dry mass, Maximum weight,
+# Tank, passenger seats, cargo capacity (the maximum capacity), thrust, fuel burn, turn rate, the
+# derived full-Tank cargo (`full_tank_cargo(passengers)`), and the Ship offer's THRUST and HANDLING
+# ratings (out of 5 blocks). The Sparrow, the Mule and the Halo (`ShipType.SPARROW`,
+# `ShipType.MULE`, `ShipType.HALO`, listed in `ShipType.ALL` in Ship offer order).
 
 var name: String
 # One line on the Ship offer saying what the ship type is for.

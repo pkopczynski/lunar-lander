@@ -1,8 +1,10 @@
 class_name Beacon
 extends Node2D
-# The pad's Beacon: a small light on each of the pad's edges, pulsing slowly, with a soft glow
-# around it that grows as the sky darkens. It's a child of the pad, so it follows the pad to
-# every location. It has no collider, and it's never dimmed: the sky only strengthens its glow.
+# The pad's Beacon: a small light on each of the pad's edges, each with a soft glow, built in
+# `_ready()` as `Polygon2D`s (`lights`, `glows`). The World adds it as a child of the pad, so it
+# follows the pad to every location. It pulses slowly through its own `modulate` (nothing is
+# redrawn as it pulses), is never dimmed, and `show_sky(sky)` strengthens the glows'
+# `self_modulate` alpha with the sky's darkness. No collider.
 
 # Tuning, expected to change in playtests.
 const LIGHT_COLOR := Color(1.0, 0.85, 0.3)

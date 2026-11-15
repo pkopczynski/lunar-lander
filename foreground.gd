@@ -7,6 +7,27 @@ extends Node2D
 # corridor (the column above its pad, CORRIDOR_MARGIN wider than the pad on each side) at any
 # height up to the Border, nor its pad, its solid terrain's edge near it or the ship in the last
 # ~250 px of the approach (FAIR_HEIGHT).
+#
+# `build(silhouettes, bottom_y, anchor)` puts one opaque near-black `Polygon2D` (`COLOR`) per
+# `Foreground.Silhouette` (a top edge, a scroll scale above 1, and optionally `shapes` standing on
+# it, drawn as extra polygons of the same piece, and `glows`) in its own `AnchoredParallax` layer,
+# closed down `BOTTOM_MARGIN` past the lowest point (`pieces` lists them; `glows` lists the
+# translucent `GLOW_COLOR` polygons over them, drawn in front with them but listed as lights: layer
+# `LIGHTS`, part `GLOW`); `show_sky(sky)` darkens the silhouettes a little more (`NIGHT_DARKENING`)
+# as the sky darkens and fades the glows in with the night (`GLOW_NIGHT_ALPHA` at full night, none
+# by day). A location must place its silhouettes so that none covers the Approach corridor (the
+# column above its pad, `CORRIDOR_MARGIN` (40 px) wider than the pad on each side) at any height up
+# to the Border, and, with the camera within `FAIR_HEIGHT` (250 px) above its pad, none covers the
+# pad, the ship or the edge of solid terrain there. The Valley's two stands (`Foreground.valley()`,
+# `VALLEY_SCROLL`): on each side of the corridor one near ground (`VALLEY_LEFT_GROUND`,
+# `VALLEY_RIGHT_GROUND`) whose top edge starts and ends below the lowest point, so no straight side
+# ever shows, with trees standing on it (`VALLEY_LEFT_TREES`, `VALLEY_RIGHT_TREES`: giant sequoias
+# alone and in groups, spruces, broad trees, shrubs and two alien kinds, lobed crowns and flat
+# umbrella canopies, whose crowns glow at night), their shapes varied by `VALLEY_SEED`; the tallest
+# crowns reach about 1200 px above the pad. The Mine's silhouettes (`MINE_LEFT_STRIP`,
+# `MINE_RIGHT_STRIP`, `MINE_TOP_Y`, `MINE_SCROLL`, faster than the Valley's; `Foreground.mine()`).
+# The Metropolis's near rooftops (`METROPOLIS_LEFT_ROOFS`, `METROPOLIS_PARAPET`,
+# `METROPOLIS_RIGHT_ROOFS`, `METROPOLIS_SCROLL`; `Foreground.metropolis()`). No collider.
 
 const COLOR := Color(0.02, 0.022, 0.026)
 # How much darker it is at full night (the sky's night darkness), blended by the sky's darkness.

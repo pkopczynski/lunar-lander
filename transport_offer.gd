@@ -4,6 +4,15 @@ extends RefCounted
 # destination's pad.
 # Once accepted it's a Contract, the same object. Holds its own settlement maths and the
 # random generator.
+#
+# A Transport offer (a plain data object; a Contract is the same object once accepted): its number,
+# title, trader, passengers, cargo, deadline, time left, rewards and destination (a `Location`,
+# drawn when it's generated; `Location.VALLEY` unless set), its Load mass, reward, `#004 TITLE`
+# label, misfit reason and settlement into a `TransportOffer.Transaction` (which records where it
+# was delivered and its destination; `wrong_destination()` when they differ, settling for €0;
+# `cancellation()` makes a `cancelled` one, paying minus `CANCELLATION_FEE_SHARE` of the reward),
+# and the random generator (one for every destination: it draws the destination by pool share, then
+# applies its location profile) with its tuning constants.
 
 const PASSENGER_MASS := 80.0
 

@@ -1,5 +1,39 @@
 class_name Lander
 extends CharacterBody2D
+# Flight physics, fuel, mass (`load_mass`, the Load) and the fuel cap (`fuel_cap()`), border
+# crossing and its disturbance (with a seedable `rng`), steering, landing and docking judgement (the
+# "on the pad" check reads the current location's pad through `pad_center_x()`), refuelling, result
+# display (with a `status` line, set through `show_status()`, under Docked!/Landed!), restart,
+# `landed_on_pad` (from a real landing and from the debug pad shortcut) and `lift_off_blocked`
+# (keeps the ship resting and refuelling but grounded, for unloading), and
+# `start_loading(load)`/`finish_loading()` (keeps the ship Docked, unable to turn or undock,
+# refuelling up to the cap for the incoming Load, which joins the mass only when loading finishes).
+# Attached to `Lander`. `start_docked(type)` turns it into a ship type (hull, collision shape and
+# flame, default dry mass, full Tank) Docked in the parking spot.
+#
+# The Lander's `state` (Flying, Landed, Docked, Crashed) changes only through `enter()`, which
+# starts every state fresh: not held, no lift-off burn, docking armed, leveling stopped, with the
+# state's colour and message. `start_docked()`, `reset_to_pad()` and `fly_from()` also move the ship
+# and clear any border bounce, steering or disturbance. `enter()` also clears the `status` line.
+# `rest()` rewrites the message every frame (title, `status`, then Refueling…), so outside text such
+# as the loading and unloading countdowns must go through `show_status()`, which also shows it right
+# away (keeping the Refueling… line) for a held ship (held ships don't rest). `lift_off_blocked` is
+# set from outside like `held`, but `enter()` doesn't clear it, so a ship that settles back onto the
+# pad while unloading stays grounded; the Economy clears it when unloading finishes. `lift_off()` is
+# the only transition that looks at the state it leaves (the lift-off burn from the pad, no
+# re-docking from the spot). Crashed and held make `_physics_process` return early; Landed and
+# Docked skip gravity and judging. Restart is handled in `_unhandled_input`.
+#
+# `_ready()` still makes it a Docked Sparrow behind the Office; choosing a Ship offer calls
+# `start_docked(type)` again. `start_docked()` never asks to enter the Office; only `dock()` does,
+# by emitting `docked_at_station` from the end of its level tween, so the signal waits for the ship
+# to be upright and lifting off first (`enter()` kills the tween) cancels it. The Office answers
+# with the "ENTER THE OFFICE?" popup and calls `hold()`, which freezes `_physics_process`; the
+# Lander doesn't know why it's held. No, and leaving the Office from the main screen, call
+# `release()`; the refuel delay starts over because docking zeroed it and a held ship doesn't count
+# it down. Choosing a ship type calls `start_docked(type)`, and entering Docked releases the hold.
+# `start_loading()` releases it too: a loading ship isn't held but rests (so it refuels), with
+# `loading` blocking lift-off and turning.
 
 # Per-ship values (thrust, turn rate, masses, tank, burn rate) live in ShipType.
 const GRAVITY := 60.0
@@ -372,6 +406,7 @@ func try_docking(thrusting: bool) -> void:
 		dock()
 
 
+# The parking spot has no collider: docking checks that every hull vertex is inside its Rect2.
 func is_inside_spot() -> bool:
 	for point in hull.polygon:
 		if not station.parking_spot.has_point(to_global(point)):
@@ -379,6 +414,8 @@ func is_inside_spot() -> bool:
 	return true
 
 
+# Touching anything but Ground (mountains, a location's terrain, the station) is a crash; only
+# ground contacts go to landing judgement.
 func touched_only_ground() -> bool:
 	for i in get_slide_collision_count():
 		if get_slide_collision(i).get_collider() != ground:
@@ -393,6 +430,7 @@ func pad_center_x() -> float:
 func is_safe_landing(impact_velocity: Vector2) -> bool:
 	# angle_difference() wraps to [-PI, PI], so e.g. 350° counts as 10° from upright.
 	var tilt := absf(angle_difference(0.0, rotation))
+	# The pad has no collider: "on the pad" compares x positions with the current location's pad.
 	var on_pad := absf(position.x - pad_center_x()) <= PAD_WIDTH / 2.0
 	return impact_velocity.y <= MAX_LANDING_VERTICAL_SPEED \
 		and absf(impact_velocity.x) <= MAX_LANDING_HORIZONTAL_SPEED \

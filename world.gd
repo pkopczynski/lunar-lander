@@ -1,5 +1,57 @@
 class_name World
 extends Node2D
+# World layout constants (`GROUND_TOP_Y`/`GROUND_BOTTOM_Y` are the Valley's ground), mountains, the
+# current location (`location`, read from the planet clock; the World follows the clock's
+# `location_changed`, moving the ground to that location's height and width (a full-width ground
+# centred on the world, a narrowed one on its pad), the pad to its pad centre, building its terrain
+# afresh as solid colliders and scenery under `Terrain` and dressing the Mountains in its look
+# (`dress_mountains()`: the mountains' colliders are built once, from `MOUNTAIN_OUTLINE` and its
+# mirror image, `mountain_outlines`; their visuals afresh from the location's `MountainLook`); each
+# physics frame it feeds the clock's drift count whether the ship is above the Border and whether
+# any of the surface is in the camera's visible area, `surface_in_view()`; `lowest_point()` is the
+# location's lowest point, which the camera's bottom limit and the sky fill below the Valley's
+# ground follow), the background: surface gradient, stars (two layers, deep space's and the
+# surface's night stars, each one `MeshInstance2D` whose mesh is built once in `_ready()`; the night
+# layer's `modulate` is the sky's star brightness, and both sit under the Backdrop; `shown_stars()`
+# lists what's drawn as `World.Star`s), the current location's Backdrop (`backdrop`, a `Backdrop`
+# built afresh from the location's ridges each time the World shows a location), Moons (`moons`, a
+# `Moons`, drawn behind the clouds), clouds (`clouds`, a `Clouds`) Foreground (`foreground`, a
+# `Foreground`, drawn over everything in the scene, the ship included), city lights (`city_lights`,
+# a `CityLights`, drawn just over `Terrain`) and flying vehicles (`vehicles`, a `Vehicles`, drawn
+# just over the Backdrop), all built afresh with each location and anchored on its pad's top, and
+# the sky (`sky`, the `SkyLook` for the current local time, taken again each in-game minute: it
+# redraws the gradient, recolours the Backdrop and dims the scenery, the `World.SCENERY_GROUP` group
+# that `add_scenery()` puts a solid visual in, and passes it to the pad's Beacon, `beacon`, which
+# the World adds under the pad; it recolours the clouds, darkens the Foreground, brightens the city
+# lights and dims the vehicles' hulls too). `shown_decor(camera_center, zoom)` lists every decor
+# piece drawn as `World.Decor`s (layer, part, collider flag, colour as drawn, opacity, parallax
+# scroll scale, on-screen area, a piece in a parallax layer placed where its layer would be for that
+# camera), read-only, for tests, gathered from each decor script's own `listed_decor()` (its pieces
+# as `World.Listing`s: visual, layer and part; `World.listings()` makes them): the Backdrop's
+# ridges, the clouds, the vehicles' hulls and their lights, the Beacon, the Foreground, then the
+# city lights (layer `LIGHTS`, as are the vehicles' lights: the window mesh as one piece, its
+# bounding box, the neon signs and the warning lights). A new decor script lists its pieces the same
+# way and joins the list in `shown_decor()`. Attached to `Main`.
+#
+# The pad has no collider; landing is judged against the ground collider. The pad's position comes
+# from the current location (`World.location.pad_center_x`, from the `Location` table), never a
+# constant: the drawn pad, the "on the pad" check and the debug pad shortcut all read it. A location
+# sets its ground's height (`Location.ground_y`; the Mine's pit floor is below the Valley's ground)
+# and width (`Location.ground_width`): the World moves the whole `Ground` body there (centred on the
+# world at full width, on the pad when narrowed) and gives it a fresh `RectangleShape2D` and visual
+# polygon of that width, so the ground collider, `ground_top()`, the pad (a child of `Ground`,
+# placed relative to it) and landing judgement follow it. Only the ground collider is landed on, so
+# a narrowed ground is the only place a ship can land there; everything else it can touch must be
+# terrain (a crash). The camera's bottom limit and the sky fill below the Valley's ground read
+# `lowest_point()` (`Location.lowest_y`), not the ground's bottom: set it on a location whose
+# terrain reaches below its ground. Never read `GROUND_TOP_Y`/`GROUND_BOTTOM_Y` for where the ground
+# is now; they are the Valley's. The pad's size is `PAD_WIDTH`/`PAD_HEIGHT` in `lander.gd`. The pad
+# only appears at runtime, because `_ready()` builds its shape.
+#
+# Stars are never drawn one by one: each star layer is one mesh built once, and the sky's star
+# brightness only sets the night layer's `modulate`. Thousands of `draw_circle` calls cost ~8–13 ms
+# every frame and a long hitch on every redraw, and the World redraws its gradient and the Backdrop
+# once per in-game minute (every 0.5 s).
 
 const WORLD_WIDTH := 2000.0
 # Background drawn past the side edges, for windows wider than the world.

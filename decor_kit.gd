@@ -2,6 +2,14 @@ class_name DecorKit
 extends RefCounted
 # What the decor (the Backdrop, clouds, Foreground, Beacon, city lights and vehicles) shares in
 # building and moving its pieces.
+#
+# What the decor scripts share: `wrapped_x()` (moving decor wraps around `WRAP_LEFT`/`WRAP_WIDTH`, a
+# span of its layer's x wider than any view), `disc()` (a disc's outline, for the Beacon's, warning
+# and vehicle lights) and `ellipse()` (the same, squashed, for the Valley crowns' glows), `clear()`
+# (frees a node's children before it's built afresh), `top_of()` (an outline's top), `closed_down()`
+# (a top edge closed down to a y) and `add_in_layer()` (a `Polygon2D` in its own `AnchoredParallax`,
+# for the Backdrop's ridges and the Foreground's silhouettes), and `Depths` (a node's parallax
+# layers, one per scroll scale, all on one anchor, for clouds and vehicles in several depths).
 
 # Moving decor wraps around this span of its layer's x, wider than anything the view can show
 # however far the layer is shifted, so no piece ever pops in sight.

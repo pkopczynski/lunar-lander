@@ -5,6 +5,16 @@ extends Node2D
 # one. They have no collider and are never dimmed: by day they're faint, and they grow brighter as
 # the sky darkens. All the windows are one mesh built once; the sky only sets this node's
 # modulate, and the warning lights blink through their own, so nothing is redrawn as time passes.
+#
+# `build(location)` makes all its lit windows (`Location.windows`, `Rect2`s) one `MeshInstance2D`
+# (`windows`; its mesh built once per location, tinted through vertex colours), one `Polygon2D` per
+# neon sign (`signs`, from `CityLights.Sign`s) and per warning light (`warning_lights`, red discs
+# that blink on and faint through their own `modulate`, a little out of step). `show_sky(sky)` sets
+# only its own `modulate` to `CityLights.brightness(sky)`: `DAY_BRIGHTNESS` by day, rising with the
+# sky's darkness to full at night; nothing is redrawn as time passes. `CityLights.mesh_of(rects,
+# tints)` builds such a mesh (the skyline's lights use it too); `CityLights.windows_on(facades)`
+# lays a seeded grid of lit windows on building faces. Never dimmed, no collider. Tuning constants
+# at the top.
 
 # Tuning, expected to change in playtests.
 # How bright the lights are by day, full night being 1, blended by the sky's darkness.

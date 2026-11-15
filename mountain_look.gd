@@ -7,6 +7,15 @@ extends RefCounted
 # every decor colour at every hour (not only at the hours the tests read): the sky-tinted
 # Backdrop sweeps through navy, grey dawn, pale yellow, blue and orange, so the colours here
 # are either light or clearly saturated. Tuning, expected to change in playtests.
+#
+# A base colour filling each mountain's outline and dressings (`MountainLook.Dressing`: a colour and
+# its shapes per side, the right side laid out from its own seed) drawn over it, clipped to the
+# outline once per side (`dressed()`), so the outline and collision never change.
+# `MountainLook.valley()` (forested slopes under bare rocky tops), `mine()` (rock cut into benches)
+# and `metropolis()` (a wall of buildings with glass windows). Every colour is solid material,
+# dimmed with the sky, and kept clear of every decor colour at every hour: the sky-tinted Backdrop
+# passes through navy, grey, pale yellow, blue and orange, so dark neutral colours collide with it;
+# these colours are light or clearly saturated.
 
 # The Valley: forested slopes under bare rocky tops.
 const VALLEY_FOREST := Color(0.3, 0.5, 0.14)

@@ -4,6 +4,22 @@ extends Node
 # Contracts. It lives in the scene, so a restart (a scene reload) wipes it, and it keeps
 # running while the Office pauses the world. It also runs the delivery: loading, the
 # delivery clock and unloading, which settles the Contracts.
+#
+# The Bank account balance, the Transport offer pool (starting 5, a new one every 30–90 s while
+# fewer than 7 are listed, expiry), the Contracts (`destination()`, the first Contract's, which they
+# all share, or `null` without any; accepting re-checks that the offer is still there and fits, its
+# destination included; removing one before loading puts it back in the pool in number order, even
+# past 7, with the time left it had when accepted; `offer_expired` when an offer expires), the
+# delivery `phase` (`Economy.Phase`: NONE → LOADING → DELIVERING → UNLOADING → NONE, or DELIVERING →
+# NONE by `cancel_mission()`; each change in one function that checks the phase it leaves;
+# `mission_under_way()` while DELIVERING, when no offer fits: `MISSION UNDER WAY`) with the loading
+# and unloading countdowns, the delivery clock, the local time when loading finished (`loaded_at`)
+# and of landing on the pad (`landed_at`, counted on from `loaded_at`'s midnight, with the location
+# landed at) and the flight deadline as a local time (`deadline_at()`, counted from that day's
+# midnight, so past `PlanetClock.MINUTES_PER_DAY` on the next day), and settling each Contract into
+# `transactions` (€0 when landed away from its destination; minus 25% of its reward when cancelled)
+# (newest first; `paid_out` with the total), a seedable `rng`, and `Economy.eur()` for writing
+# euros. Attached to `Economy`.
 
 # An offer ran out of time and left the pool without being accepted.
 signal offer_expired(offer: TransportOffer)

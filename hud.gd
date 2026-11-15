@@ -1,4 +1,7 @@
 extends Control
+# Draws the fuel bar and weight readout from the lander's state, the clock line (`VALLEY  14:07`)
+# from the planet clock's, the destination and flight deadline under it (`MINE BY 14:30`) from the
+# Economy's, and the green `+€X` payout that rises above the ship and fades. Attached to `UI/Hud`.
 
 const BAR_SIZE := Vector2(24, 200)
 const RIGHT_MARGIN := 48.0
