@@ -12,7 +12,8 @@ Ten plik jest po polsku, ale **kod, komentarze, commity, tytuły i opisy PR-ów,
 2. [`CLAUDE.md`](CLAUDE.md) — konwencje commitów, PR-ów i wydań (conventional commits, squash merge, release-please).
 3. [`docs/agents/workflow.md`](docs/agents/workflow.md) — droga od ticketu do zmergowanego kodu.
 4. [`docs/README.md`](docs/README.md) — indeks dokumentacji architektury i ADR-ów.
-5. [`GLOSSARY.md`](GLOSSARY.md) — słownik pojęć gry (Office, Terminal, Transport offer, Border…). Używaj tych nazw w kodzie i w rozmowie z agentem.
+5. [Roadmapa](https://pkopczynski.github.io/lunar-lander/) — co już jest w grze, nad czym trwa praca i co dalej, w jednym widoku. Strona buduje się sama z issue; kliknij spec, żeby zobaczyć kolejność jego ticketów.
+6. [`GLOSSARY.md`](GLOSSARY.md) — słownik pojęć gry (Office, Terminal, Transport offer, Border…). Używaj tych nazw w kodzie i w rozmowie z agentem.
 
 ## Przygotowanie
 

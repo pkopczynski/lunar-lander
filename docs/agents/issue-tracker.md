@@ -13,6 +13,16 @@ GitHub Issues on `pkopczynski/lunar-lander` are the one backlog for human develo
 - **Labels**: `gh issue edit <number> --add-label "..."` / `--remove-label "..."`
 - **Close**: `gh issue close <number> --comment "..."`
 
+## The roadmap page
+
+The [roadmap page](https://pkopczynski.github.io/lunar-lander/) is drawn from the issues alone, so it stays right only while these conventions hold: tickets are sub-issues of their spec, decision tickets are sub-issues of their map, a spec links its map first under **Origin**, and blockers are native dependency edges. `tools/roadmap/build.py` reads every issue and release and `.github/workflows/roadmap.yml` republishes the page on every issue change, every release, every 6 hours (sub-issue and blocking changes fire no event) and on demand. Its header comment says how issues map to the page.
+
+- **Roadmap** tab: Shipped (closed specs, by release), Now (open specs), Next (open maps with no spec yet), Later, and a "Needs attention" strip of open issues outside every spec and map.
+- **Journey** tab: the same, top to bottom in time, with releases and "You are here".
+- Clicking a spec or map shows its build order: its sub-issues in steps from the blocked-by edges.
+- **Later**: label an open idea `roadmap:later` to park it there instead of in "Needs attention". Once it gets a map or spec, drop the label.
+- The pinned **Roadmap** issue links to the page, and pinned issues are left off it.
+
 ## Pull requests as a triage surface
 
 **PRs as a request surface: no.** _(Set to `yes` if this repo treats external PRs as feature requests; `/triage` reads this flag.)_

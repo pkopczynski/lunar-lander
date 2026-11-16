@@ -35,7 +35,7 @@ Every script sits at the repo root.
 - **Economy:** `economy.gd` (balance, offer pool, Contracts, delivery phase, settlement), `transport_offer.gd` (a Transport offer or Contract, and the offer generator).
 - **Office:** `office.gd` (the Terminal, its screens and popups), `transport_offers_screen.gd`, `bank_account_screen.gd`, `expandable_list.gd` (a list whose rows open), `version.gd` (`GameVersion.VERSION`, bumped by release-please).
 - `fonts/`: `Silkscreen-Regular.ttf` and its `OFL.txt` (ADR 0001).
-- `tests/`: headless tests (`run_tests.gd`, `scene_test.gd`, `test_*.gd`). `tools/capture.gd`: the screenshot and frame-time tool.
+- `tests/`: headless tests (`run_tests.gd`, `scene_test.gd`, `test_*.gd`). `tools/capture.gd`: the screenshot and frame-time tool. `tools/roadmap/`: builds the roadmap page from GitHub Issues (Python, run by CI; not part of the game).
 
 ## Constraints
 
@@ -79,4 +79,4 @@ Godot 4.7.2 isn't assumed to be on `PATH`: `Godot` below stands for your editor 
 
 ## What's next
 
-The backlog is GitHub Issues; see `docs/agents/workflow.md`.
+The backlog is GitHub Issues; see `docs/agents/workflow.md`. The [roadmap page](https://pkopczynski.github.io/lunar-lander/) draws it as shipped, now, next and later, rebuilt from Issues by `.github/workflows/roadmap.yml`.
