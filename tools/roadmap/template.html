@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Roadmap</title>
+<!-- Built by tools/roadmap/build.py, which replaces the DATA placeholder below. Views: #roadmap, #journey, #epic-<number>. -->
+<style>
+:root { --bg:#f6f6f2; --panel:#fff; --ink:#1d1f1c; --muted:#62665f; --line:#e2e3dd; --soft:#efefea;
+  --plan:#7c5cd6; --build:#c97c10; --done:#2f9e5b; --block:#c4534a; --rel:#3a6fd8; --here:#d23c3c; --later:#8a8f86; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg:#121412; --panel:#1b1e1b; --ink:#e7e9e3; --muted:#9a9f96; --line:#2c302b; --soft:#232723; --build:#d98a1c; --later:#7d8279; } }
+:root[data-theme="dark"] { --bg:#121412; --panel:#1b1e1b; --ink:#e7e9e3; --muted:#9a9f96; --line:#2c302b; --soft:#232723; --build:#d98a1c; --later:#7d8279; }
+* { box-sizing:border-box }
+body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif }
+main { max-width:1200px; margin:0 auto; padding:20px 16px 64px }
+a { color:inherit } h1 { margin:0; font-size:24px } h2 { margin:28px 0 12px; font-size:18px }
+.muted { color:var(--muted) } .small { font-size:12px } code { font-size:12px }
+.top { display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap }
+.tabs { display:flex; gap:4px; background:var(--soft); padding:4px; border-radius:99px; margin-top:16px; width:max-content; max-width:100% }
+.tabs a { text-decoration:none; padding:6px 18px; border-radius:99px; font-weight:600; color:var(--muted) }
+.tabs a.on { background:var(--panel); color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.15) }
+.panel { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px }
+.row { display:flex; gap:6px; flex-wrap:wrap; align-items:center }
+.chip { font-size:11px; padding:1px 7px; border-radius:99px; border:1px solid var(--c,#888); background:color-mix(in srgb,var(--c,#888) 16%,transparent); white-space:nowrap }
+.kind { font-size:9px; font-weight:800; letter-spacing:.06em; padding:1px 5px; border-radius:4px; color:#fff; vertical-align:1px }
+.k-map { background:var(--plan) } .k-spec { background:var(--build) }
+.prog { height:6px; background:var(--line); border-radius:99px; overflow:hidden } .prog span { display:block; height:100%; background:var(--done) }
+.card { display:block; text-decoration:none; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:8px 10px; font-size:13px }
+.open { cursor:pointer } .open:hover { border-color:var(--muted) } .open:focus-visible { outline:2px solid var(--rel) }
+.gh { font-size:11px; color:var(--muted); text-decoration:none; white-space:nowrap } .gh:hover { text-decoration:underline }
+.empty { color:var(--muted); font-size:13px; margin:4px 0 }
+.dot { display:inline-block; width:10px; height:10px; border-radius:2px; vertical-align:-1px }
+
+/* Roadmap: shipped / now / next / later */
+.attention { display:flex; gap:10px; overflow-x:auto; padding-bottom:4px } .attention .card { min-width:240px; max-width:320px; border-left:3px solid var(--here) }
+.lanes { display:grid; grid-template-columns:1fr 1.4fr 1fr 1fr; gap:14px; align-items:start }
+.lane { background:var(--soft); border-radius:14px; padding:12px; min-height:180px }
+.lane > h3 { margin:0; font-size:15px } .lane > p { margin:0 0 10px } .lane .card { margin-bottom:10px }
+.lane.now { background:color-mix(in srgb,var(--build) 12%,var(--soft)) } .lane.next { background:color-mix(in srgb,var(--plan) 12%,var(--soft)) }
+.big { padding:12px } .big h4 { margin:4px 0; font-size:15px }
+.ring { width:54px; height:54px; border-radius:50%; flex:none; display:grid; place-items:center; background:conic-gradient(var(--done) calc(var(--p)*1%), var(--line) 0) }
+.ring span { width:42px; height:42px; border-radius:50%; background:var(--panel); display:grid; place-items:center; font-size:12px; font-weight:700 }
+.relgroup { font-size:11px; font-weight:700; color:var(--rel); margin:12px 0 6px }
+
+/* Journey */
+.journey { position:relative; max-width:780px; margin:0 auto; padding-left:70px }
+.journey:before { content:""; position:absolute; left:40px; top:0; bottom:0; width:4px; border-radius:2px;
+  background:linear-gradient(var(--done) var(--split), transparent var(--split)), repeating-linear-gradient(var(--later) 0 8px, transparent 8px 14px) }
+.stop { position:relative; margin:0 0 14px }
+.stop:before { content:""; position:absolute; left:-36px; top:14px; width:12px; height:12px; border-radius:50%; background:var(--c); box-shadow:0 0 0 4px var(--bg) }
+.stop .card { border-left:3px solid var(--c) } .stop.future .card { border-style:dashed; border-left-style:solid }
+.station { margin:22px 0 18px -70px; display:flex; align-items:center; gap:12px }
+.station b { background:var(--c,var(--rel)); color:#fff; border-radius:99px; padding:4px 12px; font-size:13px; min-width:72px; text-align:center; position:relative }
+.jhead { display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap }
+.squares { display:flex; gap:3px; flex-wrap:wrap; margin-top:6px } .squares i { width:9px; height:9px; border-radius:2px }
+.s-done { background:var(--done) } .s-ready { background:var(--build) } .s-blocked { background:var(--block) }
+
+/* Epic: build order */
+.back { font:inherit; font-weight:600; border:1px solid var(--line); background:var(--panel); color:var(--ink); border-radius:99px; padding:5px 14px; cursor:pointer; margin:20px 0 12px }
+.flow { position:relative; overflow-x:auto; margin-top:10px } .flow-in { position:relative; display:flex; gap:48px; padding:6px 2px; width:max-content }
+.flow svg { position:absolute; left:0; top:0; pointer-events:none; overflow:visible }
+.step { display:flex; flex-direction:column; gap:10px; width:220px } .step h5 { margin:0; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em }
+.node { position:relative; z-index:1; font-size:12px; padding:7px 9px }
+.node.done { border-left:3px solid var(--done); opacity:.7 } .node.ready { border-left:3px solid var(--build) } .node.blocked { border-left:3px solid var(--block) }
+.node .row { margin-top:4px }
+
+@media (max-width:900px) { .lanes { grid-template-columns:1fr } .journey { padding-left:50px } .journey:before { left:20px } .stop:before { left:-36px } .station { margin-left:-50px } }
+</style></head><body><main>
+<div class="top"><div><h1>Roadmap</h1><p class="muted small" id="sub"></p></div></div>
+<nav class="tabs" aria-label="Views"><a href="#roadmap" data-tab="roadmap">Roadmap</a><a href="#journey" data-tab="journey">Journey</a></nav>
+<div id="view"></div>
+</main>
+<script>
+const D = /*DATA*/null;
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt = s => new Date(s).toLocaleDateString("en-GB", {day:"numeric", month:"short", timeZone:"UTC"});
+const pct = e => Math.round(100 * e.done / e.total);
+const chips = ls => ls.map(l => `<span class="chip" style="--c:${D.colors[l] || "#888"}">${esc(l.replace(/^area:/, ""))}</span>`).join("");
+const kindTag = e => `<span class="kind k-${e.kind}">${e.kind === "map" ? "MAP" : "SPEC"}</span>`;
+const gh = (i, text = `#${i.number} ↗`) => `<a class="gh" href="${i.url}" title="Open on GitHub">${text}</a>`;
+const kidState = k => k.state === "CLOSED" ? "done" : k.openBlockers.length ? "blocked" : "ready";
+const byNum = Object.fromEntries(D.epics.map(e => [e.number, e]));
+const shipped = D.epics.filter(e => e.phase === "shipped");
+const now = D.epics.filter(e => e.phase === "now" && e.kind === "spec");
+const next = D.epics.filter(e => e.phase === "next");
+const openAttrs = e => `class="card open" role="link" tabindex="0" data-epic="${e.number}" title="Show the build order"`;
+const mapLine = e => e.map && byNum[e.map] ? `<div class="small muted">from the map <a href="#epic-${e.map}">${esc(byNum[e.map].title)}</a></div>` : "";
+const counts = e => { const c = {done: 0, ready: 0, blocked: 0}; e.kids.forEach(k => c[kidState(k)]++); return c; };
+const issueCard = i => `<a class="card" href="${i.url}"><b>#${i.number}</b> ${esc(i.title)}<div class="row small" style="margin-top:4px">${chips(i.labels) || '<span class="muted">no labels</span>'}</div></a>`;
+const laterEmpty = `<p class="empty">Nothing parked yet. Label an issue <code>roadmap:later</code> to put it here.</p>`;
+
+document.getElementById("sub").innerHTML = `${esc(D.repo)} · latest release ${D.releases.length ? `<a href="${D.releases.at(-1).url}">${esc(D.releases.at(-1).tag)}</a>` : "none yet"} · built from <a href="https://github.com/${esc(D.repo)}/issues">GitHub Issues</a> on ${esc(D.generated)}`;
+
+/* ---------- Roadmap: shipped / now / next / later ---------- */
+function roadmapView() {
+  const nowCard = e => {
+    const c = counts(e), ready = e.kids.filter(k => kidState(k) === "ready");
+    return `<div ${openAttrs(e)}><div class="row" style="flex-wrap:nowrap;gap:12px;align-items:flex-start">
+        <div class="ring" style="--p:${pct(e)}"><span>${pct(e)}%</span></div>
+        <div>${kindTag(e)} ${gh(e)}<h4>${esc(e.title)}</h4></div></div>
+      <div class="row" style="margin:6px 0">${chips(e.areas)}</div>${mapLine(e)}
+      <p class="small" style="margin:8px 0 4px"><b style="color:var(--done)">${c.done} done</b> · <b style="color:var(--build)">${c.ready} ready</b> · <b style="color:var(--block)">${c.blocked} blocked</b></p>
+      ${ready.length ? `<p class="small muted" style="margin:6px 0 2px">Can start now:</p>` + ready.map(k => `<div class="small">→ <a href="${k.url}">#${k.number} ${esc(k.title)}</a></div>`).join("") : ""}</div>`;
+  };
+  const shippedSpecs = shipped.filter(e => e.kind === "spec");
+  const groups = [...D.releases].reverse().map(r => [r, shippedSpecs.filter(e => e.release === r.tag)]).filter(([, es]) => es.length);
+  const unreleased = shippedSpecs.filter(e => !e.release);
+  const shippedCard = e => `<div ${openAttrs(e)}>✓ ${esc(e.title)} <span class="muted small">· ${e.total} tickets</span></div>`;
+  return `
+    ${D.inbox.length ? `<h2>Needs attention · ${D.inbox.length}</h2><p class="muted small" style="margin-top:-6px">Open issues not yet placed in a spec or map.</p><div class="attention">${D.inbox.map(issueCard).join("")}</div>` : ""}
+    <h2>Shipped, now, next and later</h2>
+    <div class="lanes">
+      <div class="lane"><h3>✓ Shipped</h3><p class="small muted">by release, newest first</p>
+        ${unreleased.length ? `<div class="relgroup">not released yet</div>` + unreleased.map(shippedCard).join("") : ""}
+        ${groups.map(([r, es]) => `<div class="relgroup"><a href="${r.url}">${esc(r.tag)}</a> · ${fmt(r.date)}</div>` + es.map(shippedCard).join("")).join("") || (unreleased.length ? "" : '<p class="empty">Nothing shipped yet.</p>')}</div>
+      <div class="lane now"><h3>● Now</h3><p class="small muted">specs being built</p>${now.map(nowCard).join("") || '<p class="empty">Nothing in progress.</p>'}</div>
+      <div class="lane next"><h3>◐ Next</h3><p class="small muted">maps being explored</p>
+        ${next.map(e => `<div ${openAttrs(e)}>${kindTag(e)} ${esc(e.title)}<div class="prog" style="margin-top:6px"><span style="width:${pct(e)}%;background:var(--plan)"></span></div><div class="small muted">${e.done}/${e.total} decisions</div></div>`).join("") || '<p class="empty">No map being explored.</p>'}</div>
+      <div class="lane"><h3>○ Later</h3><p class="small muted">ideas, not yet planned</p>
+        ${D.later.map(i => `<a class="card" href="${i.url}" style="border-style:dashed"><b>#${i.number}</b> ${esc(i.title)}</a>`).join("") || laterEmpty}</div>
+    </div>`;
+}
+
+/* ---------- Journey: past → you are here → future ---------- */
+function journeyView() {
+  const stop = (e, future) => {
+    const c = e.phase === "shipped" ? "var(--done)" : e.kind === "map" ? "var(--plan)" : "var(--build)";
+    return `<div class="stop${future ? " future" : ""}" style="--c:${c}"><div ${openAttrs(e)}><div class="jhead"><span>${kindTag(e)} <b>${esc(e.title)}</b></span>
+      <span class="small muted">${fmt(e.start)} → ${e.end ? fmt(e.end) : "now"} · ${e.done}/${e.total} · ${gh(e)}</span></div>
+      <div class="row" style="margin-top:4px">${chips(e.areas)}</div>
+      <div class="squares">${e.kids.map(k => `<i class="s-${kidState(k)}" title="#${k.number} ${esc(k.title)}"></i>`).join("")}</div></div></div>`;
+  };
+  const past = [...shipped.map(e => ({at: e.end, html: stop(e, false)})),
+                ...D.releases.map(r => ({at: r.date, html: `<div class="station"><b>${esc(r.tag)}</b><a class="muted" href="${r.url}">released ${fmt(r.date)}</a></div>`}))]
+    .sort((a, b) => a.at.localeCompare(b.at));
+  const station = (label, color, note) => `<div class="station"><b style="--c:${color}">${label}</b><span class="muted">${note}</span></div>`;
+  const items = past.length + now.length + next.length + D.later.length + D.inbox.length + 4;
+  return `
+    <p class="muted small" style="margin-top:20px">Read top to bottom: what shipped, where the game is now, and where it is going. Squares are tickets:
+      <i class="dot s-done"></i> done <i class="dot s-ready"></i> ready <i class="dot s-blocked"></i> blocked. Click a spec or map for its build order.</p>
+    <div class="journey" style="--split:${Math.round(100 * (past.length + .5) / items)}%">
+      ${past.map(p => p.html).join("")}
+      ${station("● You are here", "var(--here)", fmt(D.today))}
+      ${now.map(e => stop(e, true)).join("")}
+      ${next.length ? station("Next", "var(--plan)", "being explored") + next.map(e => stop(e, true)).join("") : ""}
+      ${station("Later", "var(--later)", "ideas, not yet planned")}
+      ${D.later.map(i => `<div class="stop future" style="--c:var(--later)"><a class="card" href="${i.url}"><b>#${i.number}</b> ${esc(i.title)}</a></div>`).join("") || `<div class="stop future" style="--c:var(--later)">${laterEmpty}</div>`}
+      ${D.inbox.length ? station("Inbox", "var(--here)", "not yet placed on the road") + D.inbox.map(i => `<div class="stop future" style="--c:var(--here)">${issueCard(i)}</div>`).join("") : ""}
+    </div>`;
+}
+
+/* ---------- Epic: build order from the blocked-by links ---------- */
+function epicView(e) {
+  const kid = Object.fromEntries(e.kids.map(k => [k.number, k])), memo = {};
+  const depth = (n, seen = new Set()) => {
+    if (n in memo) return memo[n];
+    if (seen.has(n)) return 0;
+    seen.add(n);
+    return memo[n] = Math.max(0, ...kid[n].blockedBy.filter(b => b in kid).map(b => depth(b, seen) + 1));
+  };
+  const steps = [];
+  e.kids.forEach(k => (steps[depth(k.number)] ||= []).push(k));
+  const c = counts(e);
+  const node = k => `<a class="card node ${kidState(k)}" id="n${k.number}" href="${k.url}"><b>#${k.number}</b> ${esc(k.title)}
+    <div class="row small">${chips(k.areas)}${k.human ? '<span class="chip" style="--c:var(--plan)">needs a human</span>' : ""}${k.assignees.map(a => `<b>@${esc(a)}</b>`).join(" ")}</div></a>`;
+  return `
+    <button class="back" id="back">← Back</button>
+    <div class="panel">
+      <div class="row">${kindTag(e)}<h2 style="margin:0;font-size:18px"><a href="${e.url}">${esc(e.title)}</a></h2>${chips(e.areas)}</div>
+      ${mapLine(e)}
+      <div class="row small" style="margin:12px 0 4px"><div class="prog" style="flex:1;min-width:120px"><span style="width:${pct(e)}%"></span></div><b>${e.done}/${e.total}</b></div>
+      <p class="small muted">${fmt(e.start)} → ${e.end ? fmt(e.end) : "now"}${e.release ? ` · shipped in ${esc(e.release)}` : ""} ·
+        <i class="dot s-done"></i> ${c.done} done <i class="dot s-ready"></i> ${c.ready} ready <i class="dot s-blocked"></i> ${c.blocked} blocked</p>
+      <p class="small muted">Build order from the "blocked by" links: a ${e.kind === "map" ? "decision" : "ticket"} can start once everything wired into it from the left is done. Each card opens the issue on GitHub.</p>
+      <div class="flow"><div class="flow-in" id="flow"><svg id="wires"></svg>
+        ${steps.map((s, i) => `<div class="step"><h5>Step ${i + 1}</h5>${s.map(node).join("")}</div>`).join("")}
+      </div></div>
+    </div>`;
+}
+
+function drawWires(e) {
+  const flow = document.getElementById("flow"), svg = document.getElementById("wires");
+  const box = flow.getBoundingClientRect();
+  svg.setAttribute("width", flow.scrollWidth); svg.setAttribute("height", flow.scrollHeight);
+  const closed = new Set(e.kids.filter(k => k.state === "CLOSED").map(k => k.number));
+  svg.innerHTML = e.kids.flatMap(k => k.blockedBy.map(b => [b, k.number])).map(([a, b]) => {
+    const A = document.getElementById("n" + a)?.getBoundingClientRect(), B = document.getElementById("n" + b)?.getBoundingClientRect();
+    if (!A || !B) return "";
+    const x1 = A.right - box.left, y1 = A.top + A.height / 2 - box.top, x2 = B.left - box.left, y2 = B.top + B.height / 2 - box.top, m = (x1 + x2) / 2;
+    return `<path d="M${x1},${y1} C${m},${y1} ${m},${y2} ${x2},${y2}" fill="none" stroke="${closed.has(a) ? "var(--done)" : "var(--muted)"}" stroke-width="1.5" opacity=".6"/>`;
+  }).join("");
+}
+
+/* ---------- routing: #roadmap, #journey, #epic-<n> ---------- */
+const view = document.getElementById("view");
+let lastTab = "roadmap";
+function route() {
+  const h = location.hash.slice(1), epic = byNum[+(h.match(/^epic-(\d+)$/) || [])[1]];
+  if (!epic) lastTab = h === "journey" ? "journey" : "roadmap";
+  document.querySelectorAll(".tabs a").forEach(a => a.classList.toggle("on", a.dataset.tab === lastTab));
+  view.innerHTML = epic ? epicView(epic) : lastTab === "journey" ? journeyView() : roadmapView();
+  if (epic) {
+    document.getElementById("back").onclick = () => { location.hash = lastTab; };
+    drawWires(epic);
+    scrollTo(0, 0);
+  }
+}
+const openEpic = n => { location.hash = "epic-" + n; };
+view.addEventListener("click", ev => {
+  if (ev.target.closest("a")) return;  // links keep their own target (GitHub, a map)
+  const card = ev.target.closest("[data-epic]");
+  if (card) openEpic(card.dataset.epic);
+});
+view.addEventListener("keydown", ev => {
+  const card = ev.target.closest("[data-epic]");
+  if (card && (ev.key === "Enter" || ev.key === " ")) { ev.preventDefault(); openEpic(card.dataset.epic); }
+});
+addEventListener("hashchange", route);
+addEventListener("resize", () => { const e = byNum[+(location.hash.match(/^#epic-(\d+)$/) || [])[1]]; if (e) drawWires(e); });
+route();
+</script></body></html>

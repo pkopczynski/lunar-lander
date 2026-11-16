@@ -1,0 +1,59 @@
+name: Roadmap
+
+# Builds the roadmap page from GitHub Issues (tools/roadmap/build.py) and publishes it
+# on GitHub Pages. Nothing is committed: the page is rebuilt from Issues on every run.
+on:
+  issues:
+    types: [opened, edited, closed, reopened, deleted, transferred, labeled, unlabeled, assigned, unassigned, pinned, unpinned]
+  release:
+    types: [published]
+  push:
+    branches: [main]
+    paths: [tools/roadmap/**, .github/workflows/roadmap.yml]
+  # Checks that the page still builds when a PR changes it; only main deploys.
+  pull_request:
+    paths: [tools/roadmap/**, .github/workflows/roadmap.yml]
+  # Sub-issue and blocked-by changes fire no workflow event, so a schedule catches them.
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: read
+
+# One deploy at a time. A newer queued run replaces an older queued one, and the last
+# run reads Issues as they are by then, so no change is lost.
+concurrency:
+  group: roadmap-${{ github.event_name == 'pull_request' && github.ref || 'pages' }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the page from Issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/roadmap/build.py "$GITHUB_REPOSITORY" _site/index.html
+      - if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

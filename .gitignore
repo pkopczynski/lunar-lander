@@ -5,3 +5,6 @@
 # Claude Code: personal settings and agent worktrees
 .claude/settings.local.json
 .claude/worktrees/
+
+# Roadmap page built locally by tools/roadmap/build.py
+tools/roadmap/_site/
