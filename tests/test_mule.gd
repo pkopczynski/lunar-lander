@@ -14,29 +14,27 @@ const NOSE_RADIUS := 4.0
 
 
 func test_mule_ship_offer_is_reachable_with_left_and_right() -> void:
-	await open_ship_selection()
+	await open_shipyard()
 	await browse_to(ShipType.MULE, &"ui_right")
-	check(office().selected_ship_offer() == ShipType.MULE, "Right should reach the Mule Ship offer")
+	check(shipyard().selected() == ShipType.MULE, "Right should reach the Mule Ship offer")
 	await press(&"ui_cancel")
-	await choose_ship()
-	await restart()
-	await open_ship_selection()
+	await open_shipyard()
 	await browse_to(ShipType.MULE, &"ui_left")
-	check(office().selected_ship_offer() == ShipType.MULE, "Left should reach the Mule Ship offer")
+	check(shipyard().selected() == ShipType.MULE, "Left should reach the Mule Ship offer")
 
 
 func test_mule_ship_offer_shows_its_numbers_ratings_and_wireframe() -> void:
-	await open_ship_selection()
+	await open_shipyard()
 	await browse_to(ShipType.MULE, &"ui_right")
-	var lines := office().ship_offer_lines()
-	for expected: String in ["MULE", "LONG, HEAVY AND SLOW. HAULS THE BIG LOADS.",
-			"TANK 12 000 KG", "SEATS 4", "CARGO 9 000 KG", "MAX CAPACITY 16 000 KG",
+	var lines := shipyard().lines()
+	for expected: String in ["MULE", "LONG, HEAVY AND SLOW. HAULS THE BIG LOADS.", "PRICE €400 000",
+			"TANK 15 000 L FULL", "SEATS 4", "CARGO 9 000 KG", "MAX CAPACITY 16 000 KG",
 			"THRUST ■■□□□", "HANDLING ■■□□□"]:
 		check(expected in lines, "the Mule Ship offer should show %s, shows %s" % [expected, lines])
 	for removed: String in ["DRY MASS", "MAX WEIGHT"]:
 		check(not Array(lines).any(func(line: String) -> bool: return line.begins_with(removed)),
 			"the Ship offer should not show %s, shows %s" % [removed, lines])
-	check(office().ship_offer_picture() == ShipType.MULE.hull, "the Ship offer picture should be the Mule's hull")
+	check(shipyard().picture() == ShipType.MULE.hull, "the Ship offer picture should be the Mule's hull")
 
 
 func test_choosing_the_mule_docks_it_with_a_full_tank_inside_the_spot() -> void:

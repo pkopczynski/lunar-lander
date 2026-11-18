@@ -215,10 +215,7 @@ func test_offers_too_big_for_the_ship_show_why_and_fuel_never_disables_one() -> 
 	check(reason_for(too_heavy) == "OVERLOADED", "8 100 kg on a Sparrow should read OVERLOADED, got %s" % reason_for(too_heavy))
 	check(reason_for(fits) == "", "a full Sparrow's Load should fit, even with less room for fuel, got %s" % reason_for(fits))
 	await press(&"ui_cancel")
-	await open_ship_selection()
-	await browse_to(ShipType.HALO)
-	await press(&"ui_accept")
-	await press(&"ui_accept")
+	await swap_to(ShipType.HALO)
 	await open_transport_offers()
 	check(reason_for(too_many) == "", "5 passengers should fit a Halo, got %s" % reason_for(too_many))
 

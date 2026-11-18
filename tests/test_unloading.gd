@@ -141,10 +141,7 @@ func test_the_debug_pad_shortcut_delivers_even_after_a_crash_on_the_surface() ->
 
 
 func test_a_crash_then_r_starts_a_new_run_with_the_economy_wiped() -> void:
-	await open_ship_selection()
-	await browse_to(ShipType.HALO)
-	await press(&"ui_accept")
-	await press(&"ui_accept")
+	await swap_to(ShipType.HALO)
 	await start_loading([known_offer(1, 0.0)])
 	await seconds(4.5)
 	await deliver_by_shortcut()

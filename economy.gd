@@ -19,7 +19,9 @@ extends Node
 # midnight, so past `PlanetClock.MINUTES_PER_DAY` on the next day), and settling each Contract into
 # `transactions` (€0 when landed away from its destination; minus 25% of its reward when cancelled)
 # (newest first; `paid_out` with the total), a seedable `rng`, and `Economy.eur()` for writing
-# euros. Attached to `Economy`.
+# euros. Ship purchases and sales (`pay_for_ship()`, `get_paid_for_ship()`) each change the balance
+# and add one Transaction naming the owned ship; `shortfall(price)` is how much more a purchase
+# needs, since buying never takes the balance below €0. Attached to `Economy`.
 
 # An offer ran out of time and left the pool without being accepted.
 signal offer_expired(offer: TransportOffer)
@@ -62,7 +64,7 @@ enum Phase { NONE, LOADING, DELIVERING, UNLOADING }
 # May go negative.
 var balance := START_BALANCE
 # One per delivered Contract, newest first.
-var transactions: Array[TransportOffer.Transaction] = []
+var transactions: Array[Transaction] = []
 # The Transport offers on the Terminal, oldest first.
 var offers: Array[TransportOffer] = []
 var contracts: Array[TransportOffer] = []
@@ -182,6 +184,26 @@ func finish_unloading() -> void:
 	lander.lift_off_blocked = false
 	lander.show_status("")
 	paid_out.emit(total)
+
+
+# Charges a ship bought in the Shipyard: its price, one Transaction.
+func pay_for_ship(ship: OwnedShip) -> void:
+	record(Transaction.ship_purchase(ship))
+
+
+# Pays out a ship sold from the Hangar: its sale price, one Transaction.
+func get_paid_for_ship(ship: OwnedShip) -> void:
+	record(Transaction.ship_sale(ship))
+
+
+func record(transaction: Transaction) -> void:
+	transactions.push_front(transaction)
+	balance += transaction.payout
+
+
+# How many euros short the balance is of paying this price without going below €0; 0 when it can.
+func shortfall(price: int) -> int:
+	return maxi(price - balance, 0)
 
 
 # A loaded mission is under way from the end of loading until it's unloaded or cancelled.

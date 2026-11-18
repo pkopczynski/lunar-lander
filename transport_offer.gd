@@ -8,9 +8,9 @@ extends RefCounted
 # A Transport offer (a plain data object; a Contract is the same object once accepted): its number,
 # title, trader, passengers, cargo, deadline, time left, rewards and destination (a `Location`,
 # drawn when it's generated; `Location.VALLEY` unless set), its Load mass, reward, `#004 TITLE`
-# label, misfit reason and settlement into a `TransportOffer.Transaction` (which records where it
-# was delivered and its destination; `wrong_destination()` when they differ, settling for €0;
-# `cancellation()` makes a `cancelled` one, paying minus `CANCELLATION_FEE_SHARE` of the reward),
+# label, misfit reason and settlement into a `Transaction` (which records where it was delivered and
+# its destination; `wrong_destination()` when they differ, settling for €0; `cancellation()` makes a
+# `cancelled` one, paying minus `CANCELLATION_FEE_SHARE` of the reward),
 # and the random generator (one for every destination: it draws the destination by pool share, then
 # applies its location profile) with its tuning constants.
 
@@ -50,40 +50,6 @@ const TRADERS: Array[String] = ["Tycho Haulage", "Selene Mining", "Mare Logistic
 const NOT_ENOUGH_SEATS := "Not enough passenger seats"
 const OVERLOADED := "Overloaded"
 const OTHER_DESTINATION := "Other destination"
-
-
-# A delivered Contract's line in the Bank account, in euros, with the flight's deadline it was
-# settled against and the delivery time (seconds from the end of loading to landing on the pad).
-class Transaction:
-	var contract: TransportOffer
-	var reward: int
-	var penalty: int
-	var payout: int
-	var deadline: float
-	var delivery_time: float
-	# The flight deadline and the landing as local times, in in-game minutes since the midnight
-	# before loading finished: at or past PlanetClock.MINUTES_PER_DAY on the next day.
-	var deadline_at: float
-	var landed_at: float
-	# The names of the location it was delivered to and of its destination.
-	var delivered_to: String
-	var destination: String
-	# The name of the ship type that delivered it.
-	var ship: String
-	# Given up with its mission: the penalty is the cancellation fee, and nothing was delivered.
-	var cancelled := false
-
-	# Landed on another location's pad (drift took the destination away): it pays nothing.
-	func wrong_destination() -> bool:
-		return not cancelled and delivered_to != destination
-
-	# Whole seconds overdue, rounded down like the red counter.
-	func overdue_seconds() -> int:
-		return maxi(floori(delivery_time - deadline), 0)
-
-	# The whole seconds overdue as in-game minutes.
-	func overdue_minutes() -> int:
-		return roundi(overdue_seconds() * PlanetClock.MINUTES_PER_SECOND)
 
 
 var number: int

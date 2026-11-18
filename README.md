@@ -6,7 +6,7 @@ This repo is a playground for the whole game-making process: trying mechanics an
 
 ## Current state
 
-Every run opens on the Office, a retro green-on-black Terminal where the player picks a ship type, browses Transport offers and accepts them as Contracts and starts loading them, and checks the Bank account. Contracts are flown down to the pad, unloaded and paid out into the Bank account. Then a scrolling two-area world: a surface with gravity, mountains and a landing pad, at one of three locations (the Valley, the Mine, an open-pit mine, or the Metropolis, a city with its pad on a rooftop), and gravity-free deep space with a maze-like station to dock in. Fuel, ship weight (with a Load that counts toward it), and refuelling on the pad and at the station. Not yet set up: Web export preset, deployment, publishing, any live/production tooling.
+Every run opens on the Office, a retro green-on-black Terminal where the player buys ships in the Shipyard, picks the ship in service from the Hangar (or sells one), browses Transport offers and accepts them as Contracts and starts loading them, and checks the Bank account. Contracts are flown down to the pad, unloaded and paid out into the Bank account. Then a scrolling two-area world: a surface with gravity, mountains and a landing pad, at one of three locations (the Valley, the Mine, an open-pit mine, or the Metropolis, a city with its pad on a rooftop), and gravity-free deep space with a maze-like station to dock in. Fuel, ship weight (with a Load that counts toward it), and refuelling on the pad and at the station. Not yet set up: Web export preset, deployment, publishing, any live/production tooling.
 
 ## Where to read more
 
@@ -15,7 +15,7 @@ Read only what the task touches:
 | Read | When the task touches |
 |---|---|
 | [`docs/gameplay/flight.md`](docs/gameplay/flight.md) | Controls, ship types, mass and fuel, the Border, steering, the station and docking, landing and crashing, the HUD, restart |
-| [`docs/gameplay/office.md`](docs/gameplay/office.md) | The Terminal and its screens, Transport offers and Contracts, loading, cancelling, free flight, unloading, payout, ship swap |
+| [`docs/gameplay/office.md`](docs/gameplay/office.md) | The Terminal and its screens, the Shipyard, the Hangar and Ship pages, Transport offers and Contracts, loading, cancelling, free flight, unloading, payout, ship swap |
 | [`docs/gameplay/world-and-scenery.md`](docs/gameplay/world-and-scenery.md) | The world's layout and locations, the planet clock and drift, the Backdrop, clouds, Foreground and Approach corridor, city lights, the sky |
 | The header comment of a script | What that script does, its API and its local traps (read it before editing the script) |
 | [`tests/README.md`](tests/README.md) | Writing or changing a test: runner behaviour, helpers and read-outs |
@@ -32,8 +32,8 @@ Every script sits at the repo root.
 - **Surface:** `world.gd` (layout constants, the current location's ground, pad, terrain and Mountains, hosts the decor and the sky), `location.gd` (the location table), `mountain_look.gd` (the Mountains' look per location).
 - **Clock and sky:** `planet_clock.gd` (local time, current location, drift, time formatters), `sky_look.gd` (local time → sky look, one pure step).
 - **Decor:** `backdrop.gd` (ridges behind the surface), `skyline.gd` (the Metropolis's skyline), `moons.gd`, `clouds.gd`, `foreground.gd` (silhouettes in front of the ship), `beacon.gd` (the pad's lights), `city_lights.gd`, `activity.gd` (the Mine's warning lights and slow movers), `vehicles.gd` (flying vehicles), `anchored_parallax.gd` (a parallax layer anchored on the pad), `decor_kit.gd` (shared helpers).
-- **Economy:** `economy.gd` (balance, offer pool, Contracts, delivery phase, settlement), `transport_offer.gd` (a Transport offer or Contract, and the offer generator).
-- **Office:** `office.gd` (the Terminal, its screens and popups), `transport_offers_screen.gd`, `bank_account_screen.gd`, `expandable_list.gd` (a list whose rows open), `version.gd` (`GameVersion.VERSION`, bumped by release-please).
+- **Economy:** `economy.gd` (balance, offer pool, Contracts, delivery phase, settlement, ship purchases and sales), `transport_offer.gd` (a Transport offer or Contract, and the offer generator), `transaction.gd` (one change of the balance and how it reads).
+- **Office:** `office.gd` (the Terminal, its main screen, popups and notices), `shipyard_screen.gd`, `hangar_screen.gd` (the berths table and each Ship page), `transport_offers_screen.gd`, `bank_account_screen.gd`, `expandable_list.gd` (a list whose rows open), `version.gd` (`GameVersion.VERSION`, bumped by release-please).
 - `fonts/`: `Silkscreen-Regular.ttf` and its `OFL.txt` (ADR 0001).
 - `addons/godot_mcp/`: the vendored Godot Editor MCP addon, editor-only, so agents can drive the editor (ADR 0007). Update it with its server, never edit it by hand.
 - `tests/`: headless tests (`run_tests.gd`, `scene_test.gd`, `test_*.gd`). `tools/capture.gd`: the screenshot and frame-time tool. `tools/roadmap/`: builds the roadmap page from GitHub Issues (Python, run by CI; not part of the game).

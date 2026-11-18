@@ -22,9 +22,9 @@ Location table: Valley → Mine → Metropolis (also the drift order)
   each Location: pad, ground, terrain, Mountains' look, decor, Location profile
 ```
 
-- **Transport offer and Contract are the same object** (`TransportOffer`); accepting moves it from `Economy.offers` to `Economy.contracts`. Settling it makes a `TransportOffer.Transaction`.
+- **Transport offer and Contract are the same object** (`TransportOffer`); accepting moves it from `Economy.offers` to `Economy.contracts`. Settling it makes a `Transaction`, which is also what a ship purchase or sale makes.
 - **Current location and Destination are different things.** The current location is the clock's (`PlanetClock.location`); the destination is the Contracts' (`Economy.destination()`) or, on a free flight, the Office's choice. Drift can separate them mid-delivery.
-- **The ship in service is an Owned ship, not a Ship type.** The Lander flies it; its numbers are the owned ship's effective numbers (for now its Ship type's). A Ship swap replaces it with a new owned ship of the chosen type, full tank; the replaced one is gone.
+- **The ship in service is an Owned ship, not a Ship type.** The Lander flies it; its numbers are the owned ship's effective numbers (for now its Ship type's). Owned ships live in the Hangar's berths (four); the Shipyard adds one (full tank, not in service), selling takes one away, and a Ship swap puts another owned ship in service, each keeping its own fuel. Only the ship in service is in the world (the parking spot); the others exist only as Hangar state.
 - **A Mission has no single object in code.** It's the Office's `start_mission()` (destination and start period applied to the clock), the Economy's phase, and the Lander's Load together.
 
 ## Where each concept lives
@@ -36,7 +36,9 @@ Location table: Valley → Mine → Metropolis (also the drift order)
 | Ship states | `Lander.State`, changed by `Lander.enter()` |
 | Location, Valley / Mine / Metropolis, Location profile | `Location`, `Location.ALL`, `Location.Profile` |
 | Local time, Start period, drift | `PlanetClock.minutes`, `PlanetClock.StartPeriod`, `PlanetClock.drift` |
-| Transport offer, Contract, Transaction | `TransportOffer`, `TransportOffer.Transaction` |
+| Transport offer, Contract | `TransportOffer` |
+| Transaction | `Transaction` (a settled Contract, a ship purchase or a ship sale) |
+| Ship price, value, sale price | `ShipType.price`, `OwnedShip.value()`, `OwnedShip.sale_price()` |
 | Bank account, offer pool, Contracts, delivery phase | `Economy` |
 | Load | `Lander.load_mass` (once loading finishes); `Economy.contract_load_mass()` before that |
 | Sky look | `SkyLook` |
@@ -80,7 +82,10 @@ Each rule below holds in the code today; the parenthesis says where it's enforce
 
 - **One destination per mission.** All Contracts share it; an offer for another destination is a misfit (`TransportOffer.misfit_reason()`, rechecked in `Economy.accept()`).
 - **Capacity counts the Contracts.** Seats and maximum capacity are checked against what's left after accepted Contracts; fuel never blocks an offer (`Economy.misfit_reason()`).
-- **No ship swap while there are Contracts** (`Office.ship_locked_shown()`).
+- **No ship swap while there are Contracts** (`HangarScreen.action_reason()`). Buying is allowed with Contracts: it doesn't change the ship in service.
+- **The floor: the ship in service can't be sold**, so the player always owns at least one ship (`HangarScreen.action_reason()`, asserted in `Hangar.sell()`).
+- **No purchase into debt:** buying a ship needs the balance to stay ≥ €0 after paying, and a free berth (`ShipyardScreen.reason()`, `Economy.shortfall()`, `Hangar.full()`). Selling is allowed in debt.
+- **Every change of the balance is one Transaction** (`Economy.record()`), and names are never reused: each Ship type counts its owned ships' numbers up, past sold ones (`Hangar.last_numbers`).
 - **Mass:** total = dry mass + fuel + Load, and fuel ≤ fuel cap = min(Tank, Maximum weight − dry mass − Load) (`Lander.total_mass()`, `fuel_cap_for()`). The Load joins the mass only when loading finishes.
 - **The current location changes only through `PlanetClock.move_to()`**, and a location change never changes the local time. Only starting a mission re-rolls the time ([ADR 0002](../adr/0002-one-planet-clock.md)).
 - **Drift never swaps a visible surface** (`PlanetClock.count_drift()` waits for `World.surface_in_view()` to be false).

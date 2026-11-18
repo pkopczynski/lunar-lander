@@ -1,6 +1,7 @@
 extends SceneTree
 # Runs every test_* method in every tests/test_*.gd file, each on a fresh main scene.
 # Exits with code 1 if any check fails or any script error is logged during a test.
+# `-- --only=test_office,test_hangar` runs only those files.
 
 const TESTS_DIR := "res://tests/"
 
@@ -28,6 +29,9 @@ func run() -> void:
 	var files := Array(DirAccess.get_files_at(TESTS_DIR)).filter(
 		func(file: String) -> bool: return file.begins_with("test_") and file.ends_with(".gd"))
 	files.sort()
+	var only := only_files()
+	if not only.is_empty():
+		files = files.filter(func(file: String) -> bool: return file.get_basename() in only)
 	for file: String in files:
 		var script: GDScript = load(TESTS_DIR + file)
 		if script == null or not script.can_instantiate():
@@ -62,3 +66,11 @@ func run() -> void:
 	print("\n%d passed, %d failed" % [passed, failed.size()])
 	OS.remove_logger(errors)
 	quit(1 if failed.size() > 0 or passed == 0 else 0)
+
+
+# The file names (without .gd) given as --only=a,b after --, or none for every file.
+func only_files() -> PackedStringArray:
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--only="):
+			return arg.trim_prefix("--only=").split(",", false)
+	return PackedStringArray()

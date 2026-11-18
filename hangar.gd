@@ -4,16 +4,20 @@ extends Node
 # state in a scene node, ADR 0003). Owned ships change only through its named operations; the
 # Office calls them and never edits a ship. Attached to `Hangar`.
 #
-# `_ready()` starts the run with SPARROW 1 in service. `replace_in_service(type)` is today's
-# Ship swap: the ship in service is replaced by a new owned ship of that type, with a full tank.
-# Every operation that changes the ship in service hands it to the Lander (`fly()`) and docks it
-# in the parking spot (`start_docked()`); the Lander never learns of the Hangar.
+# `_ready()` starts the run with SPARROW 1 in service. `buy(type)` adds a new owned ship of that
+# type to a free berth, full tank, not in service; `sell(ship)` takes one that isn't in service out
+# of the Hangar; `put_in_service(ship)` is the Ship swap: it hands the ship to the Lander (`fly()`)
+# and docks it in the parking spot (`start_docked()`), keeping each ship's own fuel. The Lander
+# never learns of the Hangar. The Hangar has `BERTHS` berths and the ship in service takes one.
+# Money is the Economy's: the Office charges a purchase and pays a sale there.
 #
-# Names count up per Ship type and are never reused, even after a ship is gone: swapping
-# Sparrow → Mule → Sparrow ends with SPARROW 2 in service.
+# Names count up per Ship type and are never reused, even after a ship is sold: selling MULE 1
+# leaves MULE 2, and the next Mule is MULE 3.
 #
 # Must stay below `Lander` in `main.tscn` (its `_ready()` docks the first ship, so the Lander must
 # be ready) and above `UI`, `Economy` and `Office` (they read the ship in service from theirs).
+
+const BERTHS := 4
 
 var ships: Array[OwnedShip] = []
 var in_service: OwnedShip
@@ -27,11 +31,16 @@ func _ready() -> void:
 	put_in_service(add_ship(ShipType.SPARROW))
 
 
-# Replaces the ship in service with a new owned ship of this type, full tank, Docked.
-func replace_in_service(type: ShipType) -> void:
-	var old := in_service
-	put_in_service(add_ship(type))
-	ships.erase(old)
+# A new owned ship of this type in a free berth, with a full tank; it doesn't go into service.
+func buy(type: ShipType) -> OwnedShip:
+	assert(not full(), "buying needs a free berth")
+	return add_ship(type)
+
+
+# Takes a ship out of the Hangar for good; never the ship in service.
+func sell(ship: OwnedShip) -> void:
+	assert(ship != in_service, "the ship in service can't be sold")
+	ships.erase(ship)
 
 
 func add_ship(type: ShipType) -> OwnedShip:
@@ -42,7 +51,17 @@ func add_ship(type: ShipType) -> OwnedShip:
 	return ship
 
 
+# The Ship swap: this owned ship goes Docked into the parking spot with its own fuel.
 func put_in_service(ship: OwnedShip) -> void:
 	in_service = ship
 	lander.fly(ship)
 	lander.start_docked()
+
+
+func full() -> bool:
+	return ships.size() >= BERTHS
+
+
+# How many owned ships are of this type.
+func owned(type: ShipType) -> int:
+	return ships.filter(func(ship: OwnedShip) -> bool: return ship.ship_type == type).size()

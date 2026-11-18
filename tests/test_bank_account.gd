@@ -141,6 +141,8 @@ func test_the_details_name_the_ship_type_that_delivered() -> void:
 	await choose_ship(ShipType.MULE)
 	await deliver([known_offer(1, 0.0)], 5.0)
 	await open_bank_account()
+	# Buying the Mule was a Transaction too: the delivery is the newest row, above it.
+	await press(&"ui_up")
 	await press(&"ui_accept")
 	check("SHIP MULE" in bank().details(0), "the Mule delivered it, shows %s" % bank().details(0))
 

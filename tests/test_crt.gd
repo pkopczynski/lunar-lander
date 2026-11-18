@@ -22,7 +22,7 @@ func test_return_during_power_on_does_nothing() -> void:
 	check(office().screen == Office.Screen.MAIN, "Return during power-on should not open a tile")
 	await wait_for_terminal()
 	await press(&"ui_accept")
-	check(office().screen == Office.Screen.SHIP_SELECTION, "Return after power-on should open Ship selection")
+	check(office().screen == Office.Screen.SHIPYARD, "Return after power-on should open the Shipyard")
 
 
 func test_escape_on_the_main_screen_powers_off_before_the_flight_view_shows() -> void:
@@ -37,13 +37,12 @@ func test_escape_on_the_main_screen_powers_off_before_the_flight_view_shows() ->
 	check(lander().state == Lander.State.DOCKED, "the ship should be Docked")
 
 
-func test_choosing_a_ship_stays_powered_on() -> void:
-	await open_ship_selection()
-	await browse_to(ShipType.MULE)
-	await press(&"ui_accept")
-	await press(&"ui_accept")
-	check(not office().powering, "choosing a ship should not power the Terminal off")
-	check(office().showing and office().screen == Office.Screen.MAIN, "choosing a ship should show the main screen")
+func test_buying_and_swapping_a_ship_stays_powered_on() -> void:
+	economy().balance = 400000
+	await buy_ship(ShipType.MULE)
+	await put_in_service()
+	check(not office().powering, "buying and swapping a ship should not power the Terminal off")
+	check(office().showing and office().screen == Office.Screen.SHIP_PAGE, "the Ship page should stay open")
 
 
 func test_holding_escape_through_power_off_does_not_reopen_anything() -> void:

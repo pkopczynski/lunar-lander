@@ -8,27 +8,26 @@ const THRUST_TIME_RATIO := 24.0 / 20.0
 
 
 func test_halo_ship_offer_is_reachable_with_left_and_right() -> void:
-	await open_ship_selection()
+	await open_shipyard()
 	await browse_to(ShipType.HALO, &"ui_right")
-	check(office().selected_ship_offer() == ShipType.HALO, "Right should reach the Halo Ship offer")
+	check(shipyard().selected() == ShipType.HALO, "Right should reach the Halo Ship offer")
 	await press(&"ui_cancel")
-	await restart_office()
-	await open_ship_selection()
+	await open_shipyard()
 	await browse_to(ShipType.HALO, &"ui_left")
-	check(office().selected_ship_offer() == ShipType.HALO, "Left should reach the Halo Ship offer")
+	check(shipyard().selected() == ShipType.HALO, "Left should reach the Halo Ship offer")
 
 
 func test_halo_ship_offer_shows_its_numbers_ratings_and_wireframe() -> void:
-	await open_ship_selection()
+	await open_shipyard()
 	await browse_to(ShipType.HALO, &"ui_right")
-	var lines := office().ship_offer_lines()
-	for expected: String in ["HALO", "TANK 8 000 KG", "SEATS 10", "CARGO 10 000 KG",
+	var lines := shipyard().lines()
+	for expected: String in ["HALO", "PRICE €650 000", "TANK 10 000 L FULL", "SEATS 10", "CARGO 10 000 KG",
 			"MAX CAPACITY 11 000 KG", "THRUST ■■■■□", "HANDLING ■■■■□"]:
 		check(expected in lines, "the Halo Ship offer should show %s, shows %s" % [expected, lines])
 	for removed: String in ["DRY MASS", "MAX WEIGHT"]:
 		check(not Array(lines).any(func(line: String) -> bool: return line.begins_with(removed)),
 			"the Ship offer should not show %s, shows %s" % [removed, lines])
-	check(office().ship_offer_picture() == office().selected_ship_offer().hull, "the Ship offer picture should be the Halo's hull")
+	check(shipyard().picture() == ShipType.HALO.hull, "the Ship offer picture should be the Halo's hull")
 
 
 func test_choosing_the_halo_docks_it_with_a_full_tank_inside_the_spot() -> void:
@@ -121,11 +120,6 @@ func test_halo_thrusts_about_24_s_on_a_full_tank() -> void:
 	await choose_ship(ShipType.HALO)
 	var halo: float = await full_tank_thrust_time()
 	check_near(halo / sparrow, THRUST_TIME_RATIO, 0.05, "Halo / Sparrow full-tank thrust time (%.1f s / %.1f s)" % [halo, sparrow])
-
-
-func restart_office() -> void:
-	await choose_ship()
-	await restart()
 
 
 func hits_ship(local_point: Vector2) -> bool:
