@@ -48,7 +48,7 @@ Main (Node2D)                  world.gd; draws the surface gradient behind every
 | System | Scripts | Owns |
 |---|---|---|
 | **Flight** | `lander.gd`, `camera.gd`, `station.gd`, `ship_type.gd` | The ship's state (Flying, Landed, Docked, Crashed), position, mass and Load, and burning and refuelling the fuel in tank of the ship in service; the station maze and parking spot; the ship type table. |
-| **Hangar** | `hangar.gd`, `owned_ship.gd` | The owned ships, the ship in service and the per-type name counters (Career state). `OwnedShip` is data: its Ship type, name, fuel in tank, Condition, and its effective numbers. |
+| **Hangar** | `hangar.gd`, `owned_ship.gd` | The owned ships, the ship in service and the per-type name counters (run state, ADR 0003). `OwnedShip` is data: its Ship type, name, fuel in tank, Condition, and its effective numbers. |
 | **Surface** | `world.gd`, `location.gd`, `mountain_look.gd` | Building the current location: ground, pad, terrain, the Mountains' look, and hosting the decor. The location table (pure data). |
 | **Planet clock and sky** | `planet_clock.gd`, `sky_look.gd` | Local time, the current location and the drift count (`PlanetClock`); time → sky look, a pure step (`SkyLook`). |
 | **Decor** | `backdrop.gd`, `skyline.gd`, `moons.gd`, `clouds.gd`, `foreground.gd`, `beacon.gd`, `city_lights.gd`, `activity.gd`, `vehicles.gd`, `anchored_parallax.gd`, `decor_kit.gd` | Collider-free scenery, built per location and tinted by the sky. |

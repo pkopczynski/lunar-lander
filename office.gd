@@ -199,7 +199,7 @@ func handled() -> void:
 	terminal.queue_redraw()
 
 
-# Ship selection opens on the ship type in service, Transport offers on the offer list.
+# Ship selection opens on the ship type of the ship in service, Transport offers on the offer list.
 func open_screen(which: Screen) -> void:
 	screen = which
 	if which == Screen.SHIP_SELECTION:
@@ -343,7 +343,7 @@ func selected_ship_offer() -> ShipType:
 	return ShipType.ALL[ship_offer_index]
 
 
-# The ship type in the parking spot is the one in service.
+# The Ship offer of the ship in service's type (the one in the parking spot).
 func in_service_shown() -> bool:
 	return showing and screen == Screen.SHIP_SELECTION and selected_ship_offer() == hangar.in_service.ship_type
 

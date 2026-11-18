@@ -1,10 +1,10 @@
 class_name Hangar
 extends Node
-# Owns the player's Owned ships, the ship in service and the per-type name counters (Career
+# Owns the player's Owned ships, the ship in service and the per-type name counters (run
 # state in a scene node, ADR 0003). Owned ships change only through its named operations; the
 # Office calls them and never edits a ship. Attached to `Hangar`.
 #
-# `_ready()` starts the Career with SPARROW 1 in service. `replace_in_service(type)` is today's
+# `_ready()` starts the run with SPARROW 1 in service. `replace_in_service(type)` is today's
 # Ship swap: the ship in service is replaced by a new owned ship of that type, with a full tank.
 # Every operation that changes the ship in service hands it to the Lander (`fly()`) and docks it
 # in the parking spot (`start_docked()`); the Lander never learns of the Hangar.
@@ -17,8 +17,8 @@ extends Node
 
 var ships: Array[OwnedShip] = []
 var in_service: OwnedShip
-# Ship type name → the last number given to a ship of that type.
-var last_numbers := {}
+# Ship type → the last number given to a ship of that type.
+var last_numbers: Dictionary[ShipType, int] = {}
 
 @onready var lander: Lander = $"../Lander"
 
@@ -35,8 +35,8 @@ func replace_in_service(type: ShipType) -> void:
 
 
 func add_ship(type: ShipType) -> OwnedShip:
-	var number: int = last_numbers.get(type.name, 0) + 1
-	last_numbers[type.name] = number
+	var number: int = last_numbers.get(type, 0) + 1
+	last_numbers[type] = number
 	var ship := OwnedShip.new(type, number)
 	ships.append(ship)
 	return ship

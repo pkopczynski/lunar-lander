@@ -28,8 +28,9 @@ extends CharacterBody2D
 #
 # It has no ship until the Hangar's `_ready()` hands it SPARROW 1 and docks it behind the Office;
 # a Ship swap hands it a new ship and docks it again. `start_docked()` never asks to enter the
-# Office; only `dock()` does, by emitting `docked_at_station` from the end of its level tween, so the signal waits for the ship
-# to be upright and lifting off first (`enter()` kills the tween) cancels it. The Office answers
+# Office; only `dock()` does, by emitting `docked_at_station` from the end of its level tween, so
+# the signal waits for the ship to be upright and lifting off first (`enter()` kills the tween)
+# cancels it. The Office answers
 # with the "ENTER THE OFFICE?" popup and calls `hold()`, which freezes `_physics_process`; the
 # Lander doesn't know why it's held. No, and leaving the Office from the main screen, call
 # `release()`; the refuel delay starts over because docking zeroed it and a held ship doesn't count

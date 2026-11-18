@@ -336,16 +336,16 @@ func red_note(offer: TransportOffer) -> String:
 
 # The summary as [label, value, label colour, value colour].
 func summary_parts() -> Array[Array]:
-	var ship := economy.lander
+	var lander := economy.lander
 	var passengers := economy.contract_passengers()
 	var load_mass := economy.contract_load_mass()
 	var fuel_limited := limits_fuel(load_mass)
 	var parts: Array[Array] = [
-		["PASSENGERS", "%d/%d" % [passengers, ship.ship_type.passenger_seats], Office.GREEN, Office.WHITE],
-		["CARGO", kg_of(economy.contract_cargo(), ship.ship.full_tank_cargo(passengers)), Office.GREEN,
+		["PASSENGERS", "%d/%d" % [passengers, lander.ship_type.passenger_seats], Office.GREEN, Office.WHITE],
+		["CARGO", kg_of(economy.contract_cargo(), lander.ship.full_tank_cargo(passengers)), Office.GREEN,
 			Office.RED if fuel_limited else Office.WHITE]]
 	if fuel_limited:
-		parts.append([FUEL_LIMITED_LABEL, kg_of(ship.fuel_cap_for(load_mass), ship.ship.tank()),
+		parts.append([FUEL_LIMITED_LABEL, kg_of(lander.fuel_cap_for(load_mass), lander.ship.tank()),
 			Office.RED, Office.RED])
 	if not economy.contracts.is_empty():
 		parts.append(["DELIVER WITHIN", PlanetClock.duration(economy.deadline()), Office.GREEN, Office.WHITE])
@@ -361,8 +361,8 @@ func total_value() -> int:
 
 
 func limits_fuel(load_mass: float) -> bool:
-	var ship := economy.lander
-	return ship.fuel_cap_for(load_mass) < ship.ship.tank()
+	var lander := economy.lander
+	return lander.fuel_cap_for(load_mass) < lander.ship.tank()
 
 
 # The button under the mission rows: CANCEL MISSION during a loaded mission, else START LOADING
