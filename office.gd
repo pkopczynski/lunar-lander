@@ -2,7 +2,8 @@ class_name Office
 extends CanvasLayer
 # The player's Office: a full-window Terminal with a main screen of tiles opening Ship
 # selection (one Ship offer per ship type), Transport offers and the Bank account. It pauses
-# the world while showing, and puts the chosen ship type in the parking spot.
+# the world while showing, and has the Hangar put a new owned ship of the chosen ship type in
+# service (`replace_in_service()`); it never edits an owned ship itself.
 #
 # The Office: resetting the mission rows from the planet clock on every opening and starting the
 # mission at the chosen destination in the chosen start period at START LOADING (or START, a free
@@ -120,6 +121,7 @@ var transport_offers: TransportOffersScreen
 var bank_account: BankAccountScreen
 
 @onready var lander: Lander = $"../Lander"
+@onready var hangar: Hangar = $"../Hangar"
 @onready var economy: Economy = $"../Economy"
 @onready var clock: PlanetClock = $"../PlanetClock"
 @onready var terminal: Control = $Terminal
@@ -197,11 +199,11 @@ func handled() -> void:
 	terminal.queue_redraw()
 
 
-# Ship selection opens on the ship type in service, Transport offers on the offer list.
+# Ship selection opens on the ship type of the ship in service, Transport offers on the offer list.
 func open_screen(which: Screen) -> void:
 	screen = which
 	if which == Screen.SHIP_SELECTION:
-		ship_offer_index = ShipType.ALL.find(lander.ship_type)
+		ship_offer_index = ShipType.ALL.find(hangar.in_service.ship_type)
 	elif which == Screen.TRANSPORT_OFFERS:
 		transport_offers.focus = TransportOffersScreen.Column.OFFERS
 
@@ -307,7 +309,7 @@ func answer(choice: Choice) -> void:
 			close()
 			lander.release()
 		[PopupKind.ARE_YOU_SURE, Choice.YES]:
-			lander.start_docked(selected_ship_offer())
+			hangar.replace_in_service(selected_ship_offer())
 			popup = PopupKind.NONE
 			screen = Screen.MAIN
 		[PopupKind.ARE_YOU_SURE, Choice.NO], [PopupKind.ACCEPT_OFFER, Choice.NO], \
@@ -341,9 +343,9 @@ func selected_ship_offer() -> ShipType:
 	return ShipType.ALL[ship_offer_index]
 
 
-# The ship type in the parking spot is the one in service.
+# The Ship offer of the ship in service's type (the one in the parking spot).
 func in_service_shown() -> bool:
-	return showing and screen == Screen.SHIP_SELECTION and selected_ship_offer() == lander.ship_type
+	return showing and screen == Screen.SHIP_SELECTION and selected_ship_offer() == hangar.in_service.ship_type
 
 
 # Ship swapping is locked while there are Contracts: the Load is for the ship in service.

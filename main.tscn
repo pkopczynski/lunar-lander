@@ -8,6 +8,7 @@
 [ext_resource type="Script" path="res://office.gd" id="6_office"]
 [ext_resource type="Script" path="res://economy.gd" id="7_economy"]
 [ext_resource type="Script" path="res://planet_clock.gd" id="8_planet_clock"]
+[ext_resource type="Script" path="res://hangar.gd" id="9_hangar"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ground"]
 size = Vector2(4000, 40)
@@ -56,6 +57,9 @@ color = Color(1, 0.6, 0.1, 1)
 position_smoothing_enabled = true
 position_smoothing_speed = 5.0
 script = ExtResource("5_camera")
+
+[node name="Hangar" type="Node" parent="."]
+script = ExtResource("9_hangar")
 
 [node name="UI" type="CanvasLayer" parent="."]
 

@@ -28,11 +28,12 @@ Main (Node2D)                  world.gd; draws the surface gradient behind every
 ├── (CityLights)               city_lights.gd; world.gd adds it at runtime, just after Terrain: the window mesh, neon signs and warning lights
 ├── Mountains (StaticBody2D)   empty; world.gd adds both mountains' colliders and, per location, their visuals (scenery) at runtime
 ├── Station (StaticBody2D)     station.gd; adds its wall polygons at runtime
-├── Lander (CharacterBody2D)   lander.gd; moved into the parking spot by start_docked(type) in _ready()
-│   ├── Body (Polygon2D)       ship type's hull, set at runtime by become()
+├── Lander (CharacterBody2D)   lander.gd; flies the ship in service, which the Hangar hands it (fly()) and docks (start_docked())
+│   ├── Body (Polygon2D)       ship type's hull, set at runtime by fly()
 │   ├── Flame (Polygon2D)      ship type's flame, shown while thrusting
 │   ├── CollisionPolygon2D     same hull as Body
 │   └── Camera (Camera2D)      camera.gd
+├── Hangar (Node)              hangar.gd; the owned ships and the ship in service; its _ready() puts SPARROW 1 in service
 ├── UI (CanvasLayer)
 │   ├── Message (Label)        shows Docked!/Landed!/Crashed!, hidden in flight
 │   └── Hud (Control)          hud.gd; full-rect, draws itself on the right edge
@@ -46,7 +47,8 @@ Main (Node2D)                  world.gd; draws the surface gradient behind every
 
 | System | Scripts | Owns |
 |---|---|---|
-| **Flight** | `lander.gd`, `camera.gd`, `station.gd`, `ship_type.gd` | The ship's state (Flying, Landed, Docked, Crashed), position, fuel, mass and Load; the station maze and parking spot; the ship type table. |
+| **Flight** | `lander.gd`, `camera.gd`, `station.gd`, `ship_type.gd` | The ship's state (Flying, Landed, Docked, Crashed), position, mass and Load, and burning and refuelling the fuel in tank of the ship in service; the station maze and parking spot; the ship type table. |
+| **Hangar** | `hangar.gd`, `owned_ship.gd` | The owned ships, the ship in service and the per-type name counters (run state, ADR 0003). `OwnedShip` is data: its Ship type, name, fuel in tank, Condition, and its effective numbers. |
 | **Surface** | `world.gd`, `location.gd`, `mountain_look.gd` | Building the current location: ground, pad, terrain, the Mountains' look, and hosting the decor. The location table (pure data). |
 | **Planet clock and sky** | `planet_clock.gd`, `sky_look.gd` | Local time, the current location and the drift count (`PlanetClock`); time → sky look, a pure step (`SkyLook`). |
 | **Decor** | `backdrop.gd`, `skyline.gd`, `moons.gd`, `clouds.gd`, `foreground.gd`, `beacon.gd`, `city_lights.gd`, `activity.gd`, `vehicles.gd`, `anchored_parallax.gd`, `decor_kit.gd` | Collider-free scenery, built per location and tinted by the sky. |
@@ -59,7 +61,8 @@ Main (Node2D)                  world.gd; draws the surface gradient behind every
 Nodes find each other by fixed `NodePath`s (`$"../Lander"`); there is no autoload or service locator. Arrows mean "holds a reference to and calls":
 
 ```
-Office ──► Lander, Economy, PlanetClock
+Office ──► Lander, Hangar, Economy, PlanetClock
+Hangar ──► Lander
 Economy ─► Lander, PlanetClock
 Hud ─────► Lander, Economy, PlanetClock          (read only)
 World ───► PlanetClock, Lander, every decor script
@@ -69,7 +72,8 @@ Camera ──► Lander (its parent), World and Station constants
 
 - **Data tables sit at the bottom.** `Location`, `ShipType`, `TransportOffer`, `SkyLook`, `MountainLook` and `Skyline` hold no node references. `Location` does name the decor scripts' inner data types (`Backdrop.Ridge`, `Clouds.Cloud`, …), so the location table depends on the decor scripts' data shapes, not their nodes.
 - **`World` has no per-location code.** Everything location-specific is data in `location.gd`; the World builds whatever the current `Location` lists.
-- **The Lander doesn't know the Economy or the Office.** They drive it through its public methods (`hold()`, `release()`, `start_docked()`, `start_loading()`, `finish_loading()`, `show_status()`, `lift_off_blocked`) and hear from it only through signals.
+- **The Lander flies an `OwnedShip`, never a bare `ShipType`.** It reads the ship in service's effective numbers (`ship.thrust()`, `ship.tank()`…), and its `ship_type`, `dry_mass` and `fuel` read through to that ship. It doesn't know the Hangar: the Hangar hands it the ship with `fly()` and docks it with `start_docked()`.
+- **The Lander doesn't know the Economy, the Hangar or the Office.** They drive it through its public methods (`hold()`, `release()`, `start_docked()`, `start_loading()`, `finish_loading()`, `show_status()`, `lift_off_blocked`) and hear from it only through signals.
 - **`PlanetClock` and `SkyLook` know nothing of what reads them** (no sky, HUD or contracts in the clock; no clock or World in `SkyLook`).
 - One reach upward: `economy.gd` and `office.gd` `preload("res://hud.gd")` for its `format_kg()` formatter.
 
@@ -92,6 +96,7 @@ Camera ──► Lander (its parent), World and Station constants
 | Ship state | `Lander.state` | `Lander.enter()`. Held, loading and lift-off-blocked are flags beside the state, set by the Office or the Economy. |
 | Delivery phase | `Economy.phase` | One function per transition, each checking the phase it leaves (see [domain-model.md](domain-model.md#mission-and-delivery-phase)). |
 | Money, offers, Contracts | `Economy` | `accept()`, `remove_contract()`, `finish_unloading()`, `cancel_mission()`. |
+| Owned ships, the ship in service, name counters | `Hangar` | Its named operations: `replace_in_service()` (the Ship swap), `add_ship()`, `put_in_service()`. The Office calls them and never edits an `OwnedShip`. The one exception: the Lander burns and refuels the fuel in tank of the ship in service. |
 | Sky | none (derived) | The World pulls `SkyLook.at(minutes)` once per in-game minute and pushes it to every decor script's `show_sky()`. |
 
 ## Frame and pause model
@@ -99,7 +104,7 @@ Camera ──► Lander (its parent), World and Station constants
 - **Gameplay ticks in `_physics_process`** (Lander, PlanetClock, Economy, World's sky check and drift feed), so `--fixed-fps 60` tests are deterministic. Decor movement (clouds, vehicles, Activity) and the Office's animations use `_process`.
 - **The Office pauses the whole tree** while showing. The Economy runs with process mode Always (offer timers keep running); the planet clock stays pausable (time stops). See [ADR 0003](../adr/0003-run-state-in-scene-nodes.md).
 - **Restart reloads the scene.** That is the whole reset mechanism; see ADR 0003.
-- **Ready order matters:** `Station` must stay above `Lander` in `main.tscn` (see the README's Gotchas).
+- **Ready order matters:** `Station` must stay above `Lander`, and `Hangar` below `Lander` and above `UI`, `Economy` and `Office`, in `main.tscn` (see the README's Gotchas).
 
 ## Building a location
 

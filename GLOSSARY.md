@@ -108,7 +108,7 @@ _Avoid_: Dock, slot, destination
 
 **Office**:
 The player's transport company office on the station, where every run begins. There the player picks a ship type, takes on transport offers and checks the bank account.
-_Avoid_: Menu, shop, hangar
+_Avoid_: Menu, shop
 
 **Terminal**:
 The retro green-on-black screen in the office that shows ship offers, transport offers and the bank account.
@@ -120,10 +120,10 @@ _Avoid_: Menu, home, dashboard
 
 **Ship selection**:
 The terminal screen for browsing ship offers and choosing a ship type.
-_Avoid_: Shop, hangar, fleet screen
+_Avoid_: Shop, fleet screen
 
 **In service**:
-The ship type currently in the parking spot: the one the player flies when leaving the office.
+The owned ship (not the ship type) currently in the parking spot: the one the player flies when leaving the office.
 _Avoid_: Current ship, active ship
 
 **Bank account**:
@@ -135,7 +135,7 @@ One ship type shown on the terminal, with its picture and characteristics. Takin
 _Avoid_: Offer (on its own), listing, card, product
 
 **Ship swap**:
-Entering the office from the parking spot and choosing another ship type in ship selection. The new ship takes the old one's place in the parking spot with a full tank. Not possible while the player has contracts.
+Entering the office from the parking spot and choosing another ship type in ship selection. A new owned ship of that type, with a full tank, replaces the one in service in the parking spot. Not possible while the player has contracts.
 _Avoid_: Respawn, change ship
 
 ## Transport
@@ -201,6 +201,14 @@ _Avoid_: Load (for goods alone), freight
 **Ship type**:
 A kind of ship with its own shape, dry mass, maximum weight, tank, passenger seats, maximum capacity, thrust and turn rate. The game has three: the Sparrow, the Mule and the Halo.
 _Avoid_: Model, class, variant
+
+**Owned ship**:
+A ship the player owns: its ship type, its name (the type and a number counting up per type, never reused: SPARROW 1, MULE 2), its fuel in tank and its condition. It flies with its ship type's numbers.
+_Avoid_: Fleet ship
+
+**Hangar**:
+Where the player's owned ships are kept at the station. For now it holds just one, the ship in service.
+_Avoid_: Fleet, garage
 
 **Sparrow**:
 The small, light, quick triangle ship. It's the ship type the game started with.

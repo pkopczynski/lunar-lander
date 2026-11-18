@@ -12,7 +12,9 @@ Run (restart → restart)
 │                               ▼                   │
 ├── Contracts ──────────────< Contract ─────────────┘
 │       all share one Destination
-├── Ship type in service ──► Ship (Lander): one Ship state, fuel, Load
+├── Hangar ──< Owned ship ──► Ship type        name counted per type, never reused
+│     └── in service ──► Ship (Lander): one Ship state, Load; flies the
+│                        owned ship's effective numbers and its fuel in tank
 └── Planet clock: Local time + current Location + drift count
 
 Mission = Destination + Start period + 0..n Contracts (0 = Free flight)
@@ -22,6 +24,7 @@ Location table: Valley → Mine → Metropolis (also the drift order)
 
 - **Transport offer and Contract are the same object** (`TransportOffer`); accepting moves it from `Economy.offers` to `Economy.contracts`. Settling it makes a `TransportOffer.Transaction`.
 - **Current location and Destination are different things.** The current location is the clock's (`PlanetClock.location`); the destination is the Contracts' (`Economy.destination()`) or, on a free flight, the Office's choice. Drift can separate them mid-delivery.
+- **The ship in service is an Owned ship, not a Ship type.** The Lander flies it; its numbers are the owned ship's effective numbers (for now its Ship type's). A Ship swap replaces it with a new owned ship of the chosen type, full tank; the replaced one is gone.
 - **A Mission has no single object in code.** It's the Office's `start_mission()` (destination and start period applied to the clock), the Economy's phase, and the Lander's Load together.
 
 ## Where each concept lives
@@ -29,6 +32,7 @@ Location table: Valley → Mine → Metropolis (also the drift order)
 | Concept | Code |
 |---|---|
 | Ship type, Sparrow / Mule / Halo | `ShipType`, `ShipType.ALL` |
+| Owned ship, Hangar, in service | `OwnedShip`, `Hangar.ships`, `Hangar.in_service` |
 | Ship states | `Lander.State`, changed by `Lander.enter()` |
 | Location, Valley / Mine / Metropolis, Location profile | `Location`, `Location.ALL`, `Location.Profile` |
 | Local time, Start period, drift | `PlanetClock.minutes`, `PlanetClock.StartPeriod`, `PlanetClock.drift` |
@@ -83,4 +87,4 @@ Each rule below holds in the code today; the parenthesis says where it's enforce
 - **Time is presentation only.** It sets the sky and how deadlines are shown; deadlines and penalties count real seconds from the end of loading (`Economy.delivery_time`).
 - **Settlement:** a delivered Contract pays its reward less the overdue penalty, never below €0, and €0 away from its destination; a cancelled one pays minus its cancellation fee. Each is settled on its own, one Transaction each (`TransportOffer.settlement()`, `cancellation()`).
 - **Only the ground is landed on.** Any other contact (Mountains, terrain, station) is a crash; the pad and all decor have no collider ([ADR 0005](../adr/0005-solid-terrain-vs-decor.md)).
-- **Every run starts the same:** the Office, the Sparrow Docked, €0, a fresh offer pool from `#001`, the Valley at an Evening minute ([ADR 0003](../adr/0003-run-state-in-scene-nodes.md)).
+- **Every run starts the same:** the Office, SPARROW 1 in service and Docked, €0, a fresh offer pool from `#001`, the Valley at an Evening minute ([ADR 0003](../adr/0003-run-state-in-scene-nodes.md)).
