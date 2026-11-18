@@ -20,7 +20,7 @@ func test_each_contract_settles_for_0_euros_with_its_own_transaction() -> void:
 	var parts := known_offer(0, 2000.0)
 	await deliver_to_the_mine([crew, parts])
 	await unloaded()
-	check(economy().balance == 0, "a wrong pad should pay nothing, balance is %s" % economy().balance)
+	check(economy().balance == Economy.START_BALANCE, "a wrong pad should pay nothing, balance is %s" % economy().balance)
 	check(office().bank_account.rows() == PackedStringArray([
 			"#%03d TEST RUN  CARGO  €0" % parts.number,
 			"#%03d TEST RUN  PASSENGERS  €0" % crew.number]),
@@ -37,7 +37,7 @@ func test_the_details_show_the_wrong_destination_in_place_of_the_penalty() -> vo
 	await open_bank_account()
 	await press(&"ui_accept")
 	# Loaded at 14:00, 10 s deadline (20 in-game minutes), landed after 22 s (45 in-game minutes).
-	check(office().bank_account.details(0) == PackedStringArray(["BASE VALUE €420", "WRONG DESTINATION -€420",
+	check(office().bank_account.details(0) == PackedStringArray(["BASE VALUE €42 000", "WRONG DESTINATION -€42 000",
 			"PAYOUT €0", "DEADLINE 14:20", "LANDED 14:45", "DELIVERED TO MINE", "DESTINATION VALLEY", "SHIP SPARROW"]),
 		"the breakdown should show the wrong destination, shows %s" % office().bank_account.details(0))
 
@@ -45,11 +45,11 @@ func test_the_details_show_the_wrong_destination_in_place_of_the_penalty() -> vo
 func test_landing_on_the_destinations_pad_after_drifting_away_and_back_pays_as_usual() -> void:
 	await deliver_after_drift([known_offer(1, 0.0)], 5.0, Location.ALL.size())
 	await unloaded()
-	check(economy().balance == 420, "the Valley was the destination, balance is %s" % economy().balance)
+	check(economy().balance == Economy.START_BALANCE + 42000, "the Valley was the destination, balance is %s" % economy().balance)
 	await enter_office()
 	await open_bank_account()
 	await press(&"ui_accept")
-	check(office().bank_account.details(0) == PackedStringArray(["BASE VALUE €420", "PENALTY €0", "PAYOUT €420",
+	check(office().bank_account.details(0) == PackedStringArray(["BASE VALUE €42 000", "PENALTY €0", "PAYOUT €42 000",
 			"DEADLINE 17:00", "LANDED 14:10", "DELIVERED TO VALLEY", "SHIP SPARROW"]),
 		"a right delivery should show the usual breakdown, shows %s" % office().bank_account.details(0))
 

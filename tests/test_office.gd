@@ -197,24 +197,25 @@ func test_the_terminal_shows_the_game_version() -> void:
 	check(office().version_text() == "V" + GameVersion.VERSION, "the Terminal should show V%s, got %s" % [GameVersion.VERSION, office().version_text()])
 
 
-func test_bank_account_shows_the_pilot_and_a_zero_balance_in_eur() -> void:
+func test_a_fresh_start_shows_the_pilot_and_a_balance_of_20_000_euros() -> void:
 	await open_bank_account()
-	check(office().bank_account.lines() == PackedStringArray(["PILOT", "BALANCE €0"]),
-		"Bank account should show PILOT and €0, shows %s" % office().bank_account.lines())
+	check(office().bank_account.lines() == PackedStringArray(["PILOT", "BALANCE €20 000"]),
+		"Bank account should show PILOT and €20 000, shows %s" % office().bank_account.lines())
 
 
 func test_bank_account_shows_a_negative_balance_with_the_sign_first() -> void:
-	economy().balance = -120
+	economy().balance = -1234567
 	await open_bank_account()
-	check(office().bank_account.lines().has("BALANCE -€120"), "the balance should read -€120, shows %s" % office().bank_account.lines())
+	check(office().bank_account.lines().has("BALANCE -€1 234 567"),
+		"the balance should read -€1 234 567, shows %s" % office().bank_account.lines())
 
 
-func test_a_restart_starts_the_balance_at_zero_again() -> void:
-	economy().balance = 500
+func test_a_restart_starts_the_balance_at_20_000_euros_again() -> void:
+	economy().balance = 50000
 	await choose_ship()
 	await restart()
 	await open_bank_account()
-	check(office().bank_account.lines().has("BALANCE €0"), "a new run should show €0, shows %s" % office().bank_account.lines())
+	check(office().bank_account.lines().has("BALANCE €20 000"), "a new run should show €20 000, shows %s" % office().bank_account.lines())
 
 
 func test_the_economy_keeps_running_while_the_office_pauses_the_world() -> void:

@@ -8,9 +8,9 @@ func test_an_open_late_transaction_shows_how_the_payout_was_worked_out() -> void
 	await open_bank_account()
 	check(bank().details(0).is_empty(), "no details should show before Return")
 	await press(&"ui_accept")
-	# 12 s overdue: €300 − €72 and €120 − €14.40, rounded.
+	# 12 s overdue: €30 000 − €7 200 and €12 000 − €1 440.
 	# Loaded at 14:00, 10 s deadline (20 in-game minutes), landed after 22 s (45 in-game minutes).
-	check(bank().details(0) == PackedStringArray(["BASE VALUE €420", "PENALTY -€86 (24 MIN OVERDUE)", "PAYOUT €334",
+	check(bank().details(0) == PackedStringArray(["BASE VALUE €42 000", "PENALTY -€8 640 (24 MIN OVERDUE)", "PAYOUT €33 360",
 			"DEADLINE 14:20", "LANDED 14:45", "DELIVERED TO VALLEY", "SHIP SPARROW"]),
 		"Return should open the breakdown, shows %s" % bank().details(0))
 
@@ -20,7 +20,7 @@ func test_an_on_time_transaction_shows_no_penalty() -> void:
 	await deliver([offer], 5.0)
 	await open_bank_account()
 	await press(&"ui_accept")
-	check(bank().details(0) == PackedStringArray(["BASE VALUE €420", "PENALTY €0", "PAYOUT €420",
+	check(bank().details(0) == PackedStringArray(["BASE VALUE €42 000", "PENALTY €0", "PAYOUT €42 000",
 			"DEADLINE 17:00", "LANDED 14:10", "DELIVERED TO VALLEY", "SHIP SPARROW"]),
 		"an on-time delivery should show PENALTY €0, shows %s" % bank().details(0))
 

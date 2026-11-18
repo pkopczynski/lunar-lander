@@ -149,10 +149,15 @@ func wave(x: float) -> float:
 
 
 static func format_kg(kg: float) -> String:
-	var digits := str(roundi(kg))
-	var grouped := ""
+	return group_thousands(roundi(kg)) + " kg"
+
+
+# A whole number with its thousands split by spaces, as 1 234 567.
+static func group_thousands(value: int) -> String:
+	var digits := str(absi(value))
+	var grouped := "-" if value < 0 else ""
 	for i in digits.length():
 		if i > 0 and (digits.length() - i) % 3 == 0:
 			grouped += " "
 		grouped += digits[i]
-	return grouped + " kg"
+	return grouped

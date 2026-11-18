@@ -127,7 +127,7 @@ The owned ship (not the ship type) currently in the parking spot: the one the pl
 _Avoid_: Current ship, active ship
 
 **Bank account**:
-The pilot's money, in euros, and the transactions that made it. It starts at €0 every run.
+The pilot's money, in euros, and the transactions that made it. It starts at €20 000 every run.
 _Avoid_: Wallet, credits, score
 
 **Ship offer**:

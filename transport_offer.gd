@@ -24,8 +24,8 @@ const MAX_DEADLINE := 180
 const CARGO_STEP := 100
 # Rewards at the reference deadline, scaled by (REFERENCE_DEADLINE / deadline)^URGENCY_EXPONENT,
 # then by a random factor between MIN_LUCK and MAX_LUCK.
-const PASSENGER_REWARD := 150.0
-const CARGO_REWARD_PER_TONNE := 60.0
+const PASSENGER_REWARD := 15000.0
+const CARGO_REWARD_PER_TONNE := 6000.0
 const REFERENCE_DEADLINE := 120.0
 const URGENCY_EXPONENT := 0.5
 const MIN_LUCK := 0.7
