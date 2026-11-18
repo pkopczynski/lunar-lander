@@ -2,6 +2,8 @@ extends Control
 # Draws the fuel bar and weight readout from the lander's state, the clock line (`VALLEY  14:07`)
 # from the planet clock's, the destination and flight deadline under it (`MINE BY 14:30`) from the
 # Economy's, and the green `+€X` payout that rises above the ship and fades. Attached to `UI/Hud`.
+# Its static `format_kg()` and `group_thousands()` (`1 234 567`) also write the Office's masses and
+# `Economy.eur()`'s euros.
 
 const BAR_SIZE := Vector2(24, 200)
 const RIGHT_MARGIN := 48.0
@@ -152,10 +154,10 @@ static func format_kg(kg: float) -> String:
 	return group_thousands(roundi(kg)) + " kg"
 
 
-# A whole number with its thousands split by spaces, as 1 234 567.
+# A whole number of zero or more with its thousands split by spaces, as 1 234 567.
 static func group_thousands(value: int) -> String:
-	var digits := str(absi(value))
-	var grouped := "-" if value < 0 else ""
+	var digits := str(value)
+	var grouped := ""
 	for i in digits.length():
 		if i > 0 and (digits.length() - i) % 3 == 0:
 			grouped += " "

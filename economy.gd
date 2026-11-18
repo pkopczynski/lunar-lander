@@ -5,8 +5,8 @@ extends Node
 # running while the Office pauses the world. It also runs the delivery: loading, the
 # delivery clock and unloading, which settles the Contracts.
 #
-# The Bank account balance (`START_BALANCE` at the start of every run), the Transport offer pool (starting 5, a new one every 30–90 s while
-# fewer than 7 are listed, expiry), the Contracts (`destination()`, the first Contract's, which they
+# The Bank account balance (`START_BALANCE` at the start of every run), the Transport offer pool
+# (starting 5, a new one every 30–90 s while fewer than 7 are listed, expiry), the Contracts (`destination()`, the first Contract's, which they
 # all share, or `null` without any; accepting re-checks that the offer is still there and fits, its
 # destination included; removing one before loading puts it back in the pool in number order, even
 # past 7, with the time left it had when accepted; `offer_expired` when an offer expires), the
