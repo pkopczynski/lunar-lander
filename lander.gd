@@ -8,8 +8,10 @@ extends CharacterBody2D
 # (keeps the ship resting and refuelling but grounded, for unloading), and
 # `start_loading(load)`/`finish_loading()` (keeps the ship Docked, unable to turn or undock,
 # refuelling up to the cap for the incoming Load, which joins the mass only when loading finishes).
-# Attached to `Lander`. `start_docked(type)` turns it into a ship type (hull, collision shape and
-# flame, default dry mass, full Tank) Docked in the parking spot.
+# Attached to `Lander`. It flies the ship in service, an `OwnedShip` handed over by the Hangar's
+# `fly(ship)` (hull, collision shape and flame from its Ship type), and reads only that ship's
+# effective numbers, never its Ship type's. Its fuel is the ship's fuel in tank: the Lander burns
+# and refuels it, and changes nothing else on the ship. `start_docked()` puts it in the parking spot.
 #
 # The Lander's `state` (Flying, Landed, Docked, Crashed) changes only through `enter()`, which
 # starts every state fresh: not held, no lift-off burn, docking armed, leveling stopped, with the
@@ -24,18 +26,19 @@ extends CharacterBody2D
 # re-docking from the spot). Crashed and held make `_physics_process` return early; Landed and
 # Docked skip gravity and judging. Restart is handled in `_unhandled_input`.
 #
-# `_ready()` still makes it a Docked Sparrow behind the Office; choosing a Ship offer calls
-# `start_docked(type)` again. `start_docked()` never asks to enter the Office; only `dock()` does,
-# by emitting `docked_at_station` from the end of its level tween, so the signal waits for the ship
+# It has no ship until the Hangar's `_ready()` hands it SPARROW 1 and docks it behind the Office;
+# a Ship swap hands it a new ship and docks it again. `start_docked()` never asks to enter the
+# Office; only `dock()` does, by emitting `docked_at_station` from the end of its level tween, so the signal waits for the ship
 # to be upright and lifting off first (`enter()` kills the tween) cancels it. The Office answers
 # with the "ENTER THE OFFICE?" popup and calls `hold()`, which freezes `_physics_process`; the
 # Lander doesn't know why it's held. No, and leaving the Office from the main screen, call
 # `release()`; the refuel delay starts over because docking zeroed it and a held ship doesn't count
-# it down. Choosing a ship type calls `start_docked(type)`, and entering Docked releases the hold.
+# it down. A Ship swap calls `start_docked()`, and entering Docked releases the hold.
 # `start_loading()` releases it too: a loading ship isn't held but rests (so it refuels), with
 # `loading` blocking lift-off and turning.
 
-# Per-ship values (thrust, turn rate, masses, tank, burn rate) live in ShipType.
+# Per-ship values (thrust, turn rate, masses, tank, burn rate) are the ship in service's
+# effective numbers (OwnedShip), built from ShipType.
 const GRAVITY := 60.0
 
 # Mass at which thrust, gravity and burn rate are unscaled: a default Sparrow with a full tank.
@@ -99,9 +102,20 @@ enum State { FLYING, LANDED, DOCKED, CRASHED }
 const LANDED_COLOR := Color(0.3, 1.0, 0.4)
 const CRASHED_COLOR := Color(1.0, 0.3, 0.3)
 
-var ship_type: ShipType
-var dry_mass: float
-var fuel: float
+# The ship in service it flies, set by fly(). Its numbers are the ship's effective numbers;
+# ship_type, dry_mass and fuel only read through to it (fuel also writes: burning and refuelling).
+var ship: OwnedShip
+var ship_type: ShipType:
+	get:
+		return ship.ship_type
+var dry_mass: float:
+	get:
+		return ship.dry_mass()
+var fuel: float:
+	get:
+		return ship.fuel
+	set(value):
+		ship.fuel = value
 # Passengers and cargo carried for the Contracts.
 var load_mass := 0.0
 # Change only through enter(), which resets what the old state left behind.
@@ -150,7 +164,6 @@ var refueling := false
 
 func _ready() -> void:
 	rng.randomize()
-	start_docked(ShipType.SPARROW)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -162,19 +175,20 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_tree().reload_current_scene()
 
 
-func become(type: ShipType) -> void:
-	ship_type = type
-	body.polygon = type.hull
-	hull.polygon = type.hull
-	flame.polygon = type.flame
-	dry_mass = type.default_dry_mass
-	fuel = type.tank
+# Takes the ship in service: its Ship type's hull, collision shape and flame, and from now on its
+# effective numbers and fuel in tank. Called by the Hangar, which then calls start_docked().
+func fly(owned: OwnedShip) -> void:
+	ship = owned
+	body.polygon = ship.ship_type.hull
+	hull.polygon = ship.ship_type.hull
+	flame.polygon = ship.ship_type.flame
 
 
-# Every run, and every Ship swap, starts Docked in the station's parking spot as
-# the given ship type, facing up, at rest, at its default dry mass with a full tank.
-func start_docked(type: ShipType) -> void:
-	become(type)
+# Puts the ship in service Docked in the station's parking spot, facing up and at rest, keeping
+# its fuel. Every run and every Ship swap starts here. The type is only checked against the ship
+# in service: it was the ship type to become before ships were owned, and tests still pass it.
+func start_docked(type: ShipType = null) -> void:
+	assert(type == null or type == ship_type, "start_docked() can only dock the ship in service")
 	enter(State.DOCKED)
 	move_to(station.parking_spot.get_center())
 
@@ -259,7 +273,7 @@ func _physics_process(delta: float) -> void:
 	if disturb_left > 0.0:
 		disturb(delta)
 	else:
-		rotation += Input.get_axis("ui_left", "ui_right") * ship_type.turn_rate * delta
+		rotation += Input.get_axis("ui_left", "ui_right") * ship.turn_rate() * delta
 
 	var mass_factor := total_mass() / REFERENCE_MASS
 	velocity.y += GRAVITY * (1.0 + GRAVITY_MASS_SCALE * (mass_factor - 1.0)) * gravity_share() * delta
@@ -267,8 +281,8 @@ func _physics_process(delta: float) -> void:
 	if thrusting:
 		var thrust_dir := Vector2.UP.rotated(rotation)
 		var burn_factor := (dry_mass + fuel + LOAD_BURN_SHARE * load_mass) / REFERENCE_MASS
-		fuel = maxf(fuel - ship_type.burn_rate * burn_factor * burn_multiplier(thrust_dir) * delta, 0.0)
-		velocity += thrust_dir * ship_type.thrust / mass_factor * delta
+		fuel = maxf(fuel - ship.burn_rate() * burn_factor * burn_multiplier(thrust_dir) * delta, 0.0)
+		velocity += thrust_dir * ship.thrust() / mass_factor * delta
 	since_liftoff += delta
 
 	if bouncing:
@@ -305,11 +319,11 @@ func fuel_cap() -> float:
 
 
 func fuel_cap_for(with_load: float) -> float:
-	return clampf(ship_type.maximum_weight - dry_mass - with_load, 0.0, ship_type.tank)
+	return clampf(ship.maximum_weight() - dry_mass - with_load, 0.0, ship.tank())
 
 
 func tank_level() -> float:
-	return fuel / ship_type.tank
+	return fuel / ship.tank()
 
 
 func gravity_share() -> float:
@@ -491,11 +505,11 @@ func settle() -> void:
 func rest(delta: float) -> void:
 	# A docked ship may turn in place to face the way out.
 	if state == State.DOCKED and not loading and not (level_tween and level_tween.is_running()):
-		rotation += Input.get_axis("ui_left", "ui_right") * ship_type.turn_rate * delta
+		rotation += Input.get_axis("ui_left", "ui_right") * ship.turn_rate() * delta
 	rest_time += delta
 	refueling = rest_time >= REFUEL_DELAY and fuel < fuel_cap()
 	if refueling:
-		fuel = minf(fuel + ship_type.tank * REFUEL_TANK_SHARE * delta, fuel_cap())
+		fuel = minf(fuel + ship.tank() * REFUEL_TANK_SHARE * delta, fuel_cap())
 	show_rest_message()
 
 
