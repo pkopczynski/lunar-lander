@@ -5,8 +5,8 @@ extends Node
 # running while the Office pauses the world. It also runs the delivery: loading, the
 # delivery clock and unloading, which settles the Contracts.
 #
-# The Bank account balance, the Transport offer pool (starting 5, a new one every 30–90 s while
-# fewer than 7 are listed, expiry), the Contracts (`destination()`, the first Contract's, which they
+# The Bank account balance (`START_BALANCE` at the start of every run), the Transport offer pool
+# (starting 5, a new one every 30–90 s while fewer than 7 are listed, expiry), the Contracts (`destination()`, the first Contract's, which they
 # all share, or `null` without any; accepting re-checks that the offer is still there and fits, its
 # destination included; removing one before loading puts it back in the pool in number order, even
 # past 7, with the time left it had when accepted; `offer_expired` when an offer expires), the
@@ -36,6 +36,8 @@ const START_OFFERS := 5
 const MAX_OFFERS := 7
 const MIN_OFFER_INTERVAL := 30.0
 const MAX_OFFER_INTERVAL := 90.0
+# Every run starts with this much in the Bank account, in euros.
+const START_BALANCE := 20000
 
 # Loading takes LOADING_TIME + LOADING_TIME_PER_PASSENGER per passenger + LOADING_TIME_PER_TONNE
 # per 1 000 kg of cargo, in seconds.
@@ -58,7 +60,7 @@ const UNLOADING_TEXT := "Unloading… %ds"
 enum Phase { NONE, LOADING, DELIVERING, UNLOADING }
 
 # May go negative.
-var balance := 0
+var balance := START_BALANCE
 # One per delivered Contract, newest first.
 var transactions: Array[TransportOffer.Transaction] = []
 # The Transport offers on the Terminal, oldest first.
@@ -343,6 +345,6 @@ static func largest_cargo() -> float:
 	return most
 
 
-# Euros with the sign first, as -€120; never €-0.
+# Euros with the sign first and thousands split by spaces, as -€12 000; never €-0.
 static func eur(amount: int) -> String:
-	return ("-€%d" if amount < 0 else "€%d") % absi(amount)
+	return ("-€%s" if amount < 0 else "€%s") % Hud.group_thousands(absi(amount))

@@ -136,3 +136,19 @@ func test_deadlines_and_expiry_stay_the_same_everywhere() -> void:
 				"%s offer #%03d deadline %.0f s" % [location.name, offer.number, offer.deadline])
 			check(offer.time_left >= 180 and offer.time_left <= 600,
 				"%s offer #%03d open for %.0f s" % [location.name, offer.number, offer.time_left])
+
+
+# Valley offers (reward factor 1) pay €15 000 a passenger and €6 000 a tonne at a 120 s deadline,
+# times 0.7–1.3 for luck, and more the shorter the deadline (by the square root). Each reward is
+# rounded to the euro, which on a 100 kg cargo is up to ~€6 a tonne, hence the €10 slack.
+func test_valley_offers_pay_15_000_euros_a_passenger_and_6_000_a_tonne_give_or_take_luck() -> void:
+	for offer: TransportOffer in sample_by_destination()[Location.VALLEY]:
+		var urgency := sqrt(120.0 / offer.deadline)
+		if offer.passengers > 0:
+			var per_passenger := offer.passenger_reward / urgency / offer.passengers
+			check(per_passenger >= 10500.0 - 10.0 and per_passenger <= 19500.0 + 10.0,
+				"#%03d should pay €10 500–19 500 a passenger at 120 s, pays €%.0f" % [offer.number, per_passenger])
+		if offer.cargo_mass > 0.0:
+			var per_tonne := offer.cargo_reward / urgency / (offer.cargo_mass / 1000.0)
+			check(per_tonne >= 4200.0 - 10.0 and per_tonne <= 7800.0 + 10.0,
+				"#%03d should pay €4 200–7 800 a tonne at 120 s, pays €%.0f" % [offer.number, per_tonne])

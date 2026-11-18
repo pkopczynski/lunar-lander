@@ -87,4 +87,4 @@ Each rule below holds in the code today; the parenthesis says where it's enforce
 - **Time is presentation only.** It sets the sky and how deadlines are shown; deadlines and penalties count real seconds from the end of loading (`Economy.delivery_time`).
 - **Settlement:** a delivered Contract pays its reward less the overdue penalty, never below €0, and €0 away from its destination; a cancelled one pays minus its cancellation fee. Each is settled on its own, one Transaction each (`TransportOffer.settlement()`, `cancellation()`).
 - **Only the ground is landed on.** Any other contact (Mountains, terrain, station) is a crash; the pad and all decor have no collider ([ADR 0005](../adr/0005-solid-terrain-vs-decor.md)).
-- **Every run starts the same:** the Office, SPARROW 1 in service and Docked, €0, a fresh offer pool from `#001`, the Valley at an Evening minute ([ADR 0003](../adr/0003-run-state-in-scene-nodes.md)).
+- **Every run starts the same:** the Office, SPARROW 1 in service and Docked, €20 000 in the Bank account, a fresh offer pool from `#001`, the Valley at an Evening minute ([ADR 0003](../adr/0003-run-state-in-scene-nodes.md)).

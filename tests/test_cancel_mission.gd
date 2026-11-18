@@ -42,17 +42,17 @@ func test_yes_charges_each_contract_a_quarter_of_its_reward_and_the_balance_may_
 	var crew := known_offer(1, 0.0)
 	var parts := known_offer(0, 2000.0)
 	parts.passenger_reward = 0
-	parts.cargo_reward = 500
+	parts.cargo_reward = 50000
 	await deliver_and_open_offers([crew, parts])
 	await cancel()
 	check(economy().contracts.is_empty(), "Yes should give up every Contract")
 	check(economy().phase == Economy.Phase.NONE, "the mission should end")
-	# €420 (300 + 120) and €500 (0 + 500): fees €105 and €125.
-	check(economy().balance == -230, "the fees should come off the balance, which may go negative, got %s"
+	# €42 000 (30 000 + 12 000) and €50 000 (0 + 50 000): fees €10 500 and €12 500, off €20 000.
+	check(economy().balance == -3000, "the fees should come off the balance, which may go negative, got %s"
 		% economy().balance)
 	check(office().bank_account.rows() == PackedStringArray([
-			"#%03d TEST RUN  CARGO  -€125" % parts.number,
-			"#%03d TEST RUN  PASSENGERS  -€105" % crew.number]),
+			"#%03d TEST RUN  CARGO  -€12 500" % parts.number,
+			"#%03d TEST RUN  PASSENGERS  -€10 500" % crew.number]),
 		"each Contract should get a transaction with a negative payout, shows %s" % office().bank_account.rows())
 
 
@@ -62,8 +62,8 @@ func test_a_cancelled_contracts_details_show_the_fee_and_cancelled() -> void:
 	await press(&"ui_cancel")
 	await open_bank_account()
 	await press(&"ui_accept")
-	check(office().bank_account.details(0) == PackedStringArray(["BASE VALUE €420", "CANCELLATION FEE -€105",
-			"PAYOUT -€105", "CANCELLED", "SHIP SPARROW"]),
+	check(office().bank_account.details(0) == PackedStringArray(["BASE VALUE €42 000", "CANCELLATION FEE -€10 500",
+			"PAYOUT -€10 500", "CANCELLED", "SHIP SPARROW"]),
 		"the breakdown should show the fee and CANCELLED, shows %s" % office().bank_account.details(0))
 
 

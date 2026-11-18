@@ -29,7 +29,7 @@ func test_landing_on_the_pad_while_delivering_starts_unloading_which_blocks_lift
 
 
 func test_a_mixed_contract_delivered_late_loses_2_percent_of_passengers_and_1_percent_of_cargo_per_whole_second() -> void:
-	# €300 for the passengers and €120 for the cargo, due 10 s after loading.
+	# €30 000 for the passengers and €12 000 for the cargo, due 10 s after loading.
 	var offer := late_offer(1, 1000.0, 10.0)
 	await start_loading([offer])
 	# 3 s + 1 passenger + 1 tonne of loading, then 12.7 s overdue.
@@ -40,9 +40,9 @@ func test_a_mixed_contract_delivered_late_loses_2_percent_of_passengers_and_1_pe
 	# 2 s + 0.5 s + 0.5 s.
 	await seconds(3.5)
 	check(economy().phase == Economy.Phase.NONE, "unloading should be over")
-	# 12 s: €300 − €72 and €120 − €14.40, rounded.
-	check(economy().balance == 334, "the payout should be €334, balance is %s" % economy().balance)
-	check(office().bank_account.rows() == PackedStringArray(["#%03d TEST RUN  PASSENGERS + CARGO  €334" % offer.number]),
+	# 12 s: €30 000 − €7 200 and €12 000 − €1 440.
+	check(economy().balance == Economy.START_BALANCE + 33360, "the payout should be €33 360, balance is %s" % economy().balance)
+	check(office().bank_account.rows() == PackedStringArray(["#%03d TEST RUN  PASSENGERS + CARGO  €33 360" % offer.number]),
 		"the Bank account should show the transaction, shows %s" % office().bank_account.rows())
 
 
@@ -52,8 +52,8 @@ func test_each_part_of_a_late_payout_stops_at_0_euros() -> void:
 	await seconds(5.0 + 60.5)
 	await deliver_by_shortcut()
 	await seconds(3.5)
-	# 60 s: the passengers' €300 would lose €360 but lose only €300; the cargo's €120 loses €72.
-	check(economy().balance == 48, "only the cargo part should still pay, balance is %s" % economy().balance)
+	# 60 s: the passengers' €30 000 would lose €36 000 but lose only €30 000; the cargo's €12 000 loses €7 200.
+	check(economy().balance == Economy.START_BALANCE + 4800, "only the cargo part should still pay, balance is %s" % economy().balance)
 
 
 func test_a_contract_that_pays_nothing_still_gets_a_transaction() -> void:
@@ -63,7 +63,7 @@ func test_a_contract_that_pays_nothing_still_gets_a_transaction() -> void:
 	await seconds(4.0 + 50.5)
 	await deliver_by_shortcut()
 	await seconds(3.0)
-	check(economy().balance == 0, "50 s late, €300 for passengers should pay €0, balance is %s" % economy().balance)
+	check(economy().balance == Economy.START_BALANCE, "50 s late, €30 000 for passengers should pay €0, balance is %s" % economy().balance)
 	check(office().bank_account.rows() == PackedStringArray(["#%03d TEST RUN  PASSENGERS  €0" % offer.number]),
 		"the Bank account should still show the transaction, shows %s" % office().bank_account.rows())
 
@@ -80,12 +80,12 @@ func test_several_contracts_each_get_a_transaction_newest_first_then_the_ship_is
 	# 2 s + 0.5 s + 1 s.
 	await seconds(3.5)
 	check(economy().phase == Economy.Phase.NONE, "unloading should be over")
-	check(economy().balance == 420, "the balance should be €300 + €120, is %s" % economy().balance)
+	check(economy().balance == Economy.START_BALANCE + 42000, "the balance should have grown by €30 000 + €12 000, is %s" % economy().balance)
 	check(office().bank_account.rows() == PackedStringArray([
-			"#%03d TEST RUN  CARGO  €120" % parts.number,
-			"#%03d TEST RUN  PASSENGERS  €300" % crew.number]),
+			"#%03d TEST RUN  CARGO  €12 000" % parts.number,
+			"#%03d TEST RUN  PASSENGERS  €30 000" % crew.number]),
 		"one transaction per Contract, newest first, shows %s" % office().bank_account.rows())
-	check(hud().payout == "+€420", "the total payout should float above the ship, shows %s" % hud().payout)
+	check(hud().payout == "+€42 000", "the total payout should float above the ship, shows %s" % hud().payout)
 	check(economy().contracts.is_empty(), "the Contracts should be cleared")
 	check(lander().total_mass() == ShipType.SPARROW.default_dry_mass + lander().fuel,
 		"the Load should be off, total %s" % lander().total_mass())
@@ -111,7 +111,7 @@ func test_landing_again_neither_restarts_unloading_nor_pays_twice() -> void:
 	check(economy().phase == Economy.Phase.NONE, "unloading should finish on time")
 	await deliver_by_shortcut()
 	await seconds(4.0)
-	check(economy().balance == 420, "the Contract should be paid once, balance is %s" % economy().balance)
+	check(economy().balance == Economy.START_BALANCE + 42000, "the Contract should be paid once, balance is %s" % economy().balance)
 	check(office().bank_account.rows().size() == 1, "one transaction only, shows %s" % office().bank_account.rows())
 	check(message() == "Landed!", "landing empty shows no unloading, got %s" % message())
 
@@ -125,7 +125,7 @@ func test_landing_on_the_pad_without_a_load_works_as_before() -> void:
 	await seconds(0.3)
 	release(&"ui_up")
 	check(lander().state == Lander.State.FLYING, "Up should lift off right away")
-	check(economy().balance == 0 and office().bank_account.rows().is_empty(), "nothing should be paid")
+	check(economy().balance == Economy.START_BALANCE and office().bank_account.rows().is_empty(), "nothing should be paid")
 
 
 func test_the_debug_pad_shortcut_delivers_even_after_a_crash_on_the_surface() -> void:
@@ -137,7 +137,7 @@ func test_the_debug_pad_shortcut_delivers_even_after_a_crash_on_the_surface() ->
 	await deliver_by_shortcut()
 	check(economy().phase == Economy.Phase.UNLOADING, "the shortcut should start unloading")
 	await seconds(3.0)
-	check(economy().balance == 420, "the Contract should pay out, balance is %s" % economy().balance)
+	check(economy().balance == Economy.START_BALANCE + 42000, "the Contract should pay out, balance is %s" % economy().balance)
 
 
 func test_a_crash_then_r_starts_a_new_run_with_the_economy_wiped() -> void:
@@ -149,14 +149,14 @@ func test_a_crash_then_r_starts_a_new_run_with_the_economy_wiped() -> void:
 	await seconds(4.5)
 	await deliver_by_shortcut()
 	await seconds(3.0)
-	check(economy().balance == 420, "the first run should earn €420, balance is %s" % economy().balance)
+	check(economy().balance == Economy.START_BALANCE + 42000, "the first run should earn €42 000, balance is %s" % economy().balance)
 	await open_terminal_for_contract()
 	await crash_in_deep_space()
 	await restart()
 	check(office().showing and office().screen == Office.Screen.MAIN, "a new run should open the Office main screen")
 	check(lander().ship_type == ShipType.SPARROW, "a new run should start in the Sparrow")
-	check(economy().balance == 0, "the balance should be €0 again, is %s" % economy().balance)
-	check(office().bank_account.lines() == PackedStringArray(["PILOT", "BALANCE €0"]), "the Bank account should read €0, shows %s" % office().bank_account.lines())
+	check(economy().balance == 20000, "the balance should be €20 000 again, is %s" % economy().balance)
+	check(office().bank_account.lines() == PackedStringArray(["PILOT", "BALANCE €20 000"]), "the Bank account should read €20 000, shows %s" % office().bank_account.lines())
 	check(office().bank_account.rows().is_empty(), "no transactions should remain, shows %s" % office().bank_account.rows())
 	check(economy().contracts.is_empty(), "no Contracts should remain")
 	check(economy().phase == Economy.Phase.NONE, "no delivery should be under way")

@@ -245,8 +245,8 @@ func known_offer(passengers: int, cargo_mass: float, time_left := 1000.0) -> Tra
 	offer.cargo_mass = cargo_mass
 	offer.deadline = 90.0
 	offer.time_left = time_left
-	offer.passenger_reward = 300
-	offer.cargo_reward = 120
+	offer.passenger_reward = 30000
+	offer.cargo_reward = 12000
 	return offer
 
 

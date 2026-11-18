@@ -70,6 +70,7 @@ Traps that span several scripts. Traps tied to one place are comments at that co
 
 Godot 4.7.2 isn't assumed to be on `PATH`: `Godot` below stands for your editor binary (on the maintainer's Mac, `~/Downloads/Godot.app/Contents/MacOS/Godot`). The committed `.claude/settings.json` pre-allows these commands for agents.
 
+- **Agents: prefer the Godot MCP server** whenever its editor bridge is connected (`godot_health_check`): use it to parse-check scripts, read scenes and nodes, edit scenes and smoke-run (`godot_runtime_run_and_capture`). Run the tests with the command below even then: MCP has no test runner, and that command is what CI runs. Screenshots of the running game also stay on the capture tool below, since MCP's runtime tools need a probe autoload the game doesn't register (ADR 0007). Without a connected editor, use the commands below.
 - **Play:** open the project in the editor and press F5.
 - **Import / parse check:** `Godot --headless --path . --import` (run it first in a fresh checkout).
 - **Smoke run** (prints any script errors): `Godot --headless --path . --quit-after 600`
