@@ -27,7 +27,7 @@ Read only what the task touches:
 Every script sits at the repo root.
 
 - `main.tscn`: the only scene, and the main scene (F5 runs it). Its tree is in `docs/architecture/overview.md`.
-- `project.godot`: renderer settings, black clear colour (deep space), main scene, the `restart` input action. The Office uses Godot's built-in `ui_*` actions.
+- `project.godot`: renderer settings, black clear colour (deep space), main scene, the `restart` input action, the enabled `godot_mcp` editor plugin. The Office uses Godot's built-in `ui_*` actions.
 - **Flight:** `lander.gd` (flight physics, fuel, mass, Border, steering, landing and docking judgement, refuelling, restart), `ship_type.gd` (the ship type table), `station.gd` (the station maze and parking spot), `camera.gd` (follows, zooms, shakes), `hud.gd` (fuel bar, mass, clock line, deadline, payout).
 - **Surface:** `world.gd` (layout constants, the current location's ground, pad, terrain and Mountains, hosts the decor and the sky), `location.gd` (the location table), `mountain_look.gd` (the Mountains' look per location).
 - **Clock and sky:** `planet_clock.gd` (local time, current location, drift, time formatters), `sky_look.gd` (local time → sky look, one pure step).
@@ -35,12 +35,13 @@ Every script sits at the repo root.
 - **Economy:** `economy.gd` (balance, offer pool, Contracts, delivery phase, settlement), `transport_offer.gd` (a Transport offer or Contract, and the offer generator).
 - **Office:** `office.gd` (the Terminal, its screens and popups), `transport_offers_screen.gd`, `bank_account_screen.gd`, `expandable_list.gd` (a list whose rows open), `version.gd` (`GameVersion.VERSION`, bumped by release-please).
 - `fonts/`: `Silkscreen-Regular.ttf` and its `OFL.txt` (ADR 0001).
+- `addons/godot_mcp/`: the vendored Godot Editor MCP addon, editor-only, so agents can drive the editor (ADR 0007). Update it with its server, never edit it by hand.
 - `tests/`: headless tests (`run_tests.gd`, `scene_test.gd`, `test_*.gd`). `tools/capture.gd`: the screenshot and frame-time tool. `tools/roadmap/`: builds the roadmap page from GitHub Issues (Python, run by CI; not part of the game).
 
 ## Constraints
 
 - **Compatibility renderer only** (`gl_compatibility`). Godot's Web export supports only this renderer; keep it when changing project settings.
-- **Godot-native nodes and GDScript only.** No external assets except bundled OFL fonts (see ADR 0001), and no addons or GDExtensions; shapes are drawn with `Polygon2D` or `_draw`.
+- **Godot-native nodes and GDScript only.** No external assets except bundled OFL fonts (see ADR 0001), and no addons or GDExtensions in the game; shapes are drawn with `Polygon2D` or `_draw`. The one exception is the editor-only `addons/godot_mcp` (ADR 0007): game code never depends on it.
 - **Stay minimal:** the smallest change that makes a feature playable. Add a new scene or script only when one file genuinely stops being readable.
 - **Read screen size at runtime** with `get_viewport_rect()`. The window uses `canvas_items` stretch with `expand` aspect, so the visible area changes with window shape.
 
