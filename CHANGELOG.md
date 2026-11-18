@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/pkopczynski/lunar-lander/compare/v0.4.0...v0.5.0) (2026-11-18)
+
+
+### Features
+
+* all money reads 100× bigger, and a new run starts with €20 000 ([#127](https://github.com/pkopczynski/lunar-lander/issues/127)) ([37de1ad](https://github.com/pkopczynski/lunar-lander/commit/37de1ad66cce0565583fffd245d7c23b338befc5))
+
 ## [0.4.0](https://github.com/pkopczynski/lunar-lander/compare/v0.3.0...v0.4.0) (2026-11-06)
 
 
