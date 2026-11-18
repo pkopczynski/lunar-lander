@@ -16,8 +16,6 @@ extends RefCounted
 
 enum Action { PUT_IN_SERVICE, SELL }
 
-const Hud := preload("res://hud.gd")
-
 const BERTHS_TEXT := "BERTHS %d/%d"
 const EMPTY_BERTH_TEXT := "EMPTY BERTH: BUY A SHIP IN THE SHIPYARD"
 const COLUMNS := ["SHIP", "CONDITION", "FUEL", "PARACHUTE", "UPGRADES"]
@@ -87,7 +85,7 @@ func handle_page_input(event: InputEvent) -> bool:
 	elif event.is_action_pressed("ui_accept"):
 		take_action()
 	elif event.is_action_pressed("ui_cancel"):
-		office.screen = Office.Screen.HANGAR
+		office.open_screen(Office.Screen.HANGAR)
 	else:
 		return false
 	return true
@@ -107,7 +105,7 @@ func take_action() -> void:
 				economy.get_paid_for_ship(owned)
 				hangar.sell(owned)
 				row = mini(row, hangar.ships.size() - 1)
-				office.screen = Office.Screen.HANGAR)
+				office.open_screen(Office.Screen.HANGAR))
 
 
 # Observable state
@@ -147,7 +145,7 @@ func page_lines() -> PackedStringArray:
 
 func status() -> Array[Array]:
 	return [["CONDITION", condition_text(ship)],
-		["FUEL", "%s / %s" % [Hud.group_thousands(roundi(Office.to_litres(ship.fuel))), Office.litres(ship.tank())]],
+		["FUEL", "%s / %s" % [Office.litres(ship.fuel).trim_suffix(" L"), Office.litres(ship.tank())]],
 		["DRY MASS", Office.kg(ship.dry_mass())], ["CARGO", Office.kg(ship.full_tank_cargo())],
 		["VALUE", Economy.eur(ship.value())]]
 

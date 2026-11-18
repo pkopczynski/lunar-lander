@@ -49,6 +49,8 @@ const SCREEN_TITLES := {
 	Screen.TRANSPORT_OFFERS: "TRANSPORT OFFERS",
 	Screen.BANK_ACCOUNT: "BANK ACCOUNT",
 }
+# Ratings are drawn as this many blocks.
+const RATING_BLOCKS := 5
 # Fuel is shown in litres: this many kg to the litre.
 const KG_PER_LITRE := 0.8
 # Seconds the notice line shows.
@@ -547,7 +549,7 @@ static func outline_bounds(outline: PackedVector2Array) -> Rect2:
 
 
 func draw_rating(rating: int, top_left: Vector2) -> void:
-	for i in ShipyardScreen.RATING_BLOCKS:
+	for i in RATING_BLOCKS:
 		var block := Rect2(top_left + Vector2(i * (BLOCK_SIZE.x + BLOCK_GAP), 0.0), BLOCK_SIZE)
 		if i < rating:
 			terminal.draw_rect(block, GREEN)

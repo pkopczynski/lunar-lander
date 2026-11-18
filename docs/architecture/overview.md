@@ -70,7 +70,7 @@ Lander ──► World (current pad, World constants), Station, Ground
 Camera ──► Lander (its parent), World and Station constants
 ```
 
-- **Data tables sit at the bottom.** `Location`, `ShipType`, `TransportOffer`, `SkyLook`, `MountainLook` and `Skyline` hold no node references. `Location` does name the decor scripts' inner data types (`Backdrop.Ridge`, `Clouds.Cloud`, …), so the location table depends on the decor scripts' data shapes, not their nodes.
+- **Data tables sit at the bottom.** `Location`, `ShipType`, `OwnedShip`, `TransportOffer`, `Transaction`, `SkyLook`, `MountainLook` and `Skyline` hold no node references. `Location` does name the decor scripts' inner data types (`Backdrop.Ridge`, `Clouds.Cloud`, …), so the location table depends on the decor scripts' data shapes, not their nodes.
 - **`World` has no per-location code.** Everything location-specific is data in `location.gd`; the World builds whatever the current `Location` lists.
 - **The Lander flies an `OwnedShip`, never a bare `ShipType`.** It reads the ship in service's effective numbers (`ship.thrust()`, `ship.tank()`…), and its `ship_type`, `dry_mass` and `fuel` read through to that ship. It doesn't know the Hangar: the Hangar hands it the ship with `fly()` and docks it with `start_docked()`.
 - **The Lander doesn't know the Economy, the Hangar or the Office.** They drive it through its public methods (`hold()`, `release()`, `start_docked()`, `start_loading()`, `finish_loading()`, `show_status()`, `lift_off_blocked`) and hear from it only through signals.

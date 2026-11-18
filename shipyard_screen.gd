@@ -7,7 +7,6 @@ extends RefCounted
 # Hangar is full or the balance would go below €0: BUY is then dimmed with a red reason, and Return
 # on it only shows that reason. The Office creates it and calls it while that screen shows.
 
-const RATING_BLOCKS := 5
 const FULL_BLOCK := "■"
 const EMPTY_BLOCK := "□"
 const OWNED_TEXT := "OWNED: %d"
@@ -97,7 +96,7 @@ func hangar_text() -> String:
 
 
 func owned_text() -> String:
-	return OWNED_TEXT % hangar.owned(selected())
+	return OWNED_TEXT % hangar.count_of(selected())
 
 
 func buy_text() -> String:
@@ -127,7 +126,7 @@ func stats() -> Array[Array]:
 		["MAX CAPACITY", Office.kg(type.cargo_capacity)]]
 
 
-# The selected Ship offer's ratings as [label, blocks out of RATING_BLOCKS] pairs.
+# The selected Ship offer's ratings as [label, blocks out of Office.RATING_BLOCKS] pairs.
 func ratings() -> Array[Array]:
 	var type := selected()
 	return [["THRUST", type.thrust_rating], ["HANDLING", type.handling_rating]]
@@ -139,7 +138,7 @@ func picture() -> PackedVector2Array:
 
 
 static func blocks(rating: int) -> String:
-	return FULL_BLOCK.repeat(rating) + EMPTY_BLOCK.repeat(RATING_BLOCKS - rating)
+	return FULL_BLOCK.repeat(rating) + EMPTY_BLOCK.repeat(Office.RATING_BLOCKS - rating)
 
 
 # Drawing
@@ -158,6 +157,7 @@ func draw(area: Rect2) -> void:
 
 	var x := area.position.x + half
 	var width := half
+	var price_red := economy.shortfall(type.price) > 0
 	var rows := stats().size() + ratings().size()
 	var height := Office.NAME_SIZE + Office.LINE_GAP + Office.TEXT_SIZE + Office.LINE_GAP \
 		+ rows * ROW_STEP + Office.LINE_GAP + BUY_BUTTON_SIZE.y + Office.LINE_GAP + Office.TEXT_SIZE
@@ -169,17 +169,17 @@ func draw(area: Rect2) -> void:
 	y += Office.LINE_GAP + Office.TEXT_SIZE
 	office.draw_text(type.flavour.to_upper(), Vector2(x, y), Office.TEXT_SIZE, width)
 	y += Office.LINE_GAP
-	for stat: Array in stats():
+	var all_stats := stats()
+	for i in all_stats.size():
 		y += ROW_STEP
-		office.draw_text(stat[0], Vector2(x, y), ROW_SIZE, RATING_LABEL_WIDTH)
-		var red_price: bool = stat[0] == "PRICE" and economy.shortfall(type.price) > 0
-		office.draw_text(stat[1], Vector2(x + RATING_LABEL_WIDTH, y), ROW_SIZE, width - RATING_LABEL_WIDTH,
-			HORIZONTAL_ALIGNMENT_LEFT, Office.RED if red_price else Office.WHITE)
+		office.draw_text(all_stats[i][0], Vector2(x, y), ROW_SIZE, RATING_LABEL_WIDTH)
+		# The price is the first stat.
+		office.draw_text(all_stats[i][1], Vector2(x + RATING_LABEL_WIDTH, y), ROW_SIZE, width - RATING_LABEL_WIDTH,
+			HORIZONTAL_ALIGNMENT_LEFT, Office.RED if i == 0 and price_red else Office.WHITE)
 	for rating: Array in ratings():
 		y += ROW_STEP
 		office.draw_text(rating[0], Vector2(x, y), ROW_SIZE, RATING_LABEL_WIDTH)
 		office.draw_rating(rating[1], Vector2(x + RATING_LABEL_WIDTH, y - Office.BLOCK_SIZE.y))
 	y += Office.LINE_GAP
 	var button := Rect2(Vector2(x, y), BUY_BUTTON_SIZE)
-	var price_red := economy.shortfall(type.price) > 0
 	office.draw_action(button, BUY_TEXT % "", Economy.eur(type.price), true, reason(), price_red)

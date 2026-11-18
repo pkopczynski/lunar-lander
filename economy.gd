@@ -63,7 +63,7 @@ enum Phase { NONE, LOADING, DELIVERING, UNLOADING }
 
 # May go negative.
 var balance := START_BALANCE
-# One per delivered Contract, newest first.
+# One per change of the balance (a settled Contract, a ship bought or sold), newest first.
 var transactions: Array[Transaction] = []
 # The Transport offers on the Terminal, oldest first.
 var offers: Array[TransportOffer] = []
@@ -176,9 +176,8 @@ func finish_unloading() -> void:
 	for contract in contracts:
 		var transaction := contract.settlement(deadline(), delivery_time, deadline_at(), landed_at, landed_location)
 		transaction.ship = lander.ship_type.name
-		transactions.push_front(transaction)
+		record(transaction)
 		total += transaction.payout
-	balance += total
 	contracts.clear()
 	lander.load_mass = 0.0
 	lander.lift_off_blocked = false
@@ -196,6 +195,7 @@ func get_paid_for_ship(ship: OwnedShip) -> void:
 	record(Transaction.ship_sale(ship))
 
 
+# The one way the balance changes: by a Transaction, added newest first.
 func record(transaction: Transaction) -> void:
 	transactions.push_front(transaction)
 	balance += transaction.payout
@@ -221,8 +221,7 @@ func cancel_mission() -> void:
 	for contract in contracts:
 		var transaction := contract.cancellation()
 		transaction.ship = lander.ship_type.name
-		transactions.push_front(transaction)
-		balance += transaction.payout
+		record(transaction)
 	contracts.clear()
 	lander.load_mass = 0.0
 	lander.show_status("")

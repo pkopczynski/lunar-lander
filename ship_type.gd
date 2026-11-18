@@ -6,8 +6,9 @@ extends RefCounted
 # Each ship type's name, flavour line, hull and flame shapes, default dry mass, Maximum weight,
 # Tank, passenger seats, cargo capacity (the maximum capacity), thrust, fuel burn, turn rate, the
 # derived full-Tank cargo (`full_tank_cargo(passengers)`), the Ship offer's THRUST and HANDLING
-# ratings (out of 5 blocks), its price in the Shipyard (a full Tank included) and its repair rate. The Sparrow, the Mule and the Halo (`ShipType.SPARROW`,
-# `ShipType.MULE`, `ShipType.HALO`, listed in `ShipType.ALL` in Ship offer order).
+# ratings (out of 5 blocks), its price in the Shipyard (a full Tank included) and its repair rate.
+# The Sparrow, the Mule and the Halo (`ShipType.SPARROW`, `ShipType.MULE`, `ShipType.HALO`, listed
+# in `ShipType.ALL` in Ship offer order).
 
 var name: String
 # One line on the Ship offer saying what the ship type is for.

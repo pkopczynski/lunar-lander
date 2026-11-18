@@ -63,5 +63,5 @@ func full() -> bool:
 
 
 # How many owned ships are of this type.
-func owned(type: ShipType) -> int:
+func count_of(type: ShipType) -> int:
 	return ships.filter(func(ship: OwnedShip) -> bool: return ship.ship_type == type).size()
