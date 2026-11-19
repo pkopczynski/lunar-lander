@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/pkopczynski/lunar-lander/compare/v0.5.0...v0.6.0) (2026-11-19)
+
+
+### Features
+
+* buy ships in the Shipyard and choose the ship in service from the Hangar ([#129](https://github.com/pkopczynski/lunar-lander/issues/129)) ([be589e3](https://github.com/pkopczynski/lunar-lander/commit/be589e3ed823b128822ce8222440d25ca4f96566))
+
 ## [0.5.0](https://github.com/pkopczynski/lunar-lander/compare/v0.4.0...v0.5.0) (2026-11-18)
 
 
