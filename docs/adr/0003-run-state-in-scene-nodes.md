@@ -2,7 +2,7 @@
 
 All of a run's state (the Bank account, offers, Contracts, the planet clock, the ship) lives in nodes of `main.tscn`, with no autoloads and no mutable static state. Restart is `reload_current_scene()`, so a new run starts clean just because the scene reloads. The Office pauses the tree while it shows. Whatever must keep running behind it opts in with process mode Always (the Economy, so offer timers run on). Whatever must stop stays pausable (the planet clock).
 
-**Status:** accepted. Recorded on 2026-11-06, after the fact.
+**Status:** accepted. Recorded on 2026-11-06, after the fact. Amended by [ADR 0008](0008-career-replaces-the-run.md): the run is now a Career, R no longer restarts, and a crash is recovered in place; state still lives in scene nodes, and a fresh start still reloads the scene.
 
 ## Why
 

@@ -495,12 +495,14 @@ func draw_contracts(area: Rect2) -> void:
 			area.size.x, Office.BLACK if selected else Office.GREEN, Office.BLACK if selected else Office.WHITE)
 	var button := Rect2(Vector2(area.position.x, y + ROW_HEIGHT), START_BUTTON_SIZE)
 	focused = on_start_button()
+	# START and START LOADING are dimmed while the Office can't be left (a Wreck in service).
+	var lit := Office.DIM_GREEN if office.leave_reason() != "" else Office.GREEN
 	if focused:
-		office.terminal.draw_rect(button, Office.GREEN)
+		office.terminal.draw_rect(button, lit)
 	else:
-		office.terminal.draw_rect(button, Office.GREEN, false, Office.LINE_WIDTH)
+		office.terminal.draw_rect(button, lit, false, Office.LINE_WIDTH)
 	office.draw_text(start_text(), Vector2(button.position.x, button.get_center().y + Office.TEXT_SIZE / 2.0),
-		Office.TEXT_SIZE, button.size.x, HORIZONTAL_ALIGNMENT_CENTER, Office.BLACK if focused else Office.GREEN)
+		Office.TEXT_SIZE, button.size.x, HORIZONTAL_ALIGNMENT_CENTER, Office.BLACK if focused else lit)
 
 
 # The whole Contracts column row at baseline y inverted, like a selected offer, its text sharing

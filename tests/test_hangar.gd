@@ -32,8 +32,8 @@ func test_return_on_a_ship_opens_its_ship_page() -> void:
 	for expected: String in ["SPARROW 1", "IN SERVICE", "NO UPGRADES", "CONDITION 100%", "FUEL 3 200 / 6 250 L",
 			"DRY MASS 10 000 KG", "CARGO 7 000 KG", "VALUE €250 000"]:
 		check(expected in lines, "the Ship page should show %s, shows %s" % [expected, lines])
-	check(hangar_screen().actions() == PackedStringArray(["PUT IN SERVICE", "SELL €125 000"]),
-		"the actions should be PUT IN SERVICE and SELL €125 000, are %s" % hangar_screen().actions())
+	check(hangar_screen().actions() == PackedStringArray(["PUT IN SERVICE", "REPAIR €0", "SELL €125 000"]),
+		"the actions should be PUT IN SERVICE, REPAIR €0 and SELL €125 000, are %s" % hangar_screen().actions())
 	await press(&"ui_cancel")
 	check(office().screen == Office.Screen.HANGAR, "Escape should go back to the berths table")
 
@@ -41,8 +41,8 @@ func test_return_on_a_ship_opens_its_ship_page() -> void:
 func test_the_ship_in_service_cant_be_sold() -> void:
 	await open_hangar()
 	await press(&"ui_accept")
-	check(hangar_screen().reasons() == PackedStringArray(["ALREADY IN SERVICE", "THE SHIP IN SERVICE CAN'T BE SOLD"]),
-		"both actions should be blocked for the ship in service, reasons %s" % hangar_screen().reasons())
+	check(hangar_screen().reasons() == PackedStringArray(["ALREADY IN SERVICE", "NO DAMAGE", "THE SHIP IN SERVICE CAN'T BE SOLD"]),
+		"every action should be blocked for an undamaged ship in service, reasons %s" % hangar_screen().reasons())
 	await select_action(HangarScreen.Action.SELL)
 	check(office().popup == Office.PopupKind.NONE, "Return on a blocked SELL should not ask")
 	check(office().notice() == "THE SHIP IN SERVICE CAN'T BE SOLD", "Return should show the reason, got %s" % office().notice())
@@ -87,8 +87,8 @@ func test_selling_pays_half_the_value_records_a_transaction_and_frees_the_berth(
 	economy().balance = 400000
 	var mule := await buy_ship(ShipType.MULE)
 	mule.fuel = 1000.0
-	check(hangar_screen().actions()[1] == "SELL €200 000", "SELL should offer half of €400 000, shows %s"
-		% hangar_screen().actions()[1])
+	check(hangar_screen().actions()[HangarScreen.Action.SELL] == "SELL €200 000", "SELL should offer half of €400 000, shows %s"
+		% hangar_screen().actions()[HangarScreen.Action.SELL])
 	await select_action(HangarScreen.Action.SELL)
 	check(office().popup_text() == "SELL MULE 1 FOR €200 000?", "the sale should ask first, got %s" % office().popup_text())
 	await press(&"ui_accept")
@@ -104,18 +104,18 @@ func test_a_sale_takes_off_the_repair_cost() -> void:
 	var halo := await buy_ship(ShipType.HALO)
 	halo.condition = 0.9
 	# 50% of €650 000, less 10% × the Halo's 30% repair rate × €650 000.
-	check(hangar_screen().actions()[1] == "SELL €305 500", "a 90%% Halo should sell for €305 500, shows %s"
-		% hangar_screen().actions()[1])
+	check(hangar_screen().actions()[HangarScreen.Action.SELL] == "SELL €305 500", "a 90%% Halo should sell for €305 500, shows %s"
+		% hangar_screen().actions()[HangarScreen.Action.SELL])
 	halo.condition = 0.0
-	check(hangar_screen().actions()[1] == "SELL €130 000", "a wrecked Halo should sell for €130 000, shows %s"
-		% hangar_screen().actions()[1])
+	check(hangar_screen().actions()[HangarScreen.Action.SELL] == "SELL €130 000", "a wrecked Halo should sell for €130 000, shows %s"
+		% hangar_screen().actions()[HangarScreen.Action.SELL])
 
 
 func test_selling_is_allowed_in_debt() -> void:
 	economy().balance = 250000
 	var sparrow := await buy_ship(ShipType.SPARROW)
 	economy().balance = -50000
-	check(hangar_screen().reasons()[1] == "", "debt should not block selling, reasons %s" % hangar_screen().reasons())
+	check(hangar_screen().reasons()[HangarScreen.Action.SELL] == "", "debt should not block selling, reasons %s" % hangar_screen().reasons())
 	await select_action(HangarScreen.Action.SELL)
 	await press(&"ui_accept")
 	check(economy().balance == 75000 and not sparrow in hangar().ships, "selling in debt should pay €125 000, balance %d"

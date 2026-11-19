@@ -73,19 +73,24 @@ func test_the_ship_does_not_move_while_the_office_is_showing() -> void:
 	check(lander().state == Lander.State.DOCKED, "the ship should stay Docked behind the Office")
 
 
-func test_r_returns_to_the_office_main_screen() -> void:
+func test_r_in_deep_space_without_a_crash_does_nothing() -> void:
 	await choose_ship()
-	await restart()
-	check(office().showing and office().screen == Office.Screen.MAIN, "R should return to the Office main screen")
-	check(lander().ship_type == ShipType.SPARROW, "a new run should start with the Sparrow")
-	check(tree.paused, "the world should be paused again")
+	var scene := main()
+	economy().balance = 50000
+	await press(&"restart")
+	await seconds(0.5)
+	check(main() == scene, "R should not reload the scene")
+	check(not office().showing, "R without a crash should not open the Office")
+	check(lander().state == Lander.State.DOCKED, "the ship should stay Docked")
+	check(economy().balance == 50000, "R should not reset the balance, %s" % economy().balance)
 
 
 func test_r_after_a_crash_returns_to_the_office() -> void:
 	await choose_ship()
 	await crash_in_deep_space()
-	await restart()
+	await recover()
 	check(office().showing and office().screen == Office.Screen.MAIN, "R after a crash in deep space should return to the Office main screen")
+	check(tree.paused, "the world should be paused again")
 
 
 func test_the_terminal_shows_the_game_version() -> void:
@@ -104,14 +109,6 @@ func test_bank_account_shows_a_negative_balance_with_the_sign_first() -> void:
 	await open_bank_account()
 	check(office().bank_account.lines().has("BALANCE -€1 234 567"),
 		"the balance should read -€1 234 567, shows %s" % office().bank_account.lines())
-
-
-func test_a_restart_starts_the_balance_at_20_000_euros_again() -> void:
-	economy().balance = 50000
-	await choose_ship()
-	await restart()
-	await open_bank_account()
-	check(office().bank_account.lines().has("BALANCE €20 000"), "a new run should show €20 000, shows %s" % office().bank_account.lines())
 
 
 func test_the_economy_keeps_running_while_the_office_pauses_the_world() -> void:

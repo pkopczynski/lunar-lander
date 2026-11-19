@@ -68,7 +68,7 @@ func test_halo_lands_on_the_pad_with_the_sparrows_limits() -> void:
 	place(Vector2(pad_x(), 580), Vector2(0, 20))
 	await seconds(4.0)
 	check(ship.state == Lander.State.LANDED, "a gentle Halo should land on the pad")
-	await restart()
+	await start_over()
 	await choose_ship(ShipType.HALO)
 	place(Vector2(pad_x(), 520), Vector2(0, Lander.MAX_LANDING_VERTICAL_SPEED + 30.0))
 	await seconds(2.0)
@@ -101,7 +101,7 @@ func test_halo_crosses_the_border_at_maximum_weight() -> void:
 func test_halo_climbs_off_the_pad_at_about_80_percent_of_the_sparrow() -> void:
 	await choose_ship(ShipType.SPARROW)
 	var sparrow: float = await climb_off_the_pad()
-	await restart()
+	await start_over()
 	await choose_ship(ShipType.HALO)
 	var halo: float = await climb_off_the_pad()
 	check_near(halo / sparrow, CLIMB_RATIO, 0.04, "Halo climb / Sparrow climb")
@@ -116,7 +116,7 @@ func test_halo_turns_at_about_2_2_rad_per_s() -> void:
 func test_halo_thrusts_about_24_s_on_a_full_tank() -> void:
 	await choose_ship(ShipType.SPARROW)
 	var sparrow: float = await full_tank_thrust_time()
-	await restart()
+	await start_over()
 	await choose_ship(ShipType.HALO)
 	var halo: float = await full_tank_thrust_time()
 	check_near(halo / sparrow, THRUST_TIME_RATIO, 0.05, "Halo / Sparrow full-tank thrust time (%.1f s / %.1f s)" % [halo, sparrow])

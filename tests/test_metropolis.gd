@@ -54,7 +54,7 @@ func test_touching_a_tower_the_street_or_the_antenna_crashes() -> void:
 		check(message().begins_with("Crashed"), "touching %s should crash, got %s" % [what, message()])
 		check(lander().position.y < spots[what].y + 150.0,
 			"the ship should crash on %s, not fall far past it, y %s" % [what, lander().position.y])
-		await restart()
+		await start_over()
 
 
 # Flies straight down from high above the pad, thrusting whenever the ship sinks faster than a
@@ -82,7 +82,7 @@ func test_every_ship_type_can_fly_down_past_the_city_onto_the_rooftop_pad() -> v
 		check(lander().state == Lander.State.LANDED,
 			"the %s should land on the rooftop pad at its Maximum weight, says %s" % [type.name, message()])
 		check_near(lander().position.x, pad_x(), 1.0, "the %s's x after flying down" % type.name)
-		await restart()
+		await start_over()
 
 
 # The visible area of the world, as the camera shows it.

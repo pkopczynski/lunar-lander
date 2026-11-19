@@ -9,26 +9,36 @@ extends RefCounted
 # The Ship page shows the ship's name, IN SERVICE tag, wireframe and fitted upgrades on the left,
 # CONDITION, FUEL, DRY MASS, CARGO and VALUE in the middle, and its actions in a column on the
 # right: PUT IN SERVICE (the Ship swap: free and instant, each ship keeps its own fuel; blocked with
-# Contracts) and SELL €x (blocked for the ship in service; allowed in debt). Every action asks first;
+# Contracts and for a Wreck), REPAIR €x (instant and always full, at the ship's `repair_cost()`;
+# allowed with Contracts and on credit, its confirm warning in red when it ends below €0; blocked with
+# NO DAMAGE at 100%) and SELL €x (blocked for the ship in service; allowed in debt). A Wreck's
+# Condition reads WRECKED in red. Every action asks first;
 # a blocked one is dimmed with a red reason, and Return on it only shows that reason. Escape goes
 # back to the berths table. The Office creates it and calls it while either screen shows; it calls
 # the Hangar's and the Economy's named operations and never edits a ship.
 
-enum Action { PUT_IN_SERVICE, SELL }
+enum Action { PUT_IN_SERVICE, REPAIR, SELL }
 
 const BERTHS_TEXT := "BERTHS %d/%d"
 const EMPTY_BERTH_TEXT := "EMPTY BERTH: BUY A SHIP IN THE SHIPYARD"
 const COLUMNS := ["SHIP", "CONDITION", "FUEL", "PARACHUTE", "UPGRADES"]
 # Where each column starts, as a share of the table's width.
 const COLUMN_SHARES := [0.0, 0.4, 0.55, 0.72, 0.87]
+const CONDITION_COLUMN := 1
 const NO_PARACHUTE := "–"
 const NO_UPGRADES := "NO UPGRADES"
-const ACTION_LABELS := {Action.PUT_IN_SERVICE: "PUT IN SERVICE", Action.SELL: "SELL "}
+const ACTION_LABELS := {Action.PUT_IN_SERVICE: "PUT IN SERVICE", Action.REPAIR: "REPAIR ", Action.SELL: "SELL "}
 const SERVICE_QUESTION := "PUT %s IN SERVICE?"
 const SELL_QUESTION := "SELL %s FOR %s?"
+const REPAIR_QUESTION := "REPAIR %s FOR %s?"
+const REPAIRED_NOTICE := "%s REPAIRED"
+# The confirm's red line when paying would take the balance below €0.
+const DEBT_WARNING := "THIS LEAVES YOU AT %s"
+const NO_DAMAGE := "NO DAMAGE"
 const ALREADY_IN_SERVICE := "ALREADY IN SERVICE"
 const CONTRACTS_LOCK := "LOCKED: CONTRACTS ACCEPTED"
 const IN_SERVICE_CANT_BE_SOLD := "THE SHIP IN SERVICE CAN'T BE SOLD"
+const WRECK_REASON := "WRECK: REPAIR IT FIRST"
 
 const ROW_HEIGHT := TransportOffersScreen.ROW_HEIGHT
 const ROW_PADDING := TransportOffersScreen.ROW_PADDING
@@ -100,6 +110,14 @@ func take_action() -> void:
 	match action:
 		Action.PUT_IN_SERVICE:
 			office.ask(SERVICE_QUESTION % owned.name, "", func() -> void: hangar.put_in_service(owned))
+		Action.REPAIR:
+			var cost := owned.repair_cost()
+			var after := economy.balance - cost
+			office.ask(REPAIR_QUESTION % [owned.name, "%s"], Economy.eur(cost), func() -> void:
+				economy.pay_for_repair(owned)
+				hangar.repair(owned)
+				office.show_notice(REPAIRED_NOTICE % owned.name),
+				DEBT_WARNING % Economy.eur(after) if after < 0 else "")
 		Action.SELL:
 			office.ask(SELL_QUESTION % [owned.name, "%s"], Economy.eur(owned.sale_price()), func() -> void:
 				economy.get_paid_for_ship(owned)
@@ -150,7 +168,7 @@ func status() -> Array[Array]:
 		["VALUE", Economy.eur(ship.value())]]
 
 
-# The action column's labels, top to bottom: PUT IN SERVICE, SELL €125 000.
+# The action column's labels, top to bottom: PUT IN SERVICE, REPAIR €62 500, SELL €125 000.
 func actions() -> PackedStringArray:
 	var texts := PackedStringArray()
 	for each: Action in Action.values():
@@ -175,8 +193,13 @@ func action_reason(which: Action) -> String:
 		Action.PUT_IN_SERVICE:
 			if ship == hangar.in_service:
 				return ALREADY_IN_SERVICE
+			if ship.is_wreck():
+				return WRECK_REASON
 			if not economy.contracts.is_empty():
 				return CONTRACTS_LOCK
+		Action.REPAIR:
+			if ship.condition >= 1.0:
+				return NO_DAMAGE
 		Action.SELL:
 			if ship == hangar.in_service:
 				return IN_SERVICE_CANT_BE_SOLD
@@ -184,10 +207,18 @@ func action_reason(which: Action) -> String:
 
 
 func action_price(which: Action) -> String:
-	return Economy.eur(ship.sale_price()) if which == Action.SELL else ""
+	match which:
+		Action.REPAIR:
+			return Economy.eur(ship.repair_cost())
+		Action.SELL:
+			return Economy.eur(ship.sale_price())
+	return ""
 
 
+# 87%, or WRECKED (drawn red) for a Wreck.
 static func condition_text(owned: OwnedShip) -> String:
+	if owned.is_wreck():
+		return Office.WRECKED_TEXT
 	return "%d%%" % roundi(owned.condition * 100.0)
 
 
@@ -218,19 +249,21 @@ func draw_table(area: Rect2) -> void:
 		office.terminal.draw_rect(rect, lit if selected else Office.row_tint(i))
 		if owned != null:
 			draw_cells(row_cells(owned), rect, width, Office.BLACK if selected else Office.GREEN,
-				Office.BLACK if selected else Office.WHITE)
+				Office.BLACK if selected else Office.WHITE, owned.is_wreck() and not selected)
 		else:
 			office.draw_text(EMPTY_BERTH_TEXT, cell_baseline(rect, 0.0), Office.TEXT_SIZE, width,
 				HORIZONTAL_ALIGNMENT_LEFT, Office.BLACK if selected else Office.DIM_GREEN)
 		y += ROW_HEIGHT
 
 
-# The first cell in label colour, the others in value colour, each at its column.
-func draw_cells(cells: PackedStringArray, rect: Rect2, width: float, label_color: Color, value_color: Color) -> void:
+# The first cell in label colour, the others in value colour (the Condition red for a Wreck),
+# each at its column.
+func draw_cells(cells: PackedStringArray, rect: Rect2, width: float, label_color: Color, value_color: Color,
+		wrecked := false) -> void:
 	for i in cells.size():
 		var x: float = COLUMN_SHARES[i] * width
-		office.draw_text(cells[i], cell_baseline(rect, x), Office.TEXT_SIZE, -1.0, HORIZONTAL_ALIGNMENT_LEFT,
-			label_color if i == 0 else value_color)
+		var color := label_color if i == 0 else Office.RED if wrecked and i == CONDITION_COLUMN else value_color
+		office.draw_text(cells[i], cell_baseline(rect, x), Office.TEXT_SIZE, -1.0, HORIZONTAL_ALIGNMENT_LEFT, color)
 
 
 static func cell_baseline(rect: Rect2, x: float) -> Vector2:
@@ -254,7 +287,7 @@ func draw_page(area: Rect2) -> void:
 	for pair: Array in status():
 		office.draw_text(pair[0], Vector2(x, y), Office.TEXT_SIZE, STATUS_LABEL_WIDTH)
 		office.draw_text(pair[1], Vector2(x + STATUS_LABEL_WIDTH, y), Office.TEXT_SIZE, third - STATUS_LABEL_WIDTH,
-			HORIZONTAL_ALIGNMENT_LEFT, Office.WHITE)
+			HORIZONTAL_ALIGNMENT_LEFT, Office.RED if pair[1] == Office.WRECKED_TEXT else Office.WHITE)
 		y += Office.TEXT_SIZE + Office.LINE_GAP
 
 	var button := Rect2(Vector2(area.position.x + 2.0 * third, area.position.y), Vector2(third, ACTION_SIZE.y))

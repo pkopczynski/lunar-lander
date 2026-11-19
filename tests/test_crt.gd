@@ -2,12 +2,12 @@ extends "res://tests/scene_test.gd"
 # The Terminal's CRT power-on/off effect (~0.3 s).
 
 
-# R reloads the scene, which starts a new run on the Office.
-func test_the_office_powers_on_at_run_start() -> void:
+# A fresh start opens on the Office.
+func test_the_office_powers_on_at_a_fresh_start() -> void:
 	await choose_ship()
-	await restart(false)
-	check(office().showing, "the Office should show at run start")
-	check(office().powering, "the Terminal should be powering on at run start")
+	await start_over(false)
+	check(office().showing, "the Office should show at a fresh start")
+	check(office().powering, "the Terminal should be powering on at a fresh start")
 	await seconds(0.15)
 	check(office().powering, "power-on should still be running after 0.15 s")
 	await seconds(0.25)
@@ -17,7 +17,7 @@ func test_the_office_powers_on_at_run_start() -> void:
 
 func test_return_during_power_on_does_nothing() -> void:
 	await choose_ship()
-	await restart(false)
+	await start_over(false)
 	await press(&"ui_accept")
 	check(office().screen == Office.Screen.MAIN, "Return during power-on should not open a tile")
 	await wait_for_terminal()

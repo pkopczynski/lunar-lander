@@ -1,6 +1,6 @@
 extends "res://tests/scene_test.gd"
 # In debug builds (which tests run in), R on the Surface teleports the ship to
-# the pad instead of restarting the run.
+# the pad, unless it has crashed: then R is Recovery, as everywhere.
 
 
 func test_r_on_the_surface_teleports_to_the_pad_landed() -> void:
@@ -44,26 +44,23 @@ func test_the_teleported_ship_rests_on_the_pad_and_can_lift_off() -> void:
 	check(ship.position.y < rest_y, "the ship should climb off the pad, y is %s from %s" % [ship.position.y, rest_y])
 
 
-func test_r_after_a_crash_on_the_surface_teleports_to_the_pad() -> void:
+func test_r_after_a_crash_on_the_surface_recovers_instead_of_teleporting() -> void:
 	await choose_ship()
 	var ship := lander()
 	place(Vector2(pad_x() + 400.0, 560), Vector2(0, 200))
 	await seconds(1.0)
 	check(message().begins_with("Crashed"), "should have crashed, got %s" % message())
-	await press(&"restart")
-	await frames(2)
-	check(not office().showing, "R after a crash on the Surface should not open the Office")
-	check(ship.state == Lander.State.LANDED, "the ship should be Landed on the pad after the teleport")
-	check(message().begins_with("Landed!"), "the crash message should clear, got %s" % message())
-	hold(&"ui_up")
-	await seconds(0.5)
-	release(&"ui_up")
-	check(ship.state != Lander.State.LANDED, "the ship should fly again after the teleport")
+	await recover()
+	check(ship.state == Lander.State.DOCKED and ship.in_deep_space, "the Wreck should be Docked at the station, not on the pad")
 
 
-func test_r_while_flying_in_deep_space_returns_to_the_office() -> void:
+func test_r_while_flying_in_deep_space_does_nothing() -> void:
 	await choose_ship()
+	var scene := main()
 	place(Vector2(World.WORLD_WIDTH / 4.0, World.BORDER_Y - 600.0), Vector2(50, -50))
 	await seconds(0.2)
-	await restart()
-	check(office().showing, "R in deep space should return to the Office")
+	await press(&"restart")
+	await frames(2)
+	check(main() == scene, "R in deep space should not reload the scene")
+	check(not office().showing, "R in deep space should not open the Office")
+	check(lander().state == Lander.State.FLYING, "the ship should keep flying")

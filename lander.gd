@@ -3,7 +3,8 @@ extends CharacterBody2D
 # Flight physics, fuel, mass (`load_mass`, the Load) and the fuel cap (`fuel_cap()`), border
 # crossing and its disturbance (with a seedable `rng`), steering, landing and docking judgement (the
 # "on the pad" check reads the current location's pad through `pad_center_x()`), refuelling, result
-# display (with a `status` line, set through `show_status()`, under Docked!/Landed!), restart,
+# display (with a `status` line, set through `show_status()`, under Docked!/Landed!), the R key
+# (`recovery_requested` after a crash, else the debug pad shortcut on the Surface; it never restarts),
 # `landed_on_pad` (from a real landing and from the debug pad shortcut) and `lift_off_blocked`
 # (keeps the ship resting and refuelling but grounded, for unloading), and
 # `start_loading(load)`/`finish_loading()` (keeps the ship Docked, unable to turn or undock,
@@ -24,7 +25,8 @@ extends CharacterBody2D
 # pad while unloading stays grounded; the Economy clears it when unloading finishes. `lift_off()` is
 # the only transition that looks at the state it leaves (the lift-off burn from the pad, no
 # re-docking from the spot). Crashed and held make `_physics_process` return early; Landed and
-# Docked skip gravity and judging. Restart is handled in `_unhandled_input`.
+# Docked skip gravity and judging. R is handled in `_unhandled_input`. Entering Crashed emits
+# `crashed`; the Lander still flies a Wreck like any ship, since only the Office keeps one docked.
 #
 # It has no ship until the Hangar's `_ready()` hands it SPARROW 1 and docks it behind the Office;
 # a Ship swap hands it a new ship and docks it again. `start_docked()` never asks to enter the
@@ -97,11 +99,16 @@ const SOFT_WALL_PUSH := 300.0
 signal docked_at_station
 # Landed on the pad, by a real landing or the debug pad shortcut.
 signal landed_on_pad
+# Entered Crashed: the Hangar makes the ship a Wreck and the Economy settles the crash.
+signal crashed
+# R while Crashed: the Office performs Recovery. The Lander doesn't know who answers.
+signal recovery_requested
 
 enum State { FLYING, LANDED, DOCKED, CRASHED }
 
 const LANDED_COLOR := Color(0.3, 1.0, 0.4)
 const CRASHED_COLOR := Color(1.0, 0.3, 0.3)
+const CRASHED_TEXT := "Crashed!\nPress R for recovery"
 
 # The ship in service it flies, set by fly(). Its numbers are the ship's effective numbers;
 # ship_type, dry_mass and fuel only read through to it (fuel also writes: burning and refuelling).
@@ -168,12 +175,14 @@ func _ready() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("restart"):
-		# A testing shortcut: in debug builds R on the Surface only puts the ship back on the pad.
-		if OS.is_debug_build() and not in_deep_space:
-			reset_to_pad()
-		else:
-			get_tree().reload_current_scene()
+	if not event.is_action_pressed("restart"):
+		return
+	# R never restarts anything. After a crash it asks for Recovery, anywhere.
+	if state == State.CRASHED:
+		recovery_requested.emit()
+	# A testing shortcut: in debug builds R on the Surface puts the ship back on the pad.
+	elif OS.is_debug_build() and not in_deep_space:
+		reset_to_pad()
 
 
 # Takes the ship in service: its Ship type's hull, collision shape and flame, and from now on its
@@ -232,7 +241,7 @@ func enter(new_state: State) -> void:
 			show_state("Docked!", LANDED_COLOR)
 		State.CRASHED:
 			flame.visible = false
-			show_state("Crashed!\nPress R to retry", CRASHED_COLOR)
+			show_state(CRASHED_TEXT, CRASHED_COLOR)
 
 
 func show_state(title: String, color: Color) -> void:
@@ -544,3 +553,4 @@ func lift_off() -> void:
 
 func crash() -> void:
 	enter(State.CRASHED)
+	crashed.emit()

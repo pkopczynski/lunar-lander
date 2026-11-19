@@ -9,7 +9,9 @@ extends RefCounted
 # Seats and the maximum capacity are the type's alone.
 #
 # Its value (`value()`: its Ship type's price, upgrades will add theirs), the repair cost of its
-# missing Condition at the station (`repair_cost()`) and what selling it pays (`sale_price()`:
+# missing Condition at the station (`repair_cost()`: missing share × its type's repair rate × value),
+# whether it's a Wreck (`is_wreck()`, Condition 0%), the fee for its Recovery after a crash
+# (`recovery_fee()`: `RECOVERY_FEE_SHARE` of its type's price) and what selling it pays (`sale_price()`:
 # `SALE_SHARE` of its value less the repair cost, never below €0; the fuel in its tank earns nothing).
 #
 # Owned ships belong to the Hangar: only its named operations create or change them. The one
@@ -17,6 +19,8 @@ extends RefCounted
 
 # Selling a ship pays this share of its value, less its repair cost.
 const SALE_SHARE := 0.5
+# Recovery after a crash costs this share of its Ship type's price (upgrades not counted).
+const RECOVERY_FEE_SHARE := 0.05
 
 var ship_type: ShipType
 var name: String
@@ -67,6 +71,16 @@ func full_tank_cargo(passengers := 0) -> float:
 # Euros: its Ship type's price.
 func value() -> int:
 	return ship_type.price
+
+
+# A crashed ship: Condition 0%. It can't be put in service or fly until repaired.
+func is_wreck() -> bool:
+	return condition <= 0.0
+
+
+# Euros Recovery costs after a crash: a share of its Ship type's price.
+func recovery_fee() -> int:
+	return roundi(ship_type.price * RECOVERY_FEE_SHARE)
 
 
 # Euros to repair its missing Condition at the station.

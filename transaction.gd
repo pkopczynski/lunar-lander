@@ -1,16 +1,20 @@
 class_name Transaction
 extends RefCounted
 # A Transaction: one line in the Bank account, for anything that changed the balance, in euros.
-# A settled Contract (delivered, or `cancelled` for its fee; made by `TransportOffer.settlement()` and
-# `cancellation()`), or a ship purchase or sale (`ship_purchase()`, `ship_sale()`, naming the owned
-# ship). `label()`, `kind_label()` and `detail_pairs()` are how its row and open details read.
+# A settled Contract (delivered, `cancelled` for its fee or `failed` in a crash for its failure fee;
+# made by `TransportOffer.settlement()`, `cancellation()` and `failure()`), a ship purchase or sale
+# (`ship_purchase()`, `ship_sale()`), a recovery fee (`recovery()`) or a repair (`repair()`), each of
+# the last four naming the owned ship. `label()`, `kind_label()` and `detail_pairs()` are how its row and open details read.
 
-enum Kind { CONTRACT, SHIP_PURCHASE, SHIP_SALE }
+enum Kind { CONTRACT, SHIP_PURCHASE, SHIP_SALE, RECOVERY, REPAIR }
 
 const KIND_SHIP := "SHIP"
 const CANCELLED_LABEL := "CANCELLED"
+const FAILED_LABEL := "FAILED"
 const PURCHASE_LABEL := "SHIP PURCHASE — %s"
 const SALE_LABEL := "SHIP SALE — %s"
+const RECOVERY_LABEL := "RECOVERY — %s"
+const REPAIR_LABEL := "REPAIR — %s"
 
 var kind := Kind.CONTRACT
 # What it added to the balance; negative when it took money.
@@ -35,9 +39,15 @@ var destination: String
 var ship: String
 # Given up with its mission: the penalty is the cancellation fee, and nothing was delivered.
 var cancelled := false
-# Ship sales only: the ship's value and the repair cost taken off its share.
+# A Failed contract, lost in a crash: the penalty is the failure fee, and nothing was delivered.
+var failed := false
+# Ship sales: the ship's value and the repair cost taken off its share. Recovery: the Ship type's
+# price. Repairs: the ship's value.
 var value: int
 var repair_cost: int
+# Repairs only: the share of Condition restored and the Ship type's repair rate.
+var repaired: float
+var repair_rate: float
 
 
 static func ship_purchase(owned: OwnedShip) -> Transaction:
@@ -59,9 +69,31 @@ static func ship_sale(owned: OwnedShip) -> Transaction:
 	return transaction
 
 
+# Recovery after a crash: the owned ship's recovery fee.
+static func recovery(owned: OwnedShip) -> Transaction:
+	var transaction := Transaction.new()
+	transaction.kind = Kind.RECOVERY
+	transaction.ship = owned.name
+	transaction.value = owned.ship_type.price
+	transaction.payout = -owned.recovery_fee()
+	return transaction
+
+
+# A repair of the owned ship: its repair cost, restoring all its missing Condition.
+static func repair(owned: OwnedShip) -> Transaction:
+	var transaction := Transaction.new()
+	transaction.kind = Kind.REPAIR
+	transaction.ship = owned.name
+	transaction.value = owned.value()
+	transaction.repaired = 1.0 - owned.condition
+	transaction.repair_rate = owned.ship_type.repair_rate
+	transaction.payout = -owned.repair_cost()
+	return transaction
+
+
 # Landed on another location's pad (drift took the destination away): it pays nothing.
 func wrong_destination() -> bool:
-	return kind == Kind.CONTRACT and not cancelled and delivered_to != destination
+	return kind == Kind.CONTRACT and not cancelled and not failed and delivered_to != destination
 
 
 # Whole seconds overdue, rounded down like the red counter.
@@ -81,6 +113,10 @@ func label() -> String:
 			return PURCHASE_LABEL % ship
 		Kind.SHIP_SALE:
 			return SALE_LABEL % ship
+		Kind.RECOVERY:
+			return RECOVERY_LABEL % ship
+		Kind.REPAIR:
+			return REPAIR_LABEL % ship
 	return contract.label()
 
 
@@ -95,7 +131,8 @@ func kind_label() -> String:
 # flight's, which the penalty was counted against. A wrong destination replaces the penalty
 # and names the destination after where it was delivered. A cancelled Contract shows its fee
 # and CANCELLED (a label without a value) in place of the delivery. A ship purchase shows its
-# price; a sale its value, the share paid for it and the repair cost taken off.
+# price; a sale its value, the share paid for it and the repair cost taken off; a recovery fee the
+# Ship type's price and the fee's share; a repair the share restored, the repair rate and the value.
 func detail_pairs() -> Array[Array]:
 	match kind:
 		Kind.SHIP_PURCHASE:
@@ -104,9 +141,19 @@ func detail_pairs() -> Array[Array]:
 			return [["SHIP", ship], ["VALUE", Economy.eur(value)],
 				["SALE SHARE", "%d%%" % roundi(OwnedShip.SALE_SHARE * 100.0)],
 				["REPAIR COST", Economy.eur(-repair_cost)], ["PAYOUT", Economy.eur(payout)]]
+		Kind.RECOVERY:
+			return [["SHIP", ship], ["SHIP TYPE PRICE", Economy.eur(value)],
+				["RECOVERY FEE", "%d%%" % roundi(OwnedShip.RECOVERY_FEE_SHARE * 100.0)], ["PAYOUT", Economy.eur(payout)]]
+		Kind.REPAIR:
+			return [["SHIP", ship], ["REPAIRED", "%d%%" % roundi(repaired * 100.0)],
+				["REPAIR RATE", "%d%%" % roundi(repair_rate * 100.0)], ["VALUE", Economy.eur(value)],
+				["PAYOUT", Economy.eur(payout)]]
 	if cancelled:
 		return [["BASE VALUE", Economy.eur(reward)], ["CANCELLATION FEE", Economy.eur(-penalty)],
 			["PAYOUT", Economy.eur(payout)], [CANCELLED_LABEL, ""], ["SHIP", ship.to_upper()]]
+	if failed:
+		return [["BASE VALUE", Economy.eur(reward)], ["FAILURE FEE", Economy.eur(-penalty)],
+			["PAYOUT", Economy.eur(payout)], [FAILED_LABEL, ""], ["SHIP", ship.to_upper()]]
 	var deduction := ["PENALTY", Economy.eur(0)]
 	if wrong_destination():
 		deduction = ["WRONG DESTINATION", Economy.eur(-penalty)]
