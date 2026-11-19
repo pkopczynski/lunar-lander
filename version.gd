@@ -4,4 +4,4 @@ class_name GameVersion
 # The game's version (`GameVersion.VERSION`), bumped by release-please; shown dimly at the bottom
 # right of the Terminal. See `CLAUDE.md`.
 
-const VERSION := "0.6.0" # x-release-please-version
+const VERSION := "0.7.0" # x-release-please-version

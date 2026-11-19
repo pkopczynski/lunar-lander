@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/pkopczynski/lunar-lander/compare/v0.6.0...v0.7.0) (2026-11-19)
+
+
+### Features
+
+* a crash makes a Wreck, recovered for a fee and repaired on credit ([#131](https://github.com/pkopczynski/lunar-lander/issues/131)) ([7a16f05](https://github.com/pkopczynski/lunar-lander/commit/7a16f0579d906e1f8ceb853e96847f6c394fa747))
+
 ## [0.6.0](https://github.com/pkopczynski/lunar-lander/compare/v0.5.0...v0.6.0) (2026-11-19)
 
 
