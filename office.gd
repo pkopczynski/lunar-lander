@@ -1,28 +1,35 @@
 class_name Office
 extends CanvasLayer
-# The player's Office: a full-window Terminal with a main screen of tiles opening Ship
-# selection (one Ship offer per ship type), Transport offers and the Bank account. It pauses
-# the world while showing, and has the Hangar put a new owned ship of the chosen ship type in
-# service (`replace_in_service()`); it never edits an owned ship itself.
+# The player's Office: a full-window Terminal with a main screen of tiles opening the Shipyard,
+# the Hangar (and each owned ship's Ship page), Transport offers and the Bank account. It pauses
+# the world while showing. Buying, selling and the Ship swap go through the Hangar's and the
+# Economy's named operations; it never edits an owned ship itself.
 #
 # The Office: resetting the mission rows from the planet clock on every opening and starting the
 # mission at the chosen destination in the chosen start period at START LOADING (or START, a free
 # flight), the Terminal's colours (green, dim green and black, white and red for values, and faint
-# green list tints, alternating by row), the Terminal's screens (the main screen's tiles, Ship
-# selection with its Ship offers and browsing, Transport offers, Bank account), the "ARE YOU SURE?"
-# popups (for a Ship offer and a Transport offer), "REMOVE CONTRACT?", "CANCEL MISSION?" and "ENTER
-# THE OFFICE?" (also while delivering), pausing the world while showing, and drawing the Terminal.
+# green list tints, alternating by row), the header with the balance top right (red below €0), the
+# Terminal's screens (the main screen's tiles; `ShipyardScreen`, `HangarScreen`,
+# `TransportOffersScreen` and `BankAccountScreen` handle the others), the YES/NO popups ("ARE YOU
+# SURE?" for a Transport offer, "REMOVE CONTRACT?", "CANCEL MISSION?", "ENTER THE OFFICE?", also
+# while delivering, and `ask()`'s confirms naming a thing and its price in white), a short notice
+# line (`show_notice()`: a purchase done, or a blocked item's red reason), the building blocks the
+# screens draw with (`draw_action()` for a button that may be blocked, the wireframe, rating
+# blocks, the IN SERVICE tag), pausing the world while showing, and drawing the Terminal.
 # Attached to `Office`.
 
-enum Screen { MAIN, SHIP_SELECTION, TRANSPORT_OFFERS, BANK_ACCOUNT }
-enum PopupKind { NONE, ARE_YOU_SURE, ENTER_OFFICE, ACCEPT_OFFER, REMOVE_CONTRACT, CANCEL_MISSION }
+enum Screen { MAIN, SHIPYARD, HANGAR, SHIP_PAGE, TRANSPORT_OFFERS, BANK_ACCOUNT }
+# CONFIRM is `ask()`'s: its question and price, and what Yes does.
+enum PopupKind { NONE, CONFIRM, ENTER_OFFICE, ACCEPT_OFFER, REMOVE_CONTRACT, CANCEL_MISSION }
 enum Choice { YES, NO }
 
 const HEADER := "ORBITAL FREIGHT CO. // "
 # A hint starting with ← → gets its arrows drawn: Silkscreen has no arrow glyphs.
 const KEY_HINTS := {
 	Screen.MAIN: "← → MOVE   RETURN OPEN   ESC LEAVE",
-	Screen.SHIP_SELECTION: "← → BROWSE   RETURN SELECT   ESC BACK",
+	Screen.SHIPYARD: "← → BROWSE   RETURN BUY   ESC BACK",
+	Screen.HANGAR: "UP DOWN MOVE   RETURN OPEN   ESC BACK",
+	Screen.SHIP_PAGE: "UP DOWN MOVE   RETURN SELECT   ESC BACK",
 	Screen.TRANSPORT_OFFERS: "← → COLUMNS   UP DOWN MOVE   RETURN SELECT   ESC BACK",
 	Screen.BANK_ACCOUNT: "UP DOWN MOVE   RETURN OPEN   ESC BACK",
 }
@@ -32,19 +39,22 @@ const ENTER_OFFICE_TEXT := "ENTER THE OFFICE?"
 const REMOVE_CONTRACT_TEXT := "REMOVE CONTRACT?"
 const CANCEL_MISSION_TEXT := "CANCEL MISSION?"
 const IN_SERVICE_TEXT := "IN SERVICE"
-const SHIP_LOCKED_TEXT := "SHIP LOCKED: CONTRACTS ACCEPTED"
 const VERSION_PREFIX := "V"
 # The main screen's tiles, in order: each opens the screen it names.
-const TILES: Array[Screen] = [Screen.SHIP_SELECTION, Screen.TRANSPORT_OFFERS, Screen.BANK_ACCOUNT]
+const TILES: Array[Screen] = [Screen.SHIPYARD, Screen.HANGAR, Screen.TRANSPORT_OFFERS, Screen.BANK_ACCOUNT]
 const SCREEN_TITLES := {
 	Screen.MAIN: "OFFICE",
-	Screen.SHIP_SELECTION: "SHIP SELECTION",
+	Screen.SHIPYARD: "SHIPYARD",
+	Screen.HANGAR: "HANGAR",
 	Screen.TRANSPORT_OFFERS: "TRANSPORT OFFERS",
 	Screen.BANK_ACCOUNT: "BANK ACCOUNT",
 }
+# Ratings are drawn as this many blocks.
 const RATING_BLOCKS := 5
-const FULL_BLOCK := "■"
-const EMPTY_BLOCK := "□"
+# Fuel is shown in litres: this many kg to the litre.
+const KG_PER_LITRE := 0.8
+# Seconds the notice line shows.
+const NOTICE_TIME := 2.5
 
 const FONT := preload("res://fonts/Silkscreen-Regular.ttf")
 const Hud := preload("res://hud.gd")
@@ -75,15 +85,10 @@ const HINT_SIZE := 16
 const LINE_GAP := 14.0
 const BLOCK_SIZE := Vector2(22, 22)
 const BLOCK_GAP := 6.0
-const RATING_LABEL_WIDTH := 230.0
 const HINT_ARROW_SIZE := 12.0
-# The Ship offer's text block (name, flavour, stats, ratings) is centred on the picture by
-# starting this far above the Ship offer area's middle.
-const SHIP_OFFER_TEXT_LIFT := 4.5 * STAT_SIZE + 2.5 * LINE_GAP
-# Padding around the IN SERVICE tag's text, and how far the tag sits above the name's middle.
+# Padding around the IN SERVICE tag's text.
 const TAG_PADDING := Vector2(8, 4)
-const TAG_RAISE := 4.0
-# Share of the Ship offer area's width and height the wireframe picture may fill.
+# Share of the picture box's width and height the wireframe may fill.
 const PICTURE_SHARE := 0.4
 
 # The CRT power-on/off effect: the picture collapses to a bright line, then a dot
@@ -100,8 +105,11 @@ const GLOW_ALPHA := 0.8
 # ease() curve for the line's stretch and the picture's opening: slow start, fast finish.
 const POWER_EASE := 2.0
 
+# The widest a tile gets; narrower when the row wouldn't fit. A label wider than its tile wraps
+# at its space.
 const TILE_SIZE := Vector2(300, 180)
 const TILE_GAP := 40.0
+const TILE_TEXT_INSET := 16.0
 
 const POPUP_SIZE := Vector2(440, 200)
 const POPUP_BUTTON_SIZE := Vector2(120, 44)
@@ -112,11 +120,19 @@ var screen := Screen.MAIN
 var tile_index := 0
 var popup := PopupKind.NONE
 var selected_button := Choice.YES
-var ship_offer_index := 0
+# A CONFIRM popup's question (with %s where its price goes, white), price, and what Yes does.
+var question := ""
+var question_price := ""
+var on_yes := Callable()
+var notice_text := ""
+var notice_red := false
+var notice_left := 0.0
 # Whether the Terminal is powering on or off. Office input is ignored meanwhile.
 var powering := false
 # How far the Terminal's picture is powered on: 0 is off, 1 fully on.
 var power := 1.0
+var shipyard: ShipyardScreen
+var hangar_screen: HangarScreen
 var transport_offers: TransportOffersScreen
 var bank_account: BankAccountScreen
 
@@ -128,6 +144,8 @@ var bank_account: BankAccountScreen
 
 
 func _ready() -> void:
+	shipyard = ShipyardScreen.new(self, hangar, economy)
+	hangar_screen = HangarScreen.new(self, hangar, economy)
 	transport_offers = TransportOffersScreen.new(self, economy)
 	bank_account = BankAccountScreen.new(self, economy)
 	terminal.draw.connect(draw_terminal)
@@ -139,6 +157,9 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	transport_offers.tick(delta)
 	bank_account.tick(delta)
+	if notice_left > 0.0:
+		notice_left = maxf(notice_left - delta, 0.0)
+		terminal.queue_redraw()
 	if showing and screen in [Screen.TRANSPORT_OFFERS, Screen.BANK_ACCOUNT]:
 		terminal.queue_redraw()
 
@@ -156,11 +177,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		handled()
 	elif screen == Screen.BANK_ACCOUNT and bank_account.handle_input(event):
 		handled()
+	elif screen == Screen.SHIPYARD and shipyard.handle_input(event):
+		handled()
+	elif screen in [Screen.HANGAR, Screen.SHIP_PAGE] and hangar_screen.handle_input(event):
+		handled()
 	elif event.is_action_pressed("ui_cancel"):
 		screen = Screen.MAIN
+		notice_left = 0.0
 		handled()
-	elif screen == Screen.SHIP_SELECTION:
-		handle_ship_offer_input(event)
 
 
 func handle_main_input(event: InputEvent) -> void:
@@ -178,34 +202,40 @@ func handle_main_input(event: InputEvent) -> void:
 	handled()
 
 
-func handle_ship_offer_input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_left"):
-		browse(-1)
-	elif event.is_action_pressed("ui_right"):
-		browse(1)
-	elif event.is_action_pressed("ui_accept"):
-		if in_service_shown():
-			# The ship in service is already in the parking spot: nothing to choose.
-			screen = Screen.MAIN
-		elif not ship_locked_shown():
-			show_popup(PopupKind.ARE_YOU_SURE, Choice.YES)
-	else:
-		return
-	handled()
-
-
 func handled() -> void:
 	get_viewport().set_input_as_handled()
 	terminal.queue_redraw()
 
 
-# Ship selection opens on the ship type of the ship in service, Transport offers on the offer list.
+# The Shipyard opens on the ship type of the ship in service, Transport offers on the offer list.
 func open_screen(which: Screen) -> void:
 	screen = which
-	if which == Screen.SHIP_SELECTION:
-		ship_offer_index = ShipType.ALL.find(hangar.in_service.ship_type)
+	notice_left = 0.0
+	if which == Screen.SHIPYARD:
+		shipyard.open()
 	elif which == Screen.TRANSPORT_OFFERS:
 		transport_offers.focus = TransportOffersScreen.Column.OFFERS
+
+
+func open_ship_page(ship: OwnedShip) -> void:
+	open_screen(Screen.SHIP_PAGE)
+	hangar_screen.open_page(ship)
+
+
+# Asks YES/NO (Yes selected) with this question, its %s replaced by the price in white (none when
+# the price is ""); Yes calls on_yes_call.
+func ask(text: String, price: String, on_yes_call: Callable) -> void:
+	question = text
+	question_price = price
+	on_yes = on_yes_call
+	show_popup(PopupKind.CONFIRM, Choice.YES)
+
+
+# Shows a short line under the screen for NOTICE_TIME: white, or red for a blocked item's reason.
+func show_notice(text: String, red := false) -> void:
+	notice_text = text
+	notice_red = red
+	notice_left = NOTICE_TIME
 
 
 func handle_popup_input(event: InputEvent) -> void:
@@ -222,16 +252,12 @@ func handle_popup_input(event: InputEvent) -> void:
 	handled()
 
 
-# Browsing wraps around at both ends.
-func browse(step: int) -> void:
-	ship_offer_index = posmod(ship_offer_index + step, ShipType.ALL.size())
-
-
 func open() -> void:
 	showing = true
 	visible = true
 	screen = Screen.MAIN
 	popup = PopupKind.NONE
+	notice_left = 0.0
 	transport_offers.reset_mission_rows(clock)
 	get_tree().paused = true
 	power_to(1.0)
@@ -308,11 +334,10 @@ func answer(choice: Choice) -> void:
 			# Docked as before: the ship refuels after the usual delay.
 			close()
 			lander.release()
-		[PopupKind.ARE_YOU_SURE, Choice.YES]:
-			hangar.replace_in_service(selected_ship_offer())
+		[PopupKind.CONFIRM, Choice.YES]:
 			popup = PopupKind.NONE
-			screen = Screen.MAIN
-		[PopupKind.ARE_YOU_SURE, Choice.NO], [PopupKind.ACCEPT_OFFER, Choice.NO], \
+			on_yes.call()
+		[PopupKind.CONFIRM, Choice.NO], [PopupKind.ACCEPT_OFFER, Choice.NO], \
 				[PopupKind.REMOVE_CONTRACT, Choice.NO], [PopupKind.CANCEL_MISSION, Choice.NO]:
 			popup = PopupKind.NONE
 		[PopupKind.ACCEPT_OFFER, Choice.YES]:
@@ -339,57 +364,23 @@ func selected_tile() -> String:
 	return SCREEN_TITLES[TILES[tile_index]]
 
 
-func selected_ship_offer() -> ShipType:
-	return ShipType.ALL[ship_offer_index]
+func screen_title() -> String:
+	if screen == Screen.SHIP_PAGE:
+		return "%s // %s" % [SCREEN_TITLES[Screen.HANGAR], hangar_screen.ship.name]
+	return SCREEN_TITLES[screen]
 
 
-# The Ship offer of the ship in service's type (the one in the parking spot).
-func in_service_shown() -> bool:
-	return showing and screen == Screen.SHIP_SELECTION and selected_ship_offer() == hangar.in_service.ship_type
+func balance_text() -> String:
+	return Economy.eur(economy.balance)
 
 
-# Ship swapping is locked while there are Contracts: the Load is for the ship in service.
-func ship_locked_shown() -> bool:
-	return showing and screen == Screen.SHIP_SELECTION and not in_service_shown() \
-		and not economy.contracts.is_empty()
+func balance_red() -> bool:
+	return economy.balance < 0
 
 
-func ship_offer_indicator() -> String:
-	return "< %d/%d >" % [ship_offer_index + 1, ShipType.ALL.size()]
-
-
-# The text the selected Ship offer shows, with ratings written as blocks.
-func ship_offer_lines() -> PackedStringArray:
-	var type := selected_ship_offer()
-	var lines := PackedStringArray([type.name.to_upper(), type.flavour.to_upper()])
-	for stat: Array in ship_offer_stats():
-		lines.append("%s %s" % stat)
-	for rating: Array in ship_offer_ratings():
-		lines.append("%s %s" % [rating[0], blocks(rating[1])])
-	lines.append(ship_offer_indicator())
-	if in_service_shown():
-		lines.append(IN_SERVICE_TEXT)
-	if ship_locked_shown():
-		lines.append(SHIP_LOCKED_TEXT)
-	return lines
-
-
-# The selected Ship offer's numbers as [label, text] pairs.
-func ship_offer_stats() -> Array[Array]:
-	var type := selected_ship_offer()
-	return [["TANK", kg(type.tank)], ["SEATS", str(type.passenger_seats)],
-		["CARGO", kg(type.full_tank_cargo())], ["MAX CAPACITY", kg(type.cargo_capacity)]]
-
-
-# The selected Ship offer's ratings as [label, blocks out of RATING_BLOCKS] pairs.
-func ship_offer_ratings() -> Array[Array]:
-	var type := selected_ship_offer()
-	return [["THRUST", type.thrust_rating], ["HANDLING", type.handling_rating]]
-
-
-# The wireframe picture's outline: the ship type's hull.
-func ship_offer_picture() -> PackedVector2Array:
-	return selected_ship_offer().hull
+# The notice line showing, or "".
+func notice() -> String:
+	return notice_text if notice_left > 0.0 else ""
 
 
 # Alternating faint list row tints, lighter on even rows.
@@ -401,8 +392,13 @@ static func kg(value: float) -> String:
 	return Hud.format_kg(value).to_upper()
 
 
-static func blocks(rating: int) -> String:
-	return FULL_BLOCK.repeat(rating) + EMPTY_BLOCK.repeat(RATING_BLOCKS - rating)
+static func to_litres(kg_of_fuel: float) -> float:
+	return kg_of_fuel / KG_PER_LITRE
+
+
+# Fuel in kg written in litres, as 6 250 L.
+static func litres(kg_of_fuel: float) -> String:
+	return Hud.group_thousands(roundi(to_litres(kg_of_fuel))) + " L"
 
 
 # Drawing
@@ -447,12 +443,12 @@ func draw_screen(view: Rect2) -> void:
 	terminal.draw_rect(frame, GREEN, false, BORDER_WIDTH)
 	var inner := frame.grow(-PADDING)
 
-	draw_text(HEADER + SCREEN_TITLES[screen], Vector2(inner.position.x, inner.position.y + HEADER_SIZE), HEADER_SIZE)
+	var header_baseline := Vector2(inner.position.x, inner.position.y + HEADER_SIZE)
+	draw_text(HEADER + screen_title(), header_baseline, HEADER_SIZE)
+	draw_text(balance_text(), header_baseline, HEADER_SIZE, inner.size.x, HORIZONTAL_ALIGNMENT_RIGHT,
+		RED if balance_red() else WHITE)
 	var rule_y := inner.position.y + HEADER_SIZE + LINE_GAP
 	terminal.draw_line(Vector2(frame.position.x, rule_y), Vector2(frame.end.x, rule_y), GREEN, LINE_WIDTH)
-	if screen == Screen.SHIP_SELECTION:
-		draw_text(ship_offer_indicator(), Vector2(inner.position.x, rule_y + LINE_GAP + TEXT_SIZE), TEXT_SIZE,
-			inner.size.x, HORIZONTAL_ALIGNMENT_RIGHT)
 
 	var hint_y := inner.end.y
 	var hint_rule_y := hint_y - HINT_SIZE - LINE_GAP
@@ -465,12 +461,17 @@ func draw_screen(view: Rect2) -> void:
 	match screen:
 		Screen.MAIN:
 			draw_tiles(body)
-		Screen.SHIP_SELECTION:
-			draw_ship_offer(body)
+		Screen.SHIPYARD:
+			shipyard.draw(body)
+		Screen.HANGAR, Screen.SHIP_PAGE:
+			hangar_screen.draw(body)
 		Screen.TRANSPORT_OFFERS:
 			transport_offers.draw(body)
 		Screen.BANK_ACCOUNT:
 			bank_account.draw(body)
+	if notice() != "":
+		draw_text(notice(), Vector2(body.position.x, body.end.y), TEXT_SIZE, body.size.x, HORIZONTAL_ALIGNMENT_LEFT,
+			RED if notice_red else WHITE)
 	if popup != PopupKind.NONE:
 		draw_popup(view)
 
@@ -485,50 +486,47 @@ func body_area(view: Rect2) -> Rect2:
 
 # The main screen's tiles in a row across the middle; the selected one is inverted.
 func draw_tiles(area: Rect2) -> void:
-	var row_width := TILES.size() * TILE_SIZE.x + (TILES.size() - 1) * TILE_GAP
+	var tile_width := minf(TILE_SIZE.x, (area.size.x - (TILES.size() - 1) * TILE_GAP) / TILES.size())
+	var row_width := TILES.size() * tile_width + (TILES.size() - 1) * TILE_GAP
 	var x := area.get_center().x - row_width / 2.0
 	var labels := tile_labels()
 	for i in TILES.size():
-		var tile := Rect2(Vector2(x, area.get_center().y - TILE_SIZE.y / 2.0), TILE_SIZE)
+		var tile := Rect2(Vector2(x, area.get_center().y - TILE_SIZE.y / 2.0), Vector2(tile_width, TILE_SIZE.y))
 		var selected := i == tile_index
 		if selected:
 			terminal.draw_rect(tile, GREEN)
 		else:
 			terminal.draw_rect(tile, GREEN, false, BORDER_WIDTH)
-		draw_text(labels[i], Vector2(tile.position.x, tile.get_center().y + STAT_SIZE / 2.0), STAT_SIZE,
-			tile.size.x, HORIZONTAL_ALIGNMENT_CENTER, BLACK if selected else GREEN)
-		x += TILE_SIZE.x + TILE_GAP
+		var lines := PackedStringArray([labels[i]])
+		if text_width(labels[i], STAT_SIZE) > tile_width - 2.0 * TILE_TEXT_INSET:
+			lines = labels[i].split(" ", false, 1)
+		var y := tile.get_center().y + STAT_SIZE / 2.0 - (lines.size() - 1) * (STAT_SIZE + LINE_GAP) / 2.0
+		for line in lines:
+			draw_text(line, Vector2(tile.position.x, y), STAT_SIZE, tile.size.x, HORIZONTAL_ALIGNMENT_CENTER,
+				BLACK if selected else GREEN)
+			y += STAT_SIZE + LINE_GAP
+		x += tile_width + TILE_GAP
 
 
-func draw_ship_offer(area: Rect2) -> void:
-	var type := selected_ship_offer()
-	if ship_locked_shown():
-		# Top left, on the < n/N > indicator's line.
-		draw_text(SHIP_LOCKED_TEXT, Vector2(area.position.x, area.position.y + TEXT_SIZE), TEXT_SIZE)
-	var half := area.size.x / 2.0
-	var picture_box := Rect2(area.position, Vector2(half, area.size.y))
-	draw_wireframe(ship_offer_picture(), picture_box)
-
-	var x := area.position.x + half
-	var width := half
-	var y := area.get_center().y - SHIP_OFFER_TEXT_LIFT + NAME_SIZE
-	var title := type.name.to_upper()
-	draw_text(title, Vector2(x, y), NAME_SIZE, width)
-	if in_service_shown():
-		draw_in_service_tag(Vector2(x + text_width(title, NAME_SIZE) + LINE_GAP,
-			y - NAME_SIZE / 2.0 - TEXT_SIZE / 2.0 - TAG_RAISE))
-	y += LINE_GAP + TEXT_SIZE
-	draw_text(type.flavour.to_upper(), Vector2(x, y), TEXT_SIZE, width)
-	y += 2.0 * LINE_GAP
-	for stat: Array in ship_offer_stats():
-		y += STAT_SIZE + LINE_GAP
-		draw_text(stat[0], Vector2(x, y), STAT_SIZE, RATING_LABEL_WIDTH)
-		draw_text(stat[1], Vector2(x + RATING_LABEL_WIDTH, y), STAT_SIZE, width - RATING_LABEL_WIDTH)
-	y += LINE_GAP
-	for rating: Array in ship_offer_ratings():
-		y += STAT_SIZE + LINE_GAP
-		draw_text(rating[0], Vector2(x, y), STAT_SIZE, RATING_LABEL_WIDTH)
-		draw_rating(rating[1], Vector2(x + RATING_LABEL_WIDTH, y - BLOCK_SIZE.y))
+# A button the player may not be able to take: its label and a price, inverted while selected.
+# A blocked one is dimmed, with its red reason under it; an unaffordable price is red.
+func draw_action(button: Rect2, label: String, price: String, selected: bool, reason := "", price_red := false) -> void:
+	var blocked := reason != ""
+	var lit := DIM_GREEN if blocked else GREEN
+	if selected:
+		terminal.draw_rect(button, lit)
+	else:
+		terminal.draw_rect(button, lit, false, LINE_WIDTH)
+	var label_color := BLACK if selected else lit
+	var price_color := RED if price_red else BLACK if selected else DIM_WHITE if blocked else WHITE
+	var width := text_width(label, TEXT_SIZE) + text_width(price, TEXT_SIZE)
+	var baseline := Vector2(button.get_center().x - width / 2.0, button.get_center().y + TEXT_SIZE / 2.0)
+	draw_text(label, baseline, TEXT_SIZE, -1.0, HORIZONTAL_ALIGNMENT_LEFT, label_color)
+	draw_text(price, baseline + Vector2(text_width(label, TEXT_SIZE), 0.0), TEXT_SIZE, -1.0,
+		HORIZONTAL_ALIGNMENT_LEFT, price_color)
+	if blocked:
+		draw_text(reason, Vector2(button.position.x, button.end.y + LINE_GAP + TEXT_SIZE), TEXT_SIZE, -1.0,
+			HORIZONTAL_ALIGNMENT_LEFT, RED)
 
 
 func draw_wireframe(outline: PackedVector2Array, box: Rect2) -> void:
@@ -595,6 +593,8 @@ func version_text() -> String:
 
 func popup_text() -> String:
 	match popup:
+		PopupKind.CONFIRM:
+			return question % question_price if question_price != "" else question
 		PopupKind.ENTER_OFFICE:
 			return ENTER_OFFICE_TEXT
 		PopupKind.REMOVE_CONTRACT:
@@ -610,8 +610,16 @@ func draw_popup(view: Rect2) -> void:
 	var box := Rect2(view.get_center() - size / 2.0, size)
 	terminal.draw_rect(box, BLACK)
 	terminal.draw_rect(box, GREEN, false, BORDER_WIDTH)
-	draw_text(text, Vector2(box.position.x, box.position.y + PADDING + STAT_SIZE), STAT_SIZE,
-		box.size.x, HORIZONTAL_ALIGNMENT_CENTER)
+	# The question green and its price white, centred together.
+	var parts := PackedStringArray([text])
+	if popup == PopupKind.CONFIRM and question_price != "":
+		parts = question.split("%s")
+		parts.insert(1, question_price)
+	var text_x := box.get_center().x - text_width(text, STAT_SIZE) / 2.0
+	for i in parts.size():
+		draw_text(parts[i], Vector2(text_x, box.position.y + PADDING + STAT_SIZE), STAT_SIZE, -1.0,
+			HORIZONTAL_ALIGNMENT_LEFT, WHITE if parts.size() > 1 and i == 1 else GREEN)
+		text_x += text_width(parts[i], STAT_SIZE)
 	var buttons_width := POPUP_BUTTON_SIZE.x * 2.0 + POPUP_BUTTON_GAP
 	var button_y := box.end.y - PADDING - POPUP_BUTTON_SIZE.y
 	var x := box.get_center().x - buttons_width / 2.0

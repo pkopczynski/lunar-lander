@@ -107,35 +107,42 @@ _Avoid_: Dock, slot, destination
 ## Office
 
 **Office**:
-The player's transport company office on the station, where every run begins. There the player picks a ship type, takes on transport offers and checks the bank account.
+The player's transport company office on the station, where every run begins. There the player buys ships in the shipyard, chooses the ship in service in the hangar, takes on transport offers and checks the bank account.
 _Avoid_: Menu, shop
 
 **Terminal**:
-The retro green-on-black screen in the office that shows ship offers, transport offers and the bank account.
+The retro green-on-black screen in the office that shows the shipyard, the hangar, transport offers and the bank account, with the balance always in its header.
 _Avoid_: Monitor, display, console
 
 **Main screen**:
-The terminal's home screen, with one tile each for ship selection, transport offers and the bank account. Every visit to the office starts here, and the player leaves the office from here.
+The terminal's home screen, with four tiles: shipyard, hangar, transport offers and bank account. Every visit to the office starts here, and the player leaves the office from here.
 _Avoid_: Menu, home, dashboard
 
+**Shipyard**:
+The terminal screen where ship offers are bought. A bought ship goes into a free berth of the hangar with a full tank, not into service.
+_Avoid_: Shop, ship selection
+
+**Ship page**:
+The hangar's screen for one owned ship, with its status, its fitted upgrades and its actions (put in service, sell).
+_Avoid_: Ship details, garage
+
 **Ship selection**:
-The terminal screen for browsing ship offers and choosing a ship type.
-_Avoid_: Shop, fleet screen
+Retired: replaced by the shipyard (buying) and the hangar (choosing the ship in service).
 
 **In service**:
-The owned ship (not the ship type) currently in the parking spot: the one the player flies when leaving the office.
+The owned ship (not the ship type) currently in the parking spot: the one the player flies when leaving the office. It can't be sold.
 _Avoid_: Current ship, active ship
 
 **Bank account**:
-The pilot's money, in euros, and the transactions that made it. It starts at €20 000 every run.
+The pilot's money, in euros, and the transactions that made it. It starts at €20 000 every run. Buying never takes it below €0.
 _Avoid_: Wallet, credits, score
 
 **Ship offer**:
-One ship type shown on the terminal, with its picture and characteristics. Taking a ship offer costs nothing.
+One ship type on sale in the shipyard, with its picture, characteristics and price (a full tank included).
 _Avoid_: Offer (on its own), listing, card, product
 
 **Ship swap**:
-Entering the office from the parking spot and choosing another ship type in ship selection. A new owned ship of that type, with a full tank, replaces the one in service in the parking spot. Not possible while the player has contracts.
+Putting another owned ship in service from its ship page: free and instant, and each ship keeps its own fuel. The ship swapped out stays in its berth. Not possible while the player has contracts.
 _Avoid_: Respawn, change ship
 
 ## Transport
@@ -185,7 +192,7 @@ What a contract pays into the bank account once unloaded: its reward less a pena
 _Avoid_: Reward (that's before the penalty), income, score
 
 **Transaction**:
-One line in the bank account per delivered or cancelled contract: its payout (negative for a cancellation fee), opening to show its reward, penalty (or, when unloaded away from its destination, the wrong destination taking the whole reward), the flight's deadline it was settled against and the landing, both as local times, and the location it was delivered to (and its destination, when they differ). A cancelled contract's shows its reward, the cancellation fee and that it was cancelled instead.
+One line in the bank account for anything that changed the balance: a ship purchase or sale (naming the owned ship, opening to show its price, or its value, the selling share and the repair cost), or a delivered or cancelled contract: its payout (negative for a cancellation fee), opening to show its reward, penalty (or, when unloaded away from its destination, the wrong destination taking the whole reward), the flight's deadline it was settled against and the landing, both as local times, and the location it was delivered to (and its destination, when they differ). A cancelled contract's shows its reward, the cancellation fee and that it was cancelled instead.
 _Avoid_: Receipt, entry, log
 
 **Load**:
@@ -203,12 +210,20 @@ A kind of ship with its own shape, dry mass, maximum weight, tank, passenger sea
 _Avoid_: Model, class, variant
 
 **Owned ship**:
-A ship the player owns: its ship type, its name (the type and a number counting up per type, never reused: SPARROW 1, MULE 2), its fuel in tank and its condition. It flies with its ship type's numbers.
+A ship the player owns: its ship type, its name (the type and a number counting up per type, never reused, even after a sale: SPARROW 1, MULE 2), its fuel in tank and its condition. It flies with its ship type's numbers. Its value is its ship type's price.
 _Avoid_: Fleet ship
 
 **Hangar**:
-Where the player's owned ships are kept at the station. For now it holds just one, the ship in service.
+Where the player's owned ships are kept at the station, seen only on the terminal as a table of berths. Only the ship in service shows in the parking spot.
 _Avoid_: Fleet, garage
+
+**Berth**:
+One place for an owned ship in the hangar, which has four; the ship in service takes one too. Buying needs a free berth.
+_Avoid_: Slot
+
+**Selling a ship**:
+Giving up an owned ship that isn't in service for half its value less its repair cost, never below €0. The fuel in its tank earns nothing. Allowed in debt.
+_Avoid_: Scrapping, trading in
 
 **Sparrow**:
 The small, light, quick triangle ship. It's the ship type the game started with.

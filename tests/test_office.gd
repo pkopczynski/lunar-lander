@@ -5,29 +5,31 @@ func test_run_starts_on_the_office_main_screen_with_the_world_paused() -> void:
 	await frames(2)
 	check(office().showing, "a fresh run should show the Office")
 	check(office().screen == Office.Screen.MAIN, "a fresh run should open on the main screen")
-	check(office().tile_labels() == PackedStringArray(["SHIP SELECTION", "TRANSPORT OFFERS", "BANK ACCOUNT"]),
-		"the main screen should show three tiles, shows %s" % office().tile_labels())
-	check(office().selected_tile() == "SHIP SELECTION", "SHIP SELECTION should be selected, got %s" % office().selected_tile())
+	check(office().tile_labels() == PackedStringArray(["SHIPYARD", "HANGAR", "TRANSPORT OFFERS", "BANK ACCOUNT"]),
+		"the main screen should show exactly four tiles, shows %s" % office().tile_labels())
+	check(office().selected_tile() == "SHIPYARD", "SHIPYARD should be selected, got %s" % office().selected_tile())
 	check(office().popup == Office.PopupKind.NONE, "no popup should be open at run start")
 	check(tree.paused, "the world should be paused while the Office is showing")
 
 
 func test_left_right_up_and_down_move_between_the_tiles() -> void:
 	await press(&"ui_right")
-	check(office().selected_tile() == "TRANSPORT OFFERS", "Right should select TRANSPORT OFFERS, got %s" % office().selected_tile())
+	check(office().selected_tile() == "HANGAR", "Right should select HANGAR, got %s" % office().selected_tile())
 	await press(&"ui_down")
-	check(office().selected_tile() == "BANK ACCOUNT", "Down should select BANK ACCOUNT, got %s" % office().selected_tile())
+	check(office().selected_tile() == "TRANSPORT OFFERS", "Down should select TRANSPORT OFFERS, got %s" % office().selected_tile())
+	await press(&"ui_right")
 	await press(&"ui_right")
 	check(office().selected_tile() == "BANK ACCOUNT", "Right on the last tile should keep it, got %s" % office().selected_tile())
-	await press(&"ui_up")
+	for i in 3:
+		await press(&"ui_up")
+	check(office().selected_tile() == "SHIPYARD", "Up should go back to SHIPYARD, got %s" % office().selected_tile())
 	await press(&"ui_left")
-	check(office().selected_tile() == "SHIP SELECTION", "Up and Left should go back to SHIP SELECTION, got %s" % office().selected_tile())
-	await press(&"ui_left")
-	check(office().selected_tile() == "SHIP SELECTION", "Left on the first tile should keep it, got %s" % office().selected_tile())
+	check(office().selected_tile() == "SHIPYARD", "Left on the first tile should keep it, got %s" % office().selected_tile())
 
 
 func test_every_tile_opens_its_screen_and_escape_returns_to_the_main_screen() -> void:
-	for expected: Office.Screen in [Office.Screen.SHIP_SELECTION, Office.Screen.TRANSPORT_OFFERS, Office.Screen.BANK_ACCOUNT]:
+	for expected: Office.Screen in [Office.Screen.SHIPYARD, Office.Screen.HANGAR, Office.Screen.TRANSPORT_OFFERS,
+			Office.Screen.BANK_ACCOUNT]:
 		var tile := office().selected_tile()
 		await press(&"ui_accept")
 		check(office().screen == expected, "Return on %s should open its screen, got %s" % [tile, office().screen])
@@ -35,6 +37,16 @@ func test_every_tile_opens_its_screen_and_escape_returns_to_the_main_screen() ->
 		check(office().showing and office().screen == Office.Screen.MAIN, "Escape on %s should return to the main screen" % tile)
 		check(office().selected_tile() == tile, "the main screen should keep %s selected" % tile)
 		await press(&"ui_right")
+
+
+func test_the_header_shows_the_balance_on_every_screen_red_below_zero() -> void:
+	await frames(2)
+	check(office().balance_text() == "€20 000", "the header should show €20 000, shows %s" % office().balance_text())
+	check(not office().balance_red(), "a positive balance should not be red")
+	await press(&"ui_accept")
+	check(office().balance_text() == "€20 000", "the Shipyard's header should show the balance too")
+	economy().balance = -700
+	check(office().balance_text() == "-€700" and office().balance_red(), "a negative balance should read -€700 in red")
 
 
 func test_escape_on_the_main_screen_closes_the_office_with_the_sparrow_docked() -> void:
@@ -50,87 +62,6 @@ func test_escape_on_the_main_screen_closes_the_office_with_the_sparrow_docked() 
 	await seconds(0.4)
 	release(&"ui_up")
 	check(ship.state != Lander.State.DOCKED, "Up should undock once the Office is closed")
-
-
-func test_ship_selection_opens_on_the_sparrow_in_service() -> void:
-	await open_ship_selection()
-	check(office().selected_ship_offer() == ShipType.SPARROW, "the Sparrow Ship offer should be selected, got %s" % office().selected_ship_offer().name)
-	check(office().in_service_shown(), "the Sparrow should be tagged IN SERVICE at run start")
-	check(Array(office().ship_offer_lines()).has("IN SERVICE"), "the Ship offer should read IN SERVICE")
-	await press(&"ui_right")
-	check(not office().in_service_shown(), "other Ship offers should not be tagged IN SERVICE")
-
-
-func test_return_on_another_ship_offer_asks_are_you_sure_with_yes_selected() -> void:
-	await open_ship_selection()
-	await press(&"ui_right")
-	await press(&"ui_accept")
-	check(office().popup == Office.PopupKind.ARE_YOU_SURE, "Return should open ARE YOU SURE?")
-	check(office().selected_button == Office.Choice.YES, "Yes should be selected by default")
-	check(office().showing, "the Office should still be showing behind the popup")
-
-
-func test_yes_puts_the_chosen_ship_docked_and_returns_to_the_main_screen() -> void:
-	await open_ship_selection()
-	await browse_to(ShipType.MULE)
-	await press(&"ui_accept")
-	await press(&"ui_accept")
-	var ship := lander()
-	check(office().showing and office().screen == Office.Screen.MAIN, "Yes should return to the main screen")
-	check(office().popup == Office.PopupKind.NONE, "no popup should stay open")
-	check(not office().powering, "returning to the main screen should not power the Terminal off")
-	check(tree.paused, "the world should stay paused on the main screen")
-	check(ship.ship_type == ShipType.MULE, "the ship should be a Mule, got %s" % ship.ship_type.name)
-	check(ship.state == Lander.State.DOCKED, "the Mule should be Docked")
-	check(ship.is_inside_spot(), "the whole hull should be inside the parking spot")
-	check_near(ship.tank_level(), 1.0, 0.0001, "tank level")
-	await press(&"ui_cancel")
-	await wait_for_terminal()
-	check(not office().showing and ship.ship_type == ShipType.MULE, "Escape should close the Office with the Mule")
-	check(message() == "Docked!", "message should say Docked!, got %s" % message())
-
-
-func test_return_on_the_ship_offer_in_service_returns_to_the_main_screen() -> void:
-	await open_ship_selection()
-	await press(&"ui_accept")
-	check(office().screen == Office.Screen.MAIN, "Return on the IN SERVICE Ship offer should return to the main screen")
-	check(office().popup == Office.PopupKind.NONE, "Return on the IN SERVICE Ship offer should not ask ARE YOU SURE?")
-	check(lander().ship_type == ShipType.SPARROW, "the ship should still be the Sparrow")
-
-
-func test_left_and_right_move_between_the_popup_buttons() -> void:
-	await open_ship_selection()
-	await press(&"ui_right")
-	await press(&"ui_accept")
-	await press(&"ui_right")
-	check(office().selected_button == Office.Choice.NO, "Right should select No")
-	await press(&"ui_right")
-	check(office().selected_button == Office.Choice.NO, "Right on No should keep No selected")
-	await press(&"ui_left")
-	check(office().selected_button == Office.Choice.YES, "Left should select Yes")
-
-
-func test_no_returns_to_the_same_ship_offer() -> void:
-	await open_ship_selection()
-	await browse_to(ShipType.MULE)
-	await press(&"ui_accept")
-	await press(&"ui_right")
-	await press(&"ui_accept")
-	check(office().screen == Office.Screen.SHIP_SELECTION, "No should stay on Ship selection")
-	check(office().popup == Office.PopupKind.NONE, "No should close the popup")
-	check(office().selected_ship_offer() == ShipType.MULE, "No should return to the Mule Ship offer")
-	check(lander().ship_type == ShipType.SPARROW, "No should keep the Sparrow")
-	check(tree.paused, "the world should stay paused")
-
-
-func test_escape_in_the_popup_counts_as_no() -> void:
-	await open_ship_selection()
-	await browse_to(ShipType.MULE)
-	await press(&"ui_accept")
-	await press(&"ui_cancel")
-	check(office().screen == Office.Screen.SHIP_SELECTION, "Escape should stay on Ship selection")
-	check(office().popup == Office.PopupKind.NONE, "Escape should close the popup")
-	check(office().selected_ship_offer() == ShipType.MULE, "Escape should return to the Mule Ship offer")
 
 
 func test_the_ship_does_not_move_while_the_office_is_showing() -> void:
@@ -155,41 +86,6 @@ func test_r_after_a_crash_returns_to_the_office() -> void:
 	await crash_in_deep_space()
 	await restart()
 	check(office().showing and office().screen == Office.Screen.MAIN, "R after a crash in deep space should return to the Office main screen")
-
-
-func test_ship_offer_shows_the_ship_types_numbers_and_ratings() -> void:
-	await open_ship_selection()
-	var lines := office().ship_offer_lines()
-	for expected: String in ["SPARROW", "SMALL, LIGHT AND QUICK. BUILT FOR SHORT HOPS.",
-			"TANK 5 000 KG", "SEATS 4", "CARGO 7 000 KG", "MAX CAPACITY 8 000 KG",
-			"THRUST ■■■■■", "HANDLING ■■■■■", "< 1/%d >" % ShipType.ALL.size()]:
-		check(expected in lines, "the Ship offer should show %s, shows %s" % [expected, lines])
-	for removed: String in ["DRY MASS", "MAX WEIGHT"]:
-		check(not Array(lines).any(func(line: String) -> bool: return line.begins_with(removed)),
-			"the Ship offer should not show %s, shows %s" % [removed, lines])
-	check(office().ship_offer_picture() == ShipType.SPARROW.hull, "the Ship offer picture should be the Sparrow's hull")
-
-
-func test_browsing_wraps_around_any_number_of_ship_offers() -> void:
-	await open_ship_selection()
-	var extra := ShipType.sparrow()
-	extra.name = "Test ship"
-	ShipType.ALL.append(extra)
-	var count := ShipType.ALL.size()
-	for i in count - 1:
-		await press(&"ui_right")
-	var after_right := office().selected_ship_offer().name
-	var lines_after_right := office().ship_offer_lines()
-	await press(&"ui_right")
-	var after_wrap := office().selected_ship_offer().name
-	await press(&"ui_left")
-	var after_left_wrap := office().selected_ship_offer().name
-	ShipType.ALL.erase(extra)
-	var indicator := "< %d/%d >" % [count, count]
-	check(after_right == "Test ship", "Right should browse to the last Ship offer, got %s" % after_right)
-	check(indicator in lines_after_right, "the indicator should read %s, shows %s" % [indicator, lines_after_right])
-	check(after_wrap == "Sparrow", "Right on the last Ship offer should wrap to the first, got %s" % after_wrap)
-	check(after_left_wrap == "Test ship", "Left on the first Ship offer should wrap to the last, got %s" % after_left_wrap)
 
 
 func test_the_terminal_shows_the_game_version() -> void:

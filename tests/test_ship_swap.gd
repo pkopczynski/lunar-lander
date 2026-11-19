@@ -133,13 +133,10 @@ func test_yes_opens_the_office_main_screen_with_the_current_ship_in_service() ->
 	check(office().showing, "Yes should open the Office")
 	check(office().popup == Office.PopupKind.NONE and office().screen == Office.Screen.MAIN,
 		"the Office should open on the main screen")
-	await open_ship_selection()
-	check(office().selected_ship_offer() == ShipType.HALO, "the current ship type should be selected, got %s"
-		% office().selected_ship_offer().name)
-	check(office().in_service_shown(), "the current ship type should be tagged IN SERVICE")
-	check(Array(office().ship_offer_lines()).has("IN SERVICE"), "the Ship offer should read IN SERVICE")
-	await press(&"ui_right")
-	check(not office().in_service_shown(), "other Ship offers should not be tagged IN SERVICE")
+	await open_hangar()
+	var rows := hangar_screen().rows()
+	check(rows[1].begins_with("HALO 1 IN SERVICE"), "the Halo should be tagged IN SERVICE, got %s" % rows[1])
+	check(not rows[0].contains("IN SERVICE"), "SPARROW 1 should not be tagged IN SERVICE, got %s" % rows[0])
 
 
 func answer_swap_yes() -> void:
@@ -192,10 +189,13 @@ func leaving_the_office_returns_to_the_dock(choose_in_service: bool) -> void:
 	ship.fuel = 1000.0
 	await answer_swap_yes()
 	if choose_in_service:
-		await open_ship_selection()
-		check(office().in_service_shown(), "the Office should show the IN SERVICE Halo")
-		await press(&"ui_accept")
-		check(office().screen == Office.Screen.MAIN, "Return on the IN SERVICE Ship offer should return to the main screen")
+		await open_hangar()
+		await open_ship_page(hangar().in_service)
+		await select_action(HangarScreen.Action.PUT_IN_SERVICE)
+		check(office().popup == Office.PopupKind.NONE, "PUT IN SERVICE on the Halo in service should not ask")
+		await press(&"ui_cancel")
+		await press(&"ui_cancel")
+		check(office().screen == Office.Screen.MAIN, "Escape twice should return to the main screen")
 	await press(&"ui_cancel")
 	await wait_for_terminal()
 	check(not office().showing, "Escape on the main screen should close the Office")

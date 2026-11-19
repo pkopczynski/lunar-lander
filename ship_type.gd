@@ -5,9 +5,10 @@ extends RefCounted
 #
 # Each ship type's name, flavour line, hull and flame shapes, default dry mass, Maximum weight,
 # Tank, passenger seats, cargo capacity (the maximum capacity), thrust, fuel burn, turn rate, the
-# derived full-Tank cargo (`full_tank_cargo(passengers)`), and the Ship offer's THRUST and HANDLING
-# ratings (out of 5 blocks). The Sparrow, the Mule and the Halo (`ShipType.SPARROW`,
-# `ShipType.MULE`, `ShipType.HALO`, listed in `ShipType.ALL` in Ship offer order).
+# derived full-Tank cargo (`full_tank_cargo(passengers)`), the Ship offer's THRUST and HANDLING
+# ratings (out of 5 blocks), its price in the Shipyard (a full Tank included) and its repair rate.
+# The Sparrow, the Mule and the Halo (`ShipType.SPARROW`, `ShipType.MULE`, `ShipType.HALO`, listed
+# in `ShipType.ALL` in Ship offer order).
 
 var name: String
 # One line on the Ship offer saying what the ship type is for.
@@ -30,6 +31,10 @@ var turn_rate: float
 # Ship offer ratings out of 5 blocks, for comparing ship types at a glance.
 var thrust_rating: int
 var handling_rating: int
+# The Shipyard's price in euros, a full Tank included.
+var price: int
+# Share of an owned ship's value one whole Condition (100%) costs to repair, at the station.
+var repair_rate: float
 
 # Named like constants: GDScript can't build objects in a const, so never reassign these.
 static var SPARROW := sparrow()
@@ -64,6 +69,8 @@ static func sparrow() -> ShipType:
 	type.turn_rate = 3.0
 	type.thrust_rating = 5
 	type.handling_rating = 5
+	type.price = 250000
+	type.repair_rate = 0.25
 	return type
 
 
@@ -84,6 +91,8 @@ static func mule() -> ShipType:
 	type.turn_rate = 1.5
 	type.thrust_rating = 2
 	type.handling_rating = 2
+	type.price = 400000
+	type.repair_rate = 0.15
 	return type
 
 
@@ -107,6 +116,8 @@ static func halo() -> ShipType:
 	type.turn_rate = 2.2
 	type.thrust_rating = 4
 	type.handling_rating = 4
+	type.price = 650000
+	type.repair_rate = 0.30
 	return type
 
 

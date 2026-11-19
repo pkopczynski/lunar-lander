@@ -11,7 +11,6 @@ extends RefCounted
 const ROW_HEIGHT := TransportOffersScreen.ROW_HEIGHT
 const ROW_PADDING := TransportOffersScreen.ROW_PADDING
 const BALANCE_LABEL := "BALANCE"
-const CANCELLED_LABEL := "CANCELLED"
 
 var office: Office
 var economy: Economy
@@ -44,7 +43,7 @@ func handle_input(event: InputEvent) -> bool:
 	return true
 
 
-static func no_button(_transaction: TransportOffer.Transaction) -> bool:
+static func no_button(_transaction: Transaction) -> bool:
 	return false
 
 
@@ -57,8 +56,8 @@ static func list_area(area: Rect2) -> Rect2:
 
 
 # A transaction's row and fully open details, as heights.
-func measure(transaction: TransportOffer.Transaction) -> Vector2:
-	return Vector2(ROW_HEIGHT, detail_pairs(transaction).size() * ROW_HEIGHT + 2.0 * ROW_PADDING)
+func measure(transaction: Transaction) -> Vector2:
+	return Vector2(ROW_HEIGHT, transaction.detail_pairs().size() * ROW_HEIGHT + 2.0 * ROW_PADDING)
 
 
 # Observable state
@@ -67,11 +66,11 @@ func lines() -> PackedStringArray:
 	return PackedStringArray([Economy.PILOT, "%s %s" % [BALANCE_LABEL, Economy.eur(economy.balance)]])
 
 
-# Newest first, e.g. #004 INDUSTRIAL SUPPLIES  CARGO  €544.
+# Newest first, e.g. #004 INDUSTRIAL SUPPLIES  CARGO  €54 400 or SHIP PURCHASE — MULE 1  SHIP  -€400 000.
 func rows() -> PackedStringArray:
 	var texts := PackedStringArray()
 	for transaction in economy.transactions:
-		texts.append("%s  %s" % [transaction.contract.label(), row_value(transaction)])
+		texts.append("%s  %s" % [transaction.label(), row_value(transaction)])
 	return texts
 
 
@@ -80,37 +79,14 @@ func details(row: int) -> PackedStringArray:
 	var texts := PackedStringArray()
 	if not row in list.expanded_rows():
 		return texts
-	for detail: Array in detail_pairs(economy.transactions[row]):
+	for detail: Array in economy.transactions[row].detail_pairs():
 		texts.append(("%s %s" % detail).strip_edges())
 	return texts
 
 
-# How the payout was worked out, as [label, text] pairs, times local. The deadline is the
-# flight's, which the penalty was counted against. A wrong destination replaces the penalty
-# and names the destination after where it was delivered. A cancelled Contract shows its fee
-# and CANCELLED (a label without a value) in place of the delivery.
-static func detail_pairs(transaction: TransportOffer.Transaction) -> Array[Array]:
-	if transaction.cancelled:
-		return [["BASE VALUE", Economy.eur(transaction.reward)],
-			["CANCELLATION FEE", Economy.eur(-transaction.penalty)], ["PAYOUT", Economy.eur(transaction.payout)],
-			[CANCELLED_LABEL, ""], ["SHIP", transaction.ship.to_upper()]]
-	var deduction := ["PENALTY", Economy.eur(0)]
-	if transaction.wrong_destination():
-		deduction = ["WRONG DESTINATION", Economy.eur(-transaction.penalty)]
-	elif transaction.overdue_seconds() > 0:
-		deduction[1] = "%s (%d MIN OVERDUE)" % [Economy.eur(-transaction.penalty), transaction.overdue_minutes()]
-	var pairs: Array[Array] = [["BASE VALUE", Economy.eur(transaction.reward)], deduction,
-		["PAYOUT", Economy.eur(transaction.payout)], ["DEADLINE", PlanetClock.local_time(transaction.deadline_at)],
-		["LANDED", PlanetClock.local_time(transaction.landed_at)], ["DELIVERED TO", transaction.delivered_to]]
-	if transaction.wrong_destination():
-		pairs.append(["DESTINATION", transaction.destination])
-	pairs.append(["SHIP", transaction.ship.to_upper()])
-	return pairs
-
-
 # The row's right-hand part: the kind and the payout.
-static func row_value(transaction: TransportOffer.Transaction) -> String:
-	return "%s  %s" % [TransportOffer.KIND_LABELS[transaction.contract.kind()], Economy.eur(transaction.payout)]
+static func row_value(transaction: Transaction) -> String:
+	return "%s  %s" % [transaction.kind_label(), Economy.eur(transaction.payout)]
 
 
 # Drawing
@@ -135,7 +111,7 @@ func draw(area: Rect2) -> void:
 		var baseline := Vector2(row.position.x + ROW_PADDING, row.get_center().y + Office.TEXT_SIZE / 2.0)
 		var width := row.size.x - 2.0 * ROW_PADDING
 		if ExpandableList.line_fits(baseline.y, Office.TEXT_SIZE, column):
-			office.draw_text(transaction.contract.label(), baseline, Office.TEXT_SIZE, width,
+			office.draw_text(transaction.label(), baseline, Office.TEXT_SIZE, width,
 				HORIZONTAL_ALIGNMENT_LEFT, color)
 			office.draw_text(row_value(transaction), baseline, Office.TEXT_SIZE, width, HORIZONTAL_ALIGNMENT_RIGHT, color)
 		y += ROW_HEIGHT
@@ -150,9 +126,9 @@ func draw(area: Rect2) -> void:
 
 
 # The details one per line, labels green and values white; only what lies wholly in clip is drawn.
-func draw_details(transaction: TransportOffer.Transaction, top_left: Vector2, width: float, clip: Rect2) -> void:
+func draw_details(transaction: Transaction, top_left: Vector2, width: float, clip: Rect2) -> void:
 	var y := top_left.y
-	for pair: Array in detail_pairs(transaction):
+	for pair: Array in transaction.detail_pairs():
 		y += ROW_HEIGHT
 		if not ExpandableList.line_fits(y, Office.TEXT_SIZE, clip):
 			continue

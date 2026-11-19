@@ -62,10 +62,7 @@ func test_a_fitting_offer_that_would_limit_fuel_stays_lit_with_a_red_note_and_ca
 
 func switch_ship(type: ShipType) -> void:
 	await press(&"ui_cancel")
-	await open_ship_selection()
-	await browse_to(type)
-	await press(&"ui_accept")
-	await press(&"ui_accept")
+	await swap_to(type)
 	await open_transport_offers()
 
 

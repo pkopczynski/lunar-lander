@@ -105,37 +105,134 @@ func message() -> String:
 
 # Set-up
 
-# Picks a ship type in the Office the way a player does, from the main screen: open
-# Ship selection, browse to its Ship offer, press Return and confirm Yes (the ship type
-# in service needs no confirming), then Escape. Leaves the ship Docked in the parking spot.
+# Puts a ship of this type in service the way a player does, from the main screen, then presses
+# Escape until the Office closes, leaving it Docked in the parking spot. A type already in service
+# needs nothing; an owned ship of the type is put in service from the Hangar; otherwise one is
+# bought in the Shipyard first, with its price added to the balance beforehand so the balance ends
+# as it was (the purchase is still a Transaction).
 func choose_ship(type: ShipType = ShipType.SPARROW) -> void:
-	await open_ship_selection()
-	await browse_to(type)
-	await press(&"ui_accept")
-	if office().popup == Office.PopupKind.ARE_YOU_SURE:
-		await press(&"ui_accept")
-	check(office().screen == Office.Screen.MAIN, "choosing the %s should return to the main screen" % type.name)
+	await swap_to(type)
+	await leave_office()
+
+
+# choose_ship() without leaving: ends on the Office's main screen.
+func swap_to(type: ShipType) -> void:
+	if lander().ship_type == type:
+		return
+	var owned := owned_ship(type)
+	if owned == null:
+		economy().balance += type.price
+		owned = await buy_ship(type)
+	else:
+		await open_hangar()
+		await open_ship_page(owned)
+	await put_in_service()
 	check(lander().ship_type == type, "choosing the %s should put it in the parking spot" % type.name)
 	await press(&"ui_cancel")
-	await wait_for_terminal()
-	check(not office().showing, "Escape on the main screen should close the Office")
+	await press(&"ui_cancel")
+	check(office().screen == Office.Screen.MAIN, "Escape twice from a Ship page should reach the main screen")
 
 
-# Opens the Ship selection tile from the Office main screen.
-func open_ship_selection() -> void:
+# Escape until the Office closes, from any of its screens.
+func leave_office() -> void:
+	for i in 4:
+		if not office().showing:
+			break
+		await press(&"ui_cancel")
+		await wait_for_terminal()
+	check(not office().showing, "Escape should close the Office")
+
+
+# The first owned ship of this type, or null.
+func owned_ship(type: ShipType) -> OwnedShip:
+	for ship in hangar().ships:
+		if ship.ship_type == type:
+			return ship
+	return null
+
+
+func hangar() -> Hangar:
+	return main().get_node("Hangar")
+
+
+# Goes to the main screen's tile at this index (0 is SHIPYARD) and opens it.
+func open_tile(index: int) -> void:
 	for i in Office.TILES.size():
 		await press(&"ui_left")
+	for i in index:
+		await press(&"ui_right")
 	await press(&"ui_accept")
-	check(office().screen == Office.Screen.SHIP_SELECTION, "Return should open Ship selection")
+	check(office().screen == Office.TILES[index], "Return should open %s" % office().SCREEN_TITLES[Office.TILES[index]])
 
 
-# Presses action (Right or Left) in the Office until it offers that ship type.
+func open_shipyard() -> void:
+	await open_tile(0)
+
+
+func open_hangar() -> void:
+	await open_tile(1)
+
+
+func shipyard() -> ShipyardScreen:
+	return office().shipyard
+
+
+func hangar_screen() -> HangarScreen:
+	return office().hangar_screen
+
+
+# Presses action (Right or Left) in the Shipyard until it offers that ship type.
 func browse_to(type: ShipType, action := &"ui_right") -> void:
 	for i in ShipType.ALL.size():
-		if office().selected_ship_offer() == type:
+		if shipyard().selected() == type:
 			break
 		await press(action)
-	check(office().selected_ship_offer() == type, "the Office should offer the %s" % type.name)
+	check(shipyard().selected() == type, "the Shipyard should offer the %s" % type.name)
+
+
+# Buys a ship of this type from the main screen: the Shipyard, BUY, Yes. Returns the new ship,
+# whose Ship page is then open.
+func buy_ship(type: ShipType) -> OwnedShip:
+	var before := hangar().ships.duplicate()
+	await open_shipyard()
+	await browse_to(type)
+	await press(&"ui_accept")
+	check(office().popup == Office.PopupKind.CONFIRM, "BUY should ask first, popup %s" % office().popup)
+	await press(&"ui_accept")
+	var bought: OwnedShip = null
+	for ship in hangar().ships:
+		if not ship in before:
+			bought = ship
+	check(bought != null, "Yes should buy a %s" % type.name)
+	return bought
+
+
+# On the Hangar's berths table: moves to the ship's row and opens its Ship page.
+func open_ship_page(ship: OwnedShip) -> void:
+	var row := hangar().ships.find(ship)
+	while hangar_screen().row > row:
+		await press(&"ui_up")
+	while hangar_screen().row < row:
+		await press(&"ui_down")
+	await press(&"ui_accept")
+	check(office().screen == Office.Screen.SHIP_PAGE and hangar_screen().ship == ship,
+		"Return should open %s's Ship page" % ship.name)
+
+
+# On a Ship page: moves to the action and presses Return.
+func select_action(action: HangarScreen.Action) -> void:
+	while hangar_screen().action > action:
+		await press(&"ui_up")
+	while hangar_screen().action < action:
+		await press(&"ui_down")
+	await press(&"ui_accept")
+
+
+# On a Ship page: PUT IN SERVICE, then Yes.
+func put_in_service() -> void:
+	await select_action(HangarScreen.Action.PUT_IN_SERVICE)
+	check(office().popup == Office.PopupKind.CONFIRM, "PUT IN SERVICE should ask first")
+	await press(&"ui_accept")
 
 
 # Puts the lander Flying at a set position, upright, out of whatever state it was in.
@@ -160,20 +257,13 @@ func dock_in_spot() -> void:
 
 
 func open_bank_account() -> void:
-	for i in Office.TILES.size():
-		await press(&"ui_right")
-	await press(&"ui_accept")
-	check(office().screen == Office.Screen.BANK_ACCOUNT, "Return should open the Bank account")
+	await open_tile(3)
 
 
 # Transport offers
 
 func open_transport_offers() -> void:
-	for i in Office.TILES.size():
-		await press(&"ui_left")
-	await press(&"ui_right")
-	await press(&"ui_accept")
-	check(office().screen == Office.Screen.TRANSPORT_OFFERS, "Return should open Transport offers")
+	await open_tile(2)
 
 
 # Puts the cursor on the row itself, not its ACCEPT.
