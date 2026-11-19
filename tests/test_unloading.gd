@@ -128,56 +128,6 @@ func test_landing_on_the_pad_without_a_load_works_as_before() -> void:
 	check(economy().balance == Economy.START_BALANCE and office().bank_account.rows().is_empty(), "nothing should be paid")
 
 
-func test_the_debug_pad_shortcut_delivers_even_after_a_crash_on_the_surface() -> void:
-	await start_loading([known_offer(1, 0.0)])
-	await seconds(4.5)
-	place(Vector2(pad_x() + 400.0, 560), Vector2(0, 200))
-	await seconds(1.0)
-	check(lander().state == Lander.State.CRASHED, "the ship should crash on the Surface")
-	await deliver_by_shortcut()
-	check(economy().phase == Economy.Phase.UNLOADING, "the shortcut should start unloading")
-	await seconds(3.0)
-	check(economy().balance == Economy.START_BALANCE + 42000, "the Contract should pay out, balance is %s" % economy().balance)
-
-
-func test_a_crash_then_r_starts_a_new_run_with_the_economy_wiped() -> void:
-	await swap_to(ShipType.HALO)
-	await start_loading([known_offer(1, 0.0)])
-	await seconds(4.5)
-	await deliver_by_shortcut()
-	await seconds(3.0)
-	check(economy().balance == Economy.START_BALANCE + 42000, "the first run should earn €42 000, balance is %s" % economy().balance)
-	await open_terminal_for_contract()
-	await crash_in_deep_space()
-	await restart()
-	check(office().showing and office().screen == Office.Screen.MAIN, "a new run should open the Office main screen")
-	check(lander().ship_type == ShipType.SPARROW, "a new run should start in the Sparrow")
-	check(economy().balance == 20000, "the balance should be €20 000 again, is %s" % economy().balance)
-	check(office().bank_account.lines() == PackedStringArray(["PILOT", "BALANCE €20 000"]), "the Bank account should read €20 000, shows %s" % office().bank_account.lines())
-	check(office().bank_account.rows().is_empty(), "no transactions should remain, shows %s" % office().bank_account.rows())
-	check(economy().contracts.is_empty(), "no Contracts should remain")
-	check(economy().phase == Economy.Phase.NONE, "no delivery should be under way")
-	check(lander().total_mass() == ShipType.SPARROW.default_dry_mass + lander().fuel,
-		"no Load should remain, total %s" % lander().total_mass())
-
-
-# Docks and accepts one more Contract, so the run being wiped has one too.
-func open_terminal_for_contract() -> void:
-	await dock_in_spot()
-	await press(&"ui_left")
-	await press(&"ui_accept")
-	await wait_for_terminal()
-	var offer := known_offer(1, 0.0)
-	economy().put_offer(offer)
-	await open_transport_offers()
-	await accept(offer)
-	while office().screen != Office.Screen.MAIN:
-		await press(&"ui_cancel")
-	await press(&"ui_cancel")
-	await wait_for_terminal()
-	check(not office().showing, "Escape should close the Office")
-
-
 func late_offer(passengers: int, cargo_mass: float, deadline: float) -> TransportOffer:
 	var offer := known_offer(passengers, cargo_mass)
 	offer.deadline = deadline

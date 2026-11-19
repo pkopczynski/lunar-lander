@@ -30,26 +30,18 @@ func test_up_undocks_and_flies_out_of_the_spot() -> void:
 	check(not message().begins_with("Crashed"), "should not crash leaving the spot, got %s" % message())
 
 
-func test_restart_starts_docked_with_a_newly_picked_spot() -> void:
+func test_a_fresh_start_starts_docked_with_a_newly_picked_spot() -> void:
 	await choose_ship()
 	var first_spot := station().parking_spot
 	var picked_another := false
-	# Six arm endings: the odds of never picking another in ten restarts are below 1e-7.
+	# Six arm endings: the odds of never picking another in ten fresh starts are below 1e-7.
 	for i in 10:
-		await restart()
+		await start_over()
 		await choose_ship()
 		var ship := lander()
-		check(ship.state == Lander.State.DOCKED, "restart %d should start Docked" % i)
-		check(ship.is_inside_spot(), "restart %d should start inside the parking spot" % i)
-		check_near(ship.tank_level(), 1.0, 0.0001, "tank level after restart %d" % i)
+		check(ship.state == Lander.State.DOCKED, "fresh start %d should start Docked" % i)
+		check(ship.is_inside_spot(), "fresh start %d should start inside the parking spot" % i)
+		check_near(ship.tank_level(), 1.0, 0.0001, "tank level after fresh start %d" % i)
 		if station().parking_spot != first_spot:
 			picked_another = true
-	check(picked_another, "restarts should re-pick the parking spot")
-
-
-func test_restart_after_a_crash_starts_docked() -> void:
-	await choose_ship()
-	await crash_in_deep_space()
-	await restart()
-	await choose_ship()
-	check(lander().state == Lander.State.DOCKED, "should start Docked after restarting from a crash")
+	check(picked_another, "fresh starts should re-pick the parking spot")

@@ -2,7 +2,8 @@ class_name Office
 extends CanvasLayer
 # The player's Office: a full-window Terminal with a main screen of tiles opening the Shipyard,
 # the Hangar (and each owned ship's Ship page), Transport offers and the Bank account. It pauses
-# the world while showing. Buying, selling and the Ship swap go through the Hangar's and the
+# the world while showing. R after a crash opens it by Recovery (`recover()`), and it can't be left
+# while the ship in service is a Wreck (`leave_reason()`); the main screen then tags it WRECKED. Buying, selling and the Ship swap go through the Hangar's and the
 # Economy's named operations; it never edits an owned ship itself.
 #
 # The Office: resetting the mission rows from the planet clock on every opening and starting the
@@ -12,7 +13,8 @@ extends CanvasLayer
 # Terminal's screens (the main screen's tiles; `ShipyardScreen`, `HangarScreen`,
 # `TransportOffersScreen` and `BankAccountScreen` handle the others), the YES/NO popups ("ARE YOU
 # SURE?" for a Transport offer, "REMOVE CONTRACT?", "CANCEL MISSION?", "ENTER THE OFFICE?", also
-# while delivering, and `ask()`'s confirms naming a thing and its price in white), a short notice
+# while delivering, and `ask()`'s confirms naming a thing and its price in white, with an optional
+# red warning line, `popup_warning()`), a short notice
 # line (`show_notice()`: a purchase done, or a blocked item's red reason), the building blocks the
 # screens draw with (`draw_action()` for a button that may be blocked, the wireframe, rating
 # blocks, the IN SERVICE tag), pausing the world while showing, and drawing the Terminal.
@@ -39,6 +41,9 @@ const ENTER_OFFICE_TEXT := "ENTER THE OFFICE?"
 const REMOVE_CONTRACT_TEXT := "REMOVE CONTRACT?"
 const CANCEL_MISSION_TEXT := "CANCEL MISSION?"
 const IN_SERVICE_TEXT := "IN SERVICE"
+const WRECKED_TEXT := "WRECKED"
+# Why the Office can't be left: the ship in service can't fly.
+const WRECK_IN_SERVICE := "WRECK IN SERVICE: REPAIR IT OR PUT ANOTHER SHIP IN SERVICE"
 const VERSION_PREFIX := "V"
 # The main screen's tiles, in order: each opens the screen it names.
 const TILES: Array[Screen] = [Screen.SHIPYARD, Screen.HANGAR, Screen.TRANSPORT_OFFERS, Screen.BANK_ACCOUNT]
@@ -124,6 +129,8 @@ var selected_button := Choice.YES
 var question := ""
 var question_price := ""
 var on_yes := Callable()
+# A CONFIRM popup's red line under the question, such as THIS LEAVES YOU AT -€700, or "".
+var question_warning := ""
 var notice_text := ""
 var notice_red := false
 var notice_left := 0.0
@@ -150,6 +157,7 @@ func _ready() -> void:
 	bank_account = BankAccountScreen.new(self, economy)
 	terminal.draw.connect(draw_terminal)
 	lander.docked_at_station.connect(ask_to_enter)
+	lander.recovery_requested.connect(recover)
 	open()
 
 
@@ -196,7 +204,10 @@ func handle_main_input(event: InputEvent) -> void:
 		open_screen(TILES[tile_index])
 	elif event.is_action_pressed("ui_cancel"):
 		# Leaves the ship Docked as it is; one held since docking refuels after the usual delay.
-		power_off(lander.release)
+		if leave_reason() != "":
+			show_notice(leave_reason(), true)
+		else:
+			power_off(lander.release)
 	else:
 		return
 	handled()
@@ -223,11 +234,12 @@ func open_ship_page(ship: OwnedShip) -> void:
 
 
 # Asks YES/NO (Yes selected) with this question, its %s replaced by the price in white (none when
-# the price is ""); Yes calls on_yes_call.
-func ask(text: String, price: String, on_yes_call: Callable) -> void:
+# the price is ""), and any warning in red under it; Yes calls on_yes_call.
+func ask(text: String, price: String, on_yes_call: Callable, warning := "") -> void:
 	question = text
 	question_price = price
 	on_yes = on_yes_call
+	question_warning = warning
 	show_popup(PopupKind.CONFIRM, Choice.YES)
 
 
@@ -263,6 +275,14 @@ func open() -> void:
 	power_to(1.0)
 
 
+# Recovery, R after a crash: the Wreck goes back Docked at the station, still in service, and the
+# Office opens on its main screen. Nothing reloads: the clock, location and offers carry on, and the
+# crash was already settled when it happened.
+func recover() -> void:
+	hangar.recover()
+	open()
+
+
 # Powers the Terminal off, closes the Office, then calls after_closing: the flight
 # view shows only once the effect is over.
 func power_off(after_closing: Callable) -> void:
@@ -276,6 +296,9 @@ func power_off(after_closing: Callable) -> void:
 # period: the local time is re-rolled within it every time. With Contracts, loading starts over
 # the flight view; without, it's a free flight: the ship is released, free to undock at once.
 func start_mission() -> void:
+	if leave_reason() != "":
+		show_notice(leave_reason(), true)
+		return
 	var destination := transport_offers.destination
 	var period := transport_offers.start_period
 	var free_flight := economy.contracts.is_empty()
@@ -358,6 +381,20 @@ func tile_labels() -> PackedStringArray:
 	for tile: Screen in TILES:
 		labels.append(SCREEN_TITLES[tile])
 	return labels
+
+
+# Why the player can't leave the Office (Escape on the main screen, START, START LOADING), or "":
+# the ship in service is a Wreck.
+func leave_reason() -> String:
+	return WRECK_IN_SERVICE if hangar.in_service.is_wreck() else ""
+
+
+# The main screen's line under the tiles: the ship in service's name and its WRECKED tag while
+# it's a Wreck; nothing otherwise.
+func main_lines() -> PackedStringArray:
+	if not hangar.in_service.is_wreck():
+		return PackedStringArray()
+	return PackedStringArray([hangar.in_service.name, WRECKED_TEXT])
 
 
 func selected_tile() -> String:
@@ -461,6 +498,7 @@ func draw_screen(view: Rect2) -> void:
 	match screen:
 		Screen.MAIN:
 			draw_tiles(body)
+			draw_main_lines(body)
 		Screen.SHIPYARD:
 			shipyard.draw(body)
 		Screen.HANGAR, Screen.SHIP_PAGE:
@@ -506,6 +544,20 @@ func draw_tiles(area: Rect2) -> void:
 				BLACK if selected else GREEN)
 			y += STAT_SIZE + LINE_GAP
 		x += tile_width + TILE_GAP
+
+
+# Under the tiles, centred: the ship in service's name in white and its red WRECKED tag.
+func draw_main_lines(area: Rect2) -> void:
+	var lines := main_lines()
+	if lines.is_empty():
+		return
+	var name_text := lines[0] + " "
+	var tag_size := FONT.get_string_size(lines[1], HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT_SIZE) + 2.0 * TAG_PADDING
+	var width := text_width(name_text, STAT_SIZE) + tag_size.x
+	var baseline := Vector2(area.get_center().x - width / 2.0,
+		area.get_center().y + TILE_SIZE.y / 2.0 + TILE_GAP + STAT_SIZE)
+	draw_text(name_text, baseline, STAT_SIZE, -1.0, HORIZONTAL_ALIGNMENT_LEFT, WHITE)
+	draw_tag(lines[1], baseline + Vector2(text_width(name_text, STAT_SIZE), -STAT_SIZE / 2.0 - tag_size.y / 2.0), RED)
 
 
 # A button the player may not be able to take: its label and a price, inverted while selected.
@@ -558,11 +610,14 @@ func draw_rating(rating: int, top_left: Vector2) -> void:
 
 
 func draw_in_service_tag(top_left: Vector2) -> void:
-	var text_size := FONT.get_string_size(IN_SERVICE_TEXT, HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT_SIZE)
-	var tag := Rect2(top_left, text_size + 2.0 * TAG_PADDING)
-	terminal.draw_rect(tag, GREEN)
-	draw_text(IN_SERVICE_TEXT, top_left + TAG_PADDING + Vector2(0, TEXT_SIZE), TEXT_SIZE, -1,
-		HORIZONTAL_ALIGNMENT_LEFT, BLACK)
+	draw_tag(IN_SERVICE_TEXT, top_left, GREEN)
+
+
+# A filled tag with black text, such as IN SERVICE (green) or WRECKED (red).
+func draw_tag(text: String, top_left: Vector2, color: Color) -> void:
+	var text_size := FONT.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT_SIZE)
+	terminal.draw_rect(Rect2(top_left, text_size + 2.0 * TAG_PADDING), color)
+	draw_text(text, top_left + TAG_PADDING + Vector2(0, TEXT_SIZE), TEXT_SIZE, -1, HORIZONTAL_ALIGNMENT_LEFT, BLACK)
 
 
 # Silkscreen has no arrow glyphs, so the hint's arrows are drawn as triangles.
@@ -604,9 +659,16 @@ func popup_text() -> String:
 	return ARE_YOU_SURE_TEXT
 
 
+# A CONFIRM popup's red warning, or "".
+func popup_warning() -> String:
+	return question_warning if popup == PopupKind.CONFIRM else ""
+
+
 func draw_popup(view: Rect2) -> void:
 	var text := popup_text()
-	var size := Vector2(maxf(POPUP_SIZE.x, text_width(text, STAT_SIZE) + 2.0 * PADDING), POPUP_SIZE.y)
+	var warning := popup_warning()
+	var size := Vector2(maxf(POPUP_SIZE.x, maxf(text_width(text, STAT_SIZE), text_width(warning, TEXT_SIZE))
+		+ 2.0 * PADDING), POPUP_SIZE.y)
 	var box := Rect2(view.get_center() - size / 2.0, size)
 	terminal.draw_rect(box, BLACK)
 	terminal.draw_rect(box, GREEN, false, BORDER_WIDTH)
@@ -620,6 +682,9 @@ func draw_popup(view: Rect2) -> void:
 		draw_text(parts[i], Vector2(text_x, box.position.y + PADDING + STAT_SIZE), STAT_SIZE, -1.0,
 			HORIZONTAL_ALIGNMENT_LEFT, WHITE if parts.size() > 1 and i == 1 else GREEN)
 		text_x += text_width(parts[i], STAT_SIZE)
+	if warning != "":
+		draw_text(warning, Vector2(box.position.x, box.position.y + PADDING + STAT_SIZE + LINE_GAP + TEXT_SIZE),
+			TEXT_SIZE, box.size.x, HORIZONTAL_ALIGNMENT_CENTER, RED)
 	var buttons_width := POPUP_BUTTON_SIZE.x * 2.0 + POPUP_BUTTON_GAP
 	var button_y := box.end.y - PADDING - POPUP_BUTTON_SIZE.y
 	var x := box.get_center().x - buttons_width / 2.0

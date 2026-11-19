@@ -85,7 +85,7 @@ func test_every_ship_type_can_fly_down_into_the_open_pit_mine_and_land_on_the_mi
 		check(lander().state == Lander.State.LANDED,
 			"the %s should land on the Mine's pad at its Maximum weight, says %s" % [type.name, message()])
 		check_near(lander().position.x, pad_x(), 1.0, "the %s's x after flying down" % type.name)
-		await restart()
+		await start_over()
 
 
 func test_touching_down_on_the_pit_floor_where_the_valleys_pad_would_be_crashes() -> void:

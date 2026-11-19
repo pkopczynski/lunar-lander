@@ -80,13 +80,15 @@ func test_ship_is_frozen_while_the_office_popup_is_open() -> void:
 	check(office().popup == Office.PopupKind.ENTER_OFFICE, "the Enter-the-Office popup should still be open")
 
 
-func test_r_in_the_office_popup_returns_to_the_office() -> void:
+func test_r_in_the_office_popup_does_nothing() -> void:
 	await choose_ship()
 	await dock_in_spot()
-	await restart()
-	check(office().showing, "R should return to the Office")
-	check(office().popup == Office.PopupKind.NONE and office().screen == Office.Screen.MAIN,
-		"the Office should open on the main screen after R")
+	var scene := main()
+	await press(&"restart")
+	await frames(2)
+	check(main() == scene, "R should not reload the scene")
+	check(office().popup == Office.PopupKind.ENTER_OFFICE and not office().showing,
+		"R should leave the Enter-the-Office popup open")
 
 
 func test_no_closes_the_office_popup_and_refuels_after_the_delay() -> void:

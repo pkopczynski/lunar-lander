@@ -4,7 +4,6 @@ extends RefCounted
 
 const MAIN_SCENE := "res://main.tscn"
 const PHYSICS_FPS := 60.0
-const RESTART_TIMEOUT_FRAMES := 600
 const POWER_TIMEOUT_FRAMES := 120
 
 var tree: SceneTree
@@ -16,11 +15,18 @@ var pending_notes: Array[String] = []
 
 func start(scene_tree: SceneTree) -> void:
 	tree = scene_tree
+	await start_over()
+
+
+# Loads a fresh main scene, as a fresh start of the game does: R no longer restarts anything.
+# Waits for the Terminal to power on unless wait_for_power is false.
+func start_over(wait_for_power := true) -> void:
 	tree.change_scene_to_file(MAIN_SCENE)
 	# The new scene is added on the next frame and becomes ready on the one after.
 	await tree.process_frame
 	await tree.process_frame
-	await wait_for_terminal()
+	if wait_for_power:
+		await wait_for_terminal()
 
 
 func finish() -> void:
@@ -248,6 +254,14 @@ func crash_in_deep_space() -> void:
 	check(lander().in_deep_space, "the crash should be in deep space")
 
 
+# After a crash: presses R and waits for the Office to power on with the Wreck at the station.
+func recover() -> void:
+	check(lander().state == Lander.State.CRASHED, "Recovery needs a crash first")
+	await press(&"restart")
+	await wait_for_terminal()
+	check(office().showing, "R after a crash should open the Office")
+
+
 # Flies the ship into the parking spot from free flight, which docks it, and waits
 # past the leveling (so the Enter-the-Office popup is open).
 func dock_in_spot() -> void:
@@ -439,23 +453,6 @@ func send(action: StringName, pressed: bool) -> void:
 	event.action = action
 	event.pressed = pressed
 	Input.parse_input_event(event)
-
-
-# Presses R and waits until the reloaded main scene is ready and, unless
-# wait_for_power is false, until the Terminal has powered on. R on the Surface
-# only teleports to the pad, so a ship below the border is moved to deep space first.
-func restart(wait_for_power := true) -> void:
-	if not lander().in_deep_space:
-		place(Vector2(World.WORLD_WIDTH / 4.0, World.BORDER_Y - 600.0))
-	var old_scene := main()
-	await press(&"restart")
-	for i in RESTART_TIMEOUT_FRAMES:
-		if main() != old_scene and main() != null and main().is_node_ready():
-			if wait_for_power:
-				await wait_for_terminal()
-			return
-		await tree.process_frame
-	check(false, "R should have reloaded the scene")
 
 
 # Waits out the Terminal's CRT power-on/off effect, if one is running.

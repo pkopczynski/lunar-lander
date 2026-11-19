@@ -78,7 +78,7 @@ func test_mule_lands_on_the_pad_with_the_sparrows_limits() -> void:
 	place(Vector2(pad_x(), 568), Vector2(0, 20))
 	await seconds(4.0)
 	check(ship.state == Lander.State.LANDED, "a gentle Mule should land on the pad, says %s" % message())
-	await restart()
+	await start_over()
 	await choose_ship(ShipType.MULE)
 	place(Vector2(pad_x(), 500), Vector2(0, Lander.MAX_LANDING_VERTICAL_SPEED + 30.0))
 	await seconds(2.0)
@@ -111,7 +111,7 @@ func test_mule_crosses_the_border_at_maximum_weight() -> void:
 func test_mule_climbs_off_the_pad_at_about_60_percent_of_the_sparrow() -> void:
 	await choose_ship(ShipType.SPARROW)
 	var sparrow: float = await climb_off_the_pad()
-	await restart()
+	await start_over()
 	await choose_ship(ShipType.MULE)
 	var mule: float = await climb_off_the_pad()
 	check_near(mule / sparrow, CLIMB_RATIO, 0.05, "Mule climb / Sparrow climb")
@@ -126,7 +126,7 @@ func test_mule_turns_at_about_1_5_rad_per_s() -> void:
 func test_mule_thrusts_about_28_s_on_a_full_tank() -> void:
 	await choose_ship(ShipType.SPARROW)
 	var sparrow: float = await full_tank_thrust_time()
-	await restart()
+	await start_over()
 	await choose_ship(ShipType.MULE)
 	var mule: float = await full_tank_thrust_time()
 	check_near(mule / sparrow, THRUST_TIME_RATIO, 0.05, "Mule / Sparrow full-tank thrust time (%.1f s / %.1f s)" % [mule, sparrow])

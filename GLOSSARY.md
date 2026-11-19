@@ -2,6 +2,16 @@
 
 A 2D lander game: the ship lifts off a planet's surface, climbs into gravity-free deep space and parks at a space station.
 
+## Career
+
+**Career**:
+The one continuing game: the bank account and its transactions, the owned ships, the transport offers and contracts, and the planet clock. A crash doesn't end it; only a fresh start begins a new one.
+_Avoid_: Run, save, game
+
+**Recovery**:
+Bringing the ship back to the station after a crash, for a recovery fee of 5% of its ship type's price: R after a crash. It happens in place: the wreck is Docked at the station, still in service, and the office opens; the clock, location and transport offers carry on.
+_Avoid_: Respawn, retry, restart, towing
+
 ## World
 
 **Surface**:
@@ -107,7 +117,7 @@ _Avoid_: Dock, slot, destination
 ## Office
 
 **Office**:
-The player's transport company office on the station, where every run begins. There the player buys ships in the shipyard, chooses the ship in service in the hangar, takes on transport offers and checks the bank account.
+The player's transport company office on the station, where every career begins and where recovery after a crash brings the player back. There the player buys ships in the shipyard, chooses the ship in service in the hangar, takes on transport offers and checks the bank account.
 _Avoid_: Menu, shop
 
 **Terminal**:
@@ -134,7 +144,7 @@ The owned ship (not the ship type) currently in the parking spot: the one the pl
 _Avoid_: Current ship, active ship
 
 **Bank account**:
-The pilot's money, in euros, and the transactions that made it. It starts at €20 000 every run. Buying never takes it below €0.
+The pilot's money, in euros, and the transactions that made it. It starts at €20 000 with every career. Recovery and repair may take it below €0 (debt); buying never does.
 _Avoid_: Wallet, credits, score
 
 **Ship offer**:
@@ -159,9 +169,13 @@ _Avoid_: Order, accepted offer
 Giving up all of a mission's contracts at once, back in the office after loading, for a cancellation fee instead of a payout: 25% of each contract's reward, taken from the bank account. The load comes off at once, the mission ends, and the contracts are gone for good (they don't go back to the transport offers).
 _Avoid_: Removing (that's dropping one contract before loading), abort, refund
 
+**Failed contract**:
+A contract aboard a ship that crashed, settled for a failure fee instead of a payout: 50% of its reward, taken from the bank account, one transaction each, marked failed. A free flight's crash charges none.
+_Avoid_: Lost contract, cancellation (that's on purpose, in the office)
+
 **Mission**:
 Everything from the start of loading until the player next enters the office: loading, the delivery flight, unloading and the way back. A mission has one destination and a start period chosen in the office.
-_Avoid_: Delivery (that's only the flight from loading to landing), trip, run (that's from restart to crash)
+_Avoid_: Delivery (that's only the flight from loading to landing), trip, run (retired: the whole game is the career)
 
 **Free flight**:
 A mission with no contracts: the player picks its destination and start period in the office and flies wherever they like, with nothing to deliver.
@@ -192,7 +206,7 @@ What a contract pays into the bank account once unloaded: its reward less a pena
 _Avoid_: Reward (that's before the penalty), income, score
 
 **Transaction**:
-One line in the bank account for anything that changed the balance: a ship purchase or sale (naming the owned ship, opening to show its price, or its value, the selling share and the repair cost), or a delivered or cancelled contract: its payout (negative for a cancellation fee), opening to show its reward, penalty (or, when unloaded away from its destination, the wrong destination taking the whole reward), the flight's deadline it was settled against and the landing, both as local times, and the location it was delivered to (and its destination, when they differ). A cancelled contract's shows its reward, the cancellation fee and that it was cancelled instead.
+One line in the bank account for anything that changed the balance: a ship purchase or sale (naming the owned ship, opening to show its price, or its value, the selling share and the repair cost), a recovery fee (naming the owned ship, opening to show its ship type's price and the fee's share), a repair (naming the owned ship, opening to show the condition restored, the repair rate and the value), or a delivered, cancelled or failed contract: its payout (negative for a cancellation fee), opening to show its reward, penalty (or, when unloaded away from its destination, the wrong destination taking the whole reward), the flight's deadline it was settled against and the landing, both as local times, and the location it was delivered to (and its destination, when they differ). A cancelled contract's shows its reward, the cancellation fee and that it was cancelled instead; a failed contract's its reward, the failure fee and that it failed.
 _Avoid_: Receipt, entry, log
 
 **Load**:
@@ -220,6 +234,18 @@ _Avoid_: Fleet, garage
 **Berth**:
 One place for an owned ship in the hangar, which has four; the ship in service takes one too. Buying needs a free berth.
 _Avoid_: Slot
+
+**Wreck**:
+An owned ship that crashed: condition 0%. It is recovered to the station, can't fly or be put in service until repaired, and keeps everything else. While the ship in service is a wreck, the player can't leave the office.
+_Avoid_: Destroyed ship, dead ship
+
+**Repair**:
+Restoring an owned ship's condition, from its ship page: instant and always back to 100%, for the missing condition × its ship type's repair rate × its value. Allowed with contracts and in debt.
+_Avoid_: Fix, service
+
+**Repair rate**:
+The share of an owned ship's value that a whole 100% of condition costs to repair: Sparrow 25%, Mule 15%, Halo 30%.
+_Avoid_: Repair cost (that's the euros for one repair)
 
 **Selling a ship**:
 Giving up an owned ship that isn't in service for half its value less its repair cost, never below €0. The fuel in its tank earns nothing. Allowed in debt.
@@ -274,5 +300,5 @@ The ship is resting inside the parking spot. This is the deep-space counterpart 
 _Avoid_: Parked, landed (in deep space)
 
 **Crashed**:
-The ship hit something it shouldn't have, or touched down unsafely. A crash is final until restart.
+The ship hit something it shouldn't have, or touched down unsafely. The ship in service becomes a wreck, the crash is settled at once (the recovery fee, and failed contracts for any contracts aboard), and the ship stays Crashed until the player presses R for recovery.
 _Avoid_: Destroyed, dead

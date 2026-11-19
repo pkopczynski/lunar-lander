@@ -126,12 +126,12 @@ func test_the_hud_names_the_current_location() -> void:
 	check(clock_text() == "ELSEWHERE  14:07", "the HUD should name the new location, keeping the time, got '%s'" % clock_text())
 
 
-func test_a_restart_starts_over_at_the_valley_in_the_evening() -> void:
+func test_a_fresh_start_starts_at_the_valley_in_the_evening() -> void:
 	await choose_ship()
 	clock().move_to(elsewhere())
 	set_time(10, 0)
-	await restart()
+	await start_over()
 	var time := shown_time()
-	check(clock_text().begins_with("VALLEY  "), "a restart should start at the Valley, got '%s'" % clock_text())
-	check(time.x >= 18 and time.x <= 23, "a restart should start in the Evening, got '%s'" % clock_text())
+	check(clock_text().begins_with("VALLEY  "), "a fresh start should start at the Valley, got '%s'" % clock_text())
+	check(time.x >= 18 and time.x <= 23, "a fresh start should start in the Evening, got '%s'" % clock_text())
 	check_near(pad_visual_center_x(), 1000.0, 0.01, "the drawn pad should be back at the Valley's")

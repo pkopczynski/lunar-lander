@@ -265,13 +265,13 @@ func test_offer_timers_keep_running_in_flight() -> void:
 	check_near(offer.time_left, 99.0, 0.05, "seconds left after 1 s of flight")
 
 
-func test_offer_numbers_start_again_from_001_on_a_new_run() -> void:
+func test_offer_numbers_start_again_from_001_on_a_fresh_start() -> void:
 	economy().put_offer(known_offer(1, 0.0))
 	await choose_ship()
-	await restart()
+	await start_over()
 	await open_transport_offers()
-	check(offers().rows()[0].begins_with("#001 "), "a new run should number offers from #001, lists %s" % offers().rows())
-	check(not " TEST RUN " in " ".join(offers().rows()), "the last run's known offer should be gone, lists %s" % offers().rows())
+	check(offers().rows()[0].begins_with("#001 "), "a fresh start should number offers from #001, lists %s" % offers().rows())
+	check(not " TEST RUN " in " ".join(offers().rows()), "the earlier known offer should be gone, lists %s" % offers().rows())
 
 
 func test_a_tall_list_scrolls_to_the_last_accept_and_marks_what_lies_beyond() -> void:

@@ -84,6 +84,8 @@ Camera ──► Lander (its parent), World and Station constants
 | `PlanetClock.location_changed` | `move_to()`: a mission starts, or drift moves on | `World.show_location()` rebuilds the surface |
 | `Lander.landed_on_pad` | Landed on the current pad (real landing or debug shortcut) | `Economy.start_unloading()` (ignored unless delivering) |
 | `Lander.docked_at_station` | Docked and finished easing upright | `Office.ask_to_enter()` |
+| `Lander.crashed` | Entered Crashed | `Hangar.wreck()` (the ship in service becomes a Wreck), then `Economy.settle_crash()` (Failed contracts, recovery fee) |
+| `Lander.recovery_requested` | R while Crashed | `Office.recover()`: `Hangar.recover()` docks the Wreck, the Office opens |
 | `Economy.paid_out` | Unloading finished and Contracts were settled | `show_payout()` in `hud.gd` |
 | `Economy.offer_expired` | An offer timed out | `TransportOffersScreen.on_offer_expired()` |
 
@@ -95,15 +97,15 @@ Camera ──► Lander (its parent), World and Station constants
 | Local time | `PlanetClock.minutes` | Its own tick, and `start_mission()` re-rolling it within a start period. See [ADR 0002](../adr/0002-one-planet-clock.md). |
 | Ship state | `Lander.state` | `Lander.enter()`. Held, loading and lift-off-blocked are flags beside the state, set by the Office or the Economy. |
 | Delivery phase | `Economy.phase` | One function per transition, each checking the phase it leaves (see [domain-model.md](domain-model.md#mission-and-delivery-phase)). |
-| Money, offers, Contracts | `Economy` | `accept()`, `remove_contract()`, `finish_unloading()`, `cancel_mission()`, `pay_for_ship()`, `get_paid_for_ship()`; each balance change records exactly one Transaction per ship or Contract. |
-| Owned ships, the ship in service, name counters | `Hangar` | Its named operations: `buy()`, `sell()`, `put_in_service()` (the Ship swap), `add_ship()`. The Office's Shipyard and Hangar screens call them (and the Economy's for the money) and never edit an `OwnedShip`. The one exception: the Lander burns and refuels the fuel in tank of the ship in service. |
+| Money, offers, Contracts | `Economy` | `accept()`, `remove_contract()`, `finish_unloading()`, `cancel_mission()`, `settle_crash()`, `pay_for_ship()`, `get_paid_for_ship()`, `pay_for_repair()`; each balance change records exactly one Transaction per ship or Contract. |
+| Owned ships, the ship in service, name counters | `Hangar` | Its named operations: `buy()`, `sell()`, `put_in_service()` (the Ship swap), `add_ship()`, `wreck()` (on a crash), `recover()`, `repair()`. The Office's Shipyard and Hangar screens call them (and the Economy's for the money) and never edit an `OwnedShip`. The one exception: the Lander burns and refuels the fuel in tank of the ship in service. |
 | Sky | none (derived) | The World pulls `SkyLook.at(minutes)` once per in-game minute and pushes it to every decor script's `show_sky()`. |
 
 ## Frame and pause model
 
 - **Gameplay ticks in `_physics_process`** (Lander, PlanetClock, Economy, World's sky check and drift feed), so `--fixed-fps 60` tests are deterministic. Decor movement (clouds, vehicles, Activity) and the Office's animations use `_process`.
 - **The Office pauses the whole tree** while showing. The Economy runs with process mode Always (offer timers keep running); the planet clock stays pausable (time stops). See [ADR 0003](../adr/0003-run-state-in-scene-nodes.md).
-- **Restart reloads the scene.** That is the whole reset mechanism; see ADR 0003.
+- **Only a fresh start reloads the scene;** a crash never does. Recovery resets only the ship's place and the view in place; see [ADR 0008](../adr/0008-career-replaces-the-run.md) (and ADR 0003 for why Career state lives in scene nodes).
 - **Ready order matters:** `Station` must stay above `Lander`, and `Hangar` below `Lander` and above `UI`, `Economy` and `Office`, in `main.tscn` (see the README's Gotchas).
 
 ## Building a location

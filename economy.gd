@@ -1,11 +1,11 @@
 class_name Economy
 extends Node
-# The run's economy: the pilot's Bank account balance, the Transport offer pool and the
-# Contracts. It lives in the scene, so a restart (a scene reload) wipes it, and it keeps
-# running while the Office pauses the world. It also runs the delivery: loading, the
+# The Career's economy: the pilot's Bank account balance, the Transport offer pool and the
+# Contracts. It lives in the scene, so only a scene reload (a fresh start) wipes it; a crash and
+# Recovery keep it. It keeps running while the Office pauses the world. It also runs the delivery: loading, the
 # delivery clock and unloading, which settles the Contracts.
 #
-# The Bank account balance (`START_BALANCE` at the start of every run), the Transport offer pool
+# The Bank account balance (`START_BALANCE` at the start of a Career), the Transport offer pool
 # (starting 5, a new one every 30–90 s while fewer than 7 are listed, expiry), the Contracts (`destination()`, the first Contract's, which they
 # all share, or `null` without any; accepting re-checks that the offer is still there and fits, its
 # destination included; removing one before loading puts it back in the pool in number order, even
@@ -19,9 +19,11 @@ extends Node
 # midnight, so past `PlanetClock.MINUTES_PER_DAY` on the next day), and settling each Contract into
 # `transactions` (€0 when landed away from its destination; minus 25% of its reward when cancelled)
 # (newest first; `paid_out` with the total), a seedable `rng`, and `Economy.eur()` for writing
-# euros. Ship purchases and sales (`pay_for_ship()`, `get_paid_for_ship()`) each change the balance
-# and add one Transaction naming the owned ship; `shortfall(price)` is how much more a purchase
-# needs, since buying never takes the balance below €0. Attached to `Economy`.
+# euros. Ship purchases and sales (`pay_for_ship()`, `get_paid_for_ship()`) and repairs
+# (`pay_for_repair()`) each change the balance and add one Transaction naming the owned ship;
+# `shortfall(price)` is how much more a purchase needs, since buying never takes the balance below
+# €0. A crash (the Lander's `crashed`) is settled at once by `settle_crash()`: Failed contracts and
+# the recovery fee. Recovery and repairs may take the balance below €0. Attached to `Economy`.
 
 # An offer ran out of time and left the pool without being accepted.
 signal offer_expired(offer: TransportOffer)
@@ -92,6 +94,7 @@ func _ready() -> void:
 	rng.randomize()
 	start_pool()
 	lander.landed_on_pad.connect(start_unloading)
+	lander.crashed.connect(settle_crash)
 
 
 # Ticked in physics so the --fixed-fps tests stay deterministic.
@@ -185,9 +188,31 @@ func finish_unloading() -> void:
 	paid_out.emit(total)
 
 
+# A crash is settled the moment it happens: each Contract aboard (a loaded mission) becomes a
+# Failed contract for its failure fee, the Load is lost, then the recovery fee for the ship in
+# service; one Transaction each, which may take the balance below €0. A free flight pays only the
+# fee. Contracts accepted but not yet loaded aren't aboard, so they stay.
+func settle_crash() -> void:
+	if phase == Phase.DELIVERING:
+		phase = Phase.NONE
+		for contract in contracts:
+			var transaction := contract.failure()
+			transaction.ship = lander.ship_type.name
+			record(transaction)
+		contracts.clear()
+		lander.load_mass = 0.0
+	record(Transaction.recovery(lander.ship))
+
+
 # Charges a ship bought in the Shipyard: its price, one Transaction.
 func pay_for_ship(ship: OwnedShip) -> void:
 	record(Transaction.ship_purchase(ship))
+
+
+# Charges a repair of this owned ship, before the Hangar repairs it: its repair cost, one
+# Transaction, which may take the balance below €0.
+func pay_for_repair(ship: OwnedShip) -> void:
+	record(Transaction.repair(ship))
 
 
 # Pays out a ship sold from the Hangar: its sale price, one Transaction.

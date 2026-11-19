@@ -10,7 +10,8 @@ extends RefCounted
 # drawn when it's generated; `Location.VALLEY` unless set), its Load mass, reward, `#004 TITLE`
 # label, misfit reason and settlement into a `Transaction` (which records where it was delivered and
 # its destination; `wrong_destination()` when they differ, settling for €0; `cancellation()` makes a
-# `cancelled` one, paying minus `CANCELLATION_FEE_SHARE` of the reward),
+# `cancelled` one, paying minus `CANCELLATION_FEE_SHARE` of the reward; `failure()` a `failed` one,
+# a Failed contract after a crash, paying minus `FAILURE_FEE_SHARE`),
 # and the random generator (one for every destination: it draws the destination by pool share, then
 # applies its location profile) with its tuning constants.
 
@@ -36,6 +37,8 @@ const PASSENGER_PENALTY_SHARE := 0.02
 const CARGO_PENALTY_SHARE := 0.01
 # Cancelling a loaded mission costs this share of each Contract's reward.
 const CANCELLATION_FEE_SHARE := 0.25
+# A Contract aboard a ship that crashes fails for this share of its reward.
+const FAILURE_FEE_SHARE := 0.5
 
 enum Kind { PASSENGERS, CARGO, MIXED }
 
@@ -125,12 +128,26 @@ func settlement(flight_deadline: float, delivery_time: float, deadline_at: float
 
 # What it costs when its mission is cancelled: the fee, a share of its reward, as a negative payout.
 func cancellation() -> Transaction:
+	var transaction := fee(CANCELLATION_FEE_SHARE)
+	transaction.cancelled = true
+	return transaction
+
+
+# What it costs when the ship carrying it crashes: the failure fee, a share of its reward, as a
+# negative payout. A Failed contract.
+func failure() -> Transaction:
+	var transaction := fee(FAILURE_FEE_SHARE)
+	transaction.failed = true
+	return transaction
+
+
+# Settles it for nothing delivered: this share of its reward is taken, as a negative payout.
+func fee(share: float) -> Transaction:
 	var transaction := Transaction.new()
 	transaction.contract = self
-	transaction.cancelled = true
 	transaction.destination = destination.name
 	transaction.reward = reward()
-	transaction.penalty = roundi(transaction.reward * CANCELLATION_FEE_SHARE)
+	transaction.penalty = roundi(transaction.reward * share)
 	transaction.payout = -transaction.penalty
 	return transaction
 

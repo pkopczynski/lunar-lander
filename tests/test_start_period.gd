@@ -129,9 +129,9 @@ func test_start_loading_sets_the_local_time_within_the_chosen_period() -> void:
 	var ranges := {"MORNING": [6, 11], "DAY": [12, 17], "EVENING": [18, 23], "NIGHT": [0, 5]}
 	var seed_value := 0
 	for period: String in ranges:
-		# R restarts once a loading ship is back in the flight view.
+		# A fresh start for each period.
 		if seed_value > 0:
-			await restart()
+			await start_over()
 		clock().reseed(seed_value)
 		seed_value += 1
 		await start_loading_in(period, known_offer(1, 0.0))
