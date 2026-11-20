@@ -240,7 +240,7 @@ An owned ship that crashed: condition 0%. It is recovered to the station, can't 
 _Avoid_: Destroyed ship, dead ship
 
 **Condition**:
-How undamaged an owned ship is, from 100% (new) to 0% (a wreck). Hits wear it down; it has no effect on flight and never harms cargo.
+How undamaged an owned ship is, from 100% (new) to 0% (a wreck). Hits and hard landings wear it down; it has no effect on flight and never harms cargo.
 _Avoid_: Health, HP, hull
 
 **Impact speed**:
@@ -248,6 +248,10 @@ The ship's speed into a surface it touches, which sets the damage: none below 15
 
 **Crash speed**:
 The impact speed above which touching a solid is a crash: 120 px/s.
+
+**Hard landing**:
+A touchdown on the pad past a safe landing limit but inside every crash limit (falling 50 → 80 px/s, sideways 25 → 40 px/s, tilt 15° → 25°). The ship lands and delivers, but loses up to 25% of its condition, by the worst of the three bands.
+_Avoid_: Rough landing, bad landing
 
 **Repair**:
 Restoring an owned ship's condition, from its ship page: instant and always back to 100%, for the missing condition × its ship type's repair rate × its value. Allowed with contracts and in debt.
@@ -302,7 +306,7 @@ The ship is in free flight, under the player's control. It's the state between l
 _Avoid_: Airborne, in flight, free
 
 **Landed**:
-The ship is resting on the pad after a safe touchdown.
+The ship is resting on the pad after a touchdown that went past no landing band: a safe one, or a hard landing.
 _Avoid_: Touched down, parked
 
 **Docked**:
@@ -310,7 +314,7 @@ The ship is resting inside the parking spot. This is the deep-space counterpart 
 _Avoid_: Parked, landed (in deep space)
 
 **Crashed**:
-The ship hit a solid above the crash speed, took a hit that left its condition at 0%, touched down on the pad unsafely, or rested tipped over (past 90° for 2 s). Simply touching a solid is no longer a crash. The ship in service becomes a wreck, the crash is settled at once (the recovery fee, and failed contracts for any contracts aboard), and the ship stays Crashed until the player presses R for recovery.
+The ship hit a solid above the crash speed, took a hit or a hard landing that left its condition at 0%, touched down on the pad past a landing band, or rested tipped over (past 90° for 2 s). Simply touching a solid is no longer a crash. The ship in service becomes a wreck, the crash is settled at once (the recovery fee, and failed contracts for any contracts aboard), and the ship stays Crashed until the player presses R for recovery.
 _Avoid_: Destroyed, dead
 
 **Stranded**:
