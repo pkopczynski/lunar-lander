@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/pkopczynski/lunar-lander/compare/v0.7.0...v0.8.0) (2026-11-20)
+
+
+### Features
+
+* touching terrain damages the ship and it bounces, instead of crashing ([#133](https://github.com/pkopczynski/lunar-lander/issues/133)) ([6fe84b6](https://github.com/pkopczynski/lunar-lander/commit/6fe84b678aef01b0cb3f26a33b32335bd457cc9b))
+
 ## [0.7.0](https://github.com/pkopczynski/lunar-lander/compare/v0.6.0...v0.7.0) (2026-11-19)
 
 
