@@ -17,7 +17,7 @@ extends CharacterBody2D
 # Attached to `Lander`. It flies the ship in service, an `OwnedShip` handed over by the Hangar's
 # `fly(ship)` (hull, collision shape and flame from its Ship type), and reads only that ship's
 # effective numbers, never its Ship type's. Its fuel is the ship's fuel in tank: the Lander burns
-# and refuels it, wears the ship's Condition on hits, and changes nothing else on the ship. `start_docked()` puts it in the parking spot.
+# and refuels it, wears the ship's Condition on hits and Hard landings, and changes nothing else on the ship. `start_docked()` puts it in the parking spot.
 #
 # The Lander's `state` (Flying, Landed, Docked, Crashed, Stranded) changes only through `enter()`, which
 # starts every state fresh: not held, no lift-off burn, docking armed, leveling stopped, with the
@@ -103,7 +103,7 @@ const STEER_DISTANCE := 150.0
 const STEER_SPEED := 100.0
 const STEER_BRAKING := 600.0
 
-# Touching a solid (anything but the pad's ground, judged by the landing limits) damages the
+# Touching a solid (anything but the pad's ground, judged by the landing bands) damages the
 # ship by its impact speed, the speed into the surface: none below NO_DAMAGE_SPEED, rising in a
 # straight line to MAX_HIT_DAMAGE of Condition just under CRASH_SPEED, a crash above it. A hit
 # leaves the surface at BOUNCE_SHARE of its impact speed, keeping SURFACE_SPEED_KEPT of its speed
@@ -529,7 +529,18 @@ func landing_band_share(impact_velocity: Vector2) -> float:
 
 
 func band_share(value: float, safe: float, crash_edge: float) -> float:
-	return (value - safe) / (crash_edge - safe)
+	return inverse_lerp(safe, crash_edge, value)
+
+
+# Takes a loss from the ship in service's Condition: to 0% crashes it, else it emits `damaged`.
+# Returns whether the ship survived.
+func wear(loss: float) -> bool:
+	ship.condition = maxf(ship.condition - loss, 0.0)
+	if ship.condition <= 0.0:
+		crash()
+		return false
+	damaged.emit(loss)
+	return true
 
 
 # A touchdown on the pad: past a band it crashes; inside one it's a Hard landing, which costs the
@@ -543,12 +554,8 @@ func touch_down(impact_velocity: Vector2) -> void:
 	if loss <= 0.0:
 		land()
 		return
-	ship.condition = maxf(ship.condition - loss, 0.0)
-	if ship.condition <= 0.0:
-		crash()
-		return
-	land(loss)
-	damaged.emit(loss)
+	if wear(loss):
+		land(loss)
 
 
 # A touch of any solid off the pad: the hardest contact of the move sets the impact speed. It
@@ -569,12 +576,8 @@ func touch(impact_velocity: Vector2) -> bool:
 		return false
 	if impact < NO_DAMAGE_SPEED:
 		return false
-	var loss := MAX_HIT_DAMAGE * (impact - NO_DAMAGE_SPEED) / (CRASH_SPEED - NO_DAMAGE_SPEED)
-	ship.condition = maxf(ship.condition - loss, 0.0)
-	if ship.condition <= 0.0:
-		crash()
+	if not wear(MAX_HIT_DAMAGE * inverse_lerp(NO_DAMAGE_SPEED, CRASH_SPEED, impact)):
 		return false
-	damaged.emit(loss)
 	var along := impact_velocity + normal * impact
 	velocity = along * SURFACE_SPEED_KEPT + normal * impact * BOUNCE_SHARE
 	return true
