@@ -31,13 +31,14 @@ func test_touching_down_on_the_rooftop_pad_lands_and_on_the_roof_beside_it_does_
 	check(lander().position.y < roof, "the ship should rest on the roof beside the pad, y %s" % lander().position.y)
 
 
-# Drops the ship gently from a point and waits for it to touch something, or 6 s.
+# Drops the ship gently from a point and waits for it to stop falling (it bounced, settled or
+# crashed on something), or 6 s.
 func drop_from(start: Vector2) -> void:
 	place(start, Vector2(0, 20))
 	for i in roundi(6.0 * PHYSICS_FPS):
-		if lander().state != Lander.State.FLYING or lander().get_slide_collision_count() > 0:
-			break
 		await frames(1)
+		if lander().state != Lander.State.FLYING or lander().velocity.y <= 0.0:
+			break
 
 
 func test_a_tower_the_street_and_the_antenna_are_solid() -> void:
@@ -53,8 +54,8 @@ func test_a_tower_the_street_and_the_antenna_are_solid() -> void:
 		await choose_ship()
 		clock().move_to(Location.METROPOLIS)
 		await drop_from(spots[what])
-		check(lander().get_slide_collision_count() > 0 or lander().state == Lander.State.CRASHED,
-			"the ship should touch %s, says %s" % [what, message()])
+		check(lander().state == Lander.State.CRASHED or lander().velocity.y <= 0.0,
+			"the ship should stop falling on %s, says %s" % [what, message()])
 		check(lander().position.y < spots[what].y + 150.0,
 			"the ship should stop on %s, not fall far past it, y %s" % [what, lander().position.y])
 		await start_over()

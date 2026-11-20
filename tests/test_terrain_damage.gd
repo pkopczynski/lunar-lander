@@ -12,12 +12,12 @@ func condition() -> float:
 
 
 # Drops the Sparrow onto the ground off the pad, from just above it, at a falling speed (and a
-# sideways one), and waits for the frame it leaves the ground again, settles or crashes.
+# sideways one), and waits for the frame it stops falling: it bounces, settles or crashes.
 func hit_ground(falling: float, sideways := 0.0) -> void:
 	place(Vector2(pad_x() + OFF_PAD, RESTING_Y - 0.5), Vector2(sideways, falling))
 	for i in 30:
 		await frames(1)
-		if lander().state != Lander.State.FLYING or lander().velocity.y < 0.0 or lander().is_on_floor():
+		if lander().state != Lander.State.FLYING or lander().velocity.y <= 0.0:
 			break
 
 

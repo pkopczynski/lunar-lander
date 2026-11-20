@@ -348,9 +348,13 @@ func _physics_process(delta: float) -> void:
 				crash()
 			return
 		var bounced := touch(impact_velocity)
-		if state != State.FLYING or bounced:
+		if state != State.FLYING:
 			return
-	if is_on_floor():
+		if not bounced:
+			on_ground(thrusting, delta)
+			if state != State.FLYING:
+				return
+	elif is_on_floor():
 		on_ground(thrusting, delta)
 		if state != State.FLYING:
 			return
@@ -539,18 +543,22 @@ func touch(impact_velocity: Vector2) -> bool:
 	return true
 
 
-# On the ground off the pad: sliding slows by friction, resting tipped over crashes after
-# TIPPED_TIME, and resting with an empty tank is Stranded.
+# In contact with a solid off the pad without bouncing: on a floor, sliding slows by friction
+# (not while thrusting, so lift-off isn't braked). At rest (slower than REST_SPEED, on a floor or
+# wedged against a steep face), tipped over crashes after TIPPED_TIME, and an empty tank is Stranded.
 func on_ground(thrusting: bool, delta: float) -> void:
-	if not thrusting:
+	if is_on_floor() and not thrusting:
 		velocity = velocity.move_toward(Vector2.ZERO, GROUND_FRICTION * delta)
+	if velocity.length() >= REST_SPEED:
+		tipped_time = 0.0
+		return
 	if tilt() > deg_to_rad(TIPPED_ANGLE_DEG):
 		tipped_time += delta
 		if tipped_time >= TIPPED_TIME:
 			crash()
 		return
 	tipped_time = 0.0
-	if fuel <= 0.0 and velocity.length() < REST_SPEED:
+	if fuel <= 0.0:
 		enter(State.STRANDED)
 		stranded.emit()
 
