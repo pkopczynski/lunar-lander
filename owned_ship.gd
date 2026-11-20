@@ -1,7 +1,8 @@
 class_name OwnedShip
 extends RefCounted
 # An Owned ship: one ship the player owns. Its Ship type, its automatic name (the type plus a
-# per-type number, "SPARROW 1"), its fuel in tank (kg) and its Condition (1.0 is 100%).
+# per-type number, "SPARROW 1"), its fuel in tank (kg) and its Condition (1.0 is 100%; no effect
+# on flight).
 #
 # Its effective numbers (`dry_mass()`, `maximum_weight()`, `tank()`, `thrust()`, `burn_rate()`,
 # `turn_rate()`, `full_tank_cargo()`) are what the Lander flies. For now they are its Ship type's;
@@ -14,8 +15,9 @@ extends RefCounted
 # (`recovery_fee()`: `RECOVERY_FEE_SHARE` of its type's price) and what selling it pays (`sale_price()`:
 # `SALE_SHARE` of its value less the repair cost, never below €0; the fuel in its tank earns nothing).
 #
-# Owned ships belong to the Hangar: only its named operations create or change them. The one
-# exception is the fuel in tank of the ship in service, which the Lander burns and refuels in flight.
+# Owned ships belong to the Hangar: only its named operations create or change them. The
+# exceptions are the ship in service's fuel in tank, which the Lander burns and refuels in flight,
+# and its Condition, which the Lander wears down on each hit (ADR 0009).
 
 # Selling a ship pays this share of its value, less its repair cost.
 const SALE_SHARE := 0.5

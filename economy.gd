@@ -22,8 +22,8 @@ extends Node
 # euros. Ship purchases and sales (`pay_for_ship()`, `get_paid_for_ship()`) and repairs
 # (`pay_for_repair()`) each change the balance and add one Transaction naming the owned ship;
 # `shortfall(price)` is how much more a purchase needs, since buying never takes the balance below
-# €0. A crash (the Lander's `crashed`) is settled at once by `settle_crash()`: Failed contracts and
-# the recovery fee. Recovery and repairs may take the balance below €0. Attached to `Economy`.
+# €0. A crash (the Lander's `crashed`) or Stranded (its `stranded`) is settled at once by
+# `settle_crash()`: Failed contracts and the recovery fee. Recovery and repairs may take the balance below €0. Attached to `Economy`.
 
 # An offer ran out of time and left the pool without being accepted.
 signal offer_expired(offer: TransportOffer)
@@ -95,6 +95,7 @@ func _ready() -> void:
 	start_pool()
 	lander.landed_on_pad.connect(start_unloading)
 	lander.crashed.connect(settle_crash)
+	lander.stranded.connect(settle_crash)
 
 
 # Ticked in physics so the --fixed-fps tests stay deterministic.
@@ -188,7 +189,7 @@ func finish_unloading() -> void:
 	paid_out.emit(total)
 
 
-# A crash is settled the moment it happens: each Contract aboard (a loaded mission) becomes a
+# A crash, or Stranded, is settled the moment it happens: each Contract aboard (a loaded mission) becomes a
 # Failed contract for its failure fee, the Load is lost, then the recovery fee for the ship in
 # service; one Transaction each, which may take the balance below €0. A free flight pays only the
 # fee. Contracts accepted but not yet loaded aren't aboard, so they stay.

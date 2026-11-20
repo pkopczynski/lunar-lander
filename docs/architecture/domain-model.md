@@ -70,11 +70,11 @@ Generated (destination drawn first by pool share, the rest from that destination
 
 ### Owned ship
 
-Bought (full tank, 100%) → in service or in a berth → **wrecked** by a crash while in service (0%, still in service) → **repaired** (always back to 100%) → … → **sold** (never while in service). A Wreck can't be put in service, and the Office can't be left while the ship in service is one.
+Bought (full tank, 100%) → in service or in a berth → **damaged** by hits while in service (each takes some Condition; the Lander wears it, as it burns the fuel) → **wrecked** by a crash while in service (0%, still in service) → **repaired** (always back to 100%) → … → **sold** (never while in service). A Wreck can't be put in service, and the Office can't be left while the ship in service is one.
 
 ### Ship states
 
-Exactly one of Flying, Landed, Docked, Crashed, changed only by `Lander.enter()`, which starts each state fresh. Three flags sit beside the state and are set from outside:
+Exactly one of Flying, Landed, Docked, Crashed, Stranded, changed only by `Lander.enter()`, which starts each state fresh. Three flags sit beside the state and are set from outside:
 
 | Flag | Set by | Effect |
 |---|---|---|
@@ -82,7 +82,7 @@ Exactly one of Flying, Landed, Docked, Crashed, changed only by `Lander.enter()`
 | `loading` | Economy via `start_loading()` / `finish_loading()` | Docked ship can't turn or undock, refuels to the fuel cap. |
 | `lift_off_blocked` | Economy (unloading) | Landed ship can't lift off. Not cleared by `enter()`, so a ship settling back stays grounded. |
 
-Crashed lasts until R: Recovery puts the Wreck Docked at the station (`Lander.start_docked()`), which starts Docked fresh.
+A ship resting on a solid off the pad stays Flying and can take off again. Resting there with an empty tank (and not tipped over) enters Stranded. Crashed and Stranded last until R: Recovery puts the ship (a Wreck after a crash) Docked at the station (`Lander.start_docked()`), which starts Docked fresh.
 
 ## Invariants
 
@@ -99,6 +99,7 @@ Each rule below holds in the code today; the parenthesis says where it's enforce
 - **The current location changes only through `PlanetClock.move_to()`**, and a location change never changes the local time. Only starting a mission re-rolls the time ([ADR 0002](../adr/0002-one-planet-clock.md)).
 - **Drift never swaps a visible surface** (`PlanetClock.count_drift()` waits for `World.surface_in_view()` to be false).
 - **Time is presentation only.** It sets the sky and how deadlines are shown; deadlines and penalties count real seconds from the end of loading (`Economy.delivery_time`).
-- **Settlement:** a delivered Contract pays its reward less the overdue penalty, never below €0, and €0 away from its destination; a cancelled one pays minus its cancellation fee (25%); a Failed contract (aboard in a crash) pays minus its failure fee (50%). Each is settled on its own, one Transaction each (`TransportOffer.settlement()`, `cancellation()`, `failure()`). A crash also charges the recovery fee (5% of the Ship type's price), one Transaction; a free flight's crash costs only that.
-- **Only the ground is landed on.** Any other contact (Mountains, terrain, station) is a crash; the pad and all decor have no collider ([ADR 0005](../adr/0005-solid-terrain-vs-decor.md)).
+- **Settlement:** a delivered Contract pays its reward less the overdue penalty, never below €0, and €0 away from its destination; a cancelled one pays minus its cancellation fee (25%); a Failed contract (aboard in a crash or when Stranded) pays minus its failure fee (50%). Each is settled on its own, one Transaction each (`TransportOffer.settlement()`, `cancellation()`, `failure()`). A crash or Stranded also charges the recovery fee (5% of the Ship type's price), one Transaction; a free flight's costs only that (`Economy.settle_crash()`, on `crashed` and `stranded`).
+- **Only the pad is landed on.** Touching the ground on the pad is judged by the landing limits (landed or crashed). Any other contact (the ground off the pad, Mountains, terrain, station) damages the ship by its impact speed and bounces it, and is a crash only above the crash speed or when it takes Condition to 0% (`Lander.touch()`); the ship stays Flying. The pad and all decor have no collider ([ADR 0005](../adr/0005-solid-terrain-vs-decor.md), [ADR 0009](../adr/0009-contact-damages-and-bounces.md)).
+- **Condition changes only by a hit, a crash (0%) or a repair (100%)** (`Lander.touch()`, `Hangar.wreck()`, `Hangar.repair()`). Stranded keeps it.
 - **Every Career starts the same:** the Office, SPARROW 1 in service and Docked, €20 000 in the Bank account, a fresh offer pool from `#001`, the Valley at an Evening minute ([ADR 0003](../adr/0003-run-state-in-scene-nodes.md)). Only a fresh start (a scene reload) begins one; a crash and Recovery never do ([ADR 0008](../adr/0008-career-replaces-the-run.md)).

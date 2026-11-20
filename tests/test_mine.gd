@@ -88,22 +88,25 @@ func test_every_ship_type_can_fly_down_into_the_open_pit_mine_and_land_on_the_mi
 		await start_over()
 
 
-func test_touching_down_on_the_pit_floor_where_the_valleys_pad_would_be_crashes() -> void:
+func test_touching_down_on_the_pit_floor_where_the_valleys_pad_would_be_does_not_land() -> void:
 	await choose_ship()
 	clock().move_to(Location.MINE)
 	place(Vector2(Location.VALLEY.pad_center_x, Location.MINE.ground_y - 28.0), Vector2(0, 20))
 	await seconds(1.0)
-	check(message().begins_with("Crashed"),
-		"the Valley's pad spot isn't the Mine's pad, so touching down there should crash, got %s" % message())
+	check(lander().state == Lander.State.FLYING,
+		"the Valley's pad spot isn't the Mine's pad, so touching down there shouldn't land, says %s" % message())
 
 
-func test_touching_a_bench_crashes_and_the_valley_has_no_benches() -> void:
+func test_a_bench_is_solid_and_the_valley_has_no_benches() -> void:
 	await choose_ship()
 	clock().move_to(Location.MINE)
 	# Gently onto the middle left bench, one step down from the Valley's ground.
 	place(Vector2(550, World.GROUND_TOP_Y + Location.BENCH_STEP - 48.0), Vector2(0, 20))
 	await seconds(1.5)
-	check(message().begins_with("Crashed"), "touching a bench should crash, got %s" % message())
+	check(lander().state == Lander.State.FLYING, "touching a bench should damage, not crash, says %s" % message())
+	check(hangar().in_service.condition < 1.0, "the drop onto the bench should damage the ship")
+	check(lander().position.y < World.GROUND_TOP_Y + Location.BENCH_STEP,
+		"the ship should rest on the bench, at y %s" % lander().position.y)
 	clock().move_to(Location.VALLEY)
 	# Where the bench was, at the Mine.
 	place(Vector2(550, 520))
@@ -111,15 +114,15 @@ func test_touching_a_bench_crashes_and_the_valley_has_no_benches() -> void:
 	check(lander().state == Lander.State.FLYING, "back at the Valley the benches should be gone, says %s" % message())
 
 
-func test_touching_the_crane_arm_over_the_left_benches_crashes() -> void:
+func test_the_crane_arm_over_the_left_benches_is_solid() -> void:
 	await choose_ship()
 	clock().move_to(Location.MINE)
 	# Gently down onto the arm, above the middle left bench, well above the benches.
 	place(Vector2(600, 380), Vector2(0, 20))
 	await seconds(1.5)
-	check(message().begins_with("Crashed"), "touching the crane arm should crash, got %s" % message())
+	check(lander().state == Lander.State.FLYING, "touching the crane arm should damage, not crash, says %s" % message())
 	check(lander().position.y < World.GROUND_TOP_Y - 100.0,
-		"the ship should crash on the crane arm, well above the benches, at y %s" % lander().position.y)
+		"the ship should rest on the crane arm, well above the benches, at y %s" % lander().position.y)
 	clock().move_to(Location.VALLEY)
 	place(Vector2(600, 380))
 	await frames(10)

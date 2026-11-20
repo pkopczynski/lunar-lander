@@ -3,8 +3,11 @@ extends CharacterBody2D
 # Flight physics, fuel, mass (`load_mass`, the Load) and the fuel cap (`fuel_cap()`), border
 # crossing and its disturbance (with a seedable `rng`), steering, landing and docking judgement (the
 # "on the pad" check reads the current location's pad through `pad_center_x()`), refuelling, result
-# display (with a `status` line, set through `show_status()`, under Docked!/Landed!), the R key
-# (`recovery_requested` after a crash, else the debug pad shortcut on the Surface; it never restarts),
+# display (with a `status` line, set through `show_status()`, under Docked!/Landed!), touching a
+# solid off the pad (`touch()`: damage by impact speed to the ship in service's Condition and a
+# bounce, `damaged` for each loss; a crash above the crash speed or at 0%), resting on the ground
+# (friction, tipped over, Stranded), the R key (`recovery_requested` after a crash or while
+# Stranded, else the debug pad shortcut on the Surface; it never restarts),
 # `landed_on_pad` (from a real landing and from the debug pad shortcut) and `lift_off_blocked`
 # (keeps the ship resting and refuelling but grounded, for unloading), and
 # `start_loading(load)`/`finish_loading()` (keeps the ship Docked, unable to turn or undock,
@@ -12,9 +15,9 @@ extends CharacterBody2D
 # Attached to `Lander`. It flies the ship in service, an `OwnedShip` handed over by the Hangar's
 # `fly(ship)` (hull, collision shape and flame from its Ship type), and reads only that ship's
 # effective numbers, never its Ship type's. Its fuel is the ship's fuel in tank: the Lander burns
-# and refuels it, and changes nothing else on the ship. `start_docked()` puts it in the parking spot.
+# and refuels it, wears the ship's Condition on hits, and changes nothing else on the ship. `start_docked()` puts it in the parking spot.
 #
-# The Lander's `state` (Flying, Landed, Docked, Crashed) changes only through `enter()`, which
+# The Lander's `state` (Flying, Landed, Docked, Crashed, Stranded) changes only through `enter()`, which
 # starts every state fresh: not held, no lift-off burn, docking armed, leveling stopped, with the
 # state's colour and message. `start_docked()`, `reset_to_pad()` and `fly_from()` also move the ship
 # and clear any border bounce, steering or disturbance. `enter()` also clears the `status` line.
@@ -24,9 +27,10 @@ extends CharacterBody2D
 # set from outside like `held`, but `enter()` doesn't clear it, so a ship that settles back onto the
 # pad while unloading stays grounded; the Economy clears it when unloading finishes. `lift_off()` is
 # the only transition that looks at the state it leaves (the lift-off burn from the pad, no
-# re-docking from the spot). Crashed and held make `_physics_process` return early; Landed and
-# Docked skip gravity and judging. R is handled in `_unhandled_input`. Entering Crashed emits
-# `crashed`; the Lander still flies a Wreck like any ship, since only the Office keeps one docked.
+# re-docking from the spot). Crashed, Stranded and held make `_physics_process` return early;
+# Landed and Docked skip gravity and judging. A ship resting on a solid off the pad stays Flying.
+# R is handled in `_unhandled_input`. Entering Crashed emits `crashed` and entering Stranded
+# `stranded`; the Lander still flies a Wreck like any ship, since only the Office keeps one docked.
 #
 # It has no ship until the Hangar's `_ready()` hands it SPARROW 1 and docks it behind the Office;
 # a Ship swap hands it a new ship and docks it again. `start_docked()` never asks to enter the
@@ -90,6 +94,24 @@ const STEER_DISTANCE := 150.0
 const STEER_SPEED := 100.0
 const STEER_BRAKING := 600.0
 
+# Touching a solid (anything but the pad's ground, judged by the landing limits) damages the
+# ship by its impact speed, the speed into the surface: none below NO_DAMAGE_SPEED, rising in a
+# straight line to MAX_HIT_DAMAGE of Condition just under CRASH_SPEED, a crash above it. A hit
+# leaves the surface at BOUNCE_SHARE of its impact speed, keeping SURFACE_SPEED_KEPT of its speed
+# along it; below NO_DAMAGE_SPEED the ship just settles. A ship on the ground slides to a stop at
+# GROUND_FRICTION.
+const NO_DAMAGE_SPEED := 15.0
+const CRASH_SPEED := 120.0
+const MAX_HIT_DAMAGE := 0.5
+const BOUNCE_SHARE := 0.35
+const SURFACE_SPEED_KEPT := 0.8
+const GROUND_FRICTION := 60.0
+# Resting on the ground tilted past TIPPED_ANGLE_DEG for TIPPED_TIME is a crash.
+const TIPPED_ANGLE_DEG := 90.0
+const TIPPED_TIME := 2.0
+# A ship on the ground slower than this is resting (Stranded, with an empty tank).
+const REST_SPEED := 4.0
+
 const SOFT_WALL_WIDTH := 150.0
 const SOFT_WALL_DAMPING := 8.0
 const SOFT_WALL_PUSH := 300.0
@@ -101,14 +123,20 @@ signal docked_at_station
 signal landed_on_pad
 # Entered Crashed: the Hangar makes the ship a Wreck and the Economy settles the crash.
 signal crashed
-# R while Crashed: the Office performs Recovery. The Lander doesn't know who answers.
+# Entered Stranded: the Economy settles it like a crash, but the ship isn't wrecked.
+signal stranded
+# R while Crashed or Stranded: the Office performs Recovery. The Lander doesn't know who answers.
 signal recovery_requested
+# A hit took this share of Condition (0.06 is 6%) from the ship in service; it didn't crash it.
+signal damaged(loss: float)
 
-enum State { FLYING, LANDED, DOCKED, CRASHED }
+enum State { FLYING, LANDED, DOCKED, CRASHED, STRANDED }
 
 const LANDED_COLOR := Color(0.3, 1.0, 0.4)
 const CRASHED_COLOR := Color(1.0, 0.3, 0.3)
 const CRASHED_TEXT := "Crashed!\nPress R for recovery"
+const STRANDED_COLOR := Color(1.0, 0.75, 0.3)
+const STRANDED_TEXT := "Stranded!\nPress R for recovery"
 
 # The ship in service it flies, set by fly(). Its numbers are the ship's effective numbers;
 # ship_type, dry_mass and fuel only read through to it (fuel also writes: burning and refuelling).
@@ -154,6 +182,8 @@ var disturb_offset := 0.0
 # Seedable, for tests.
 var rng := RandomNumberGenerator.new()
 var can_dock := true
+# How long the ship has rested on the ground tipped over.
+var tipped_time := 0.0
 # A line the resting message adds under Docked!/Landed!, such as the loading countdown.
 # Set it through show_status(): the message is rewritten every frame while resting.
 var status := ""
@@ -177,8 +207,8 @@ func _ready() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not event.is_action_pressed("restart"):
 		return
-	# R never restarts anything. After a crash it asks for Recovery, anywhere.
-	if state == State.CRASHED:
+	# R never restarts anything. After a crash, or Stranded, it asks for Recovery, anywhere.
+	if state == State.CRASHED or state == State.STRANDED:
 		recovery_requested.emit()
 	# A testing shortcut: in debug builds R on the Surface puts the ship back on the pad.
 	elif OS.is_debug_build() and not in_deep_space:
@@ -229,6 +259,7 @@ func enter(new_state: State) -> void:
 	can_dock = true
 	status = ""
 	refueling = false
+	tipped_time = 0.0
 	if level_tween:
 		level_tween.kill()
 	match new_state:
@@ -242,6 +273,9 @@ func enter(new_state: State) -> void:
 		State.CRASHED:
 			flame.visible = false
 			show_state(CRASHED_TEXT, CRASHED_COLOR)
+		State.STRANDED:
+			flame.visible = false
+			show_state(STRANDED_TEXT, STRANDED_COLOR)
 
 
 func show_state(title: String, color: Color) -> void:
@@ -270,7 +304,7 @@ func ground_top() -> float:
 func _physics_process(delta: float) -> void:
 	var thrusting := Input.is_action_pressed("ui_up") and fuel > 0.0 and disturb_left <= 0.0 \
 		and not ((lift_off_blocked or loading) and state != State.FLYING)
-	if held or state == State.CRASHED:
+	if held or state == State.CRASHED or state == State.STRANDED:
 		flame.visible = false
 		return
 	flame.visible = thrusting
@@ -307,11 +341,25 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 	if get_slide_collision_count() > 0:
-		if touched_only_ground() and is_safe_landing(impact_velocity):
-			land()
-		else:
-			crash()
-		return
+		if touched_only_ground() and is_on_pad():
+			if is_safe_landing(impact_velocity):
+				land()
+			else:
+				crash()
+			return
+		var bounced := touch(impact_velocity)
+		if state != State.FLYING:
+			return
+		if not bounced:
+			on_ground(thrusting, delta)
+			if state != State.FLYING:
+				return
+	elif is_on_floor():
+		on_ground(thrusting, delta)
+		if state != State.FLYING:
+			return
+	else:
+		tipped_time = 0.0
 
 	keep_inside_world()
 	cross_border()
@@ -438,8 +486,7 @@ func is_inside_spot() -> bool:
 	return true
 
 
-# Touching anything but Ground (mountains, a location's terrain, the station) is a crash; only
-# ground contacts go to landing judgement.
+# Only touching the pad's ground goes to landing judgement.
 func touched_only_ground() -> bool:
 	for i in get_slide_collision_count():
 		if get_slide_collision(i).get_collider() != ground:
@@ -451,15 +498,69 @@ func pad_center_x() -> float:
 	return world.location.pad_center_x
 
 
+# The pad has no collider: "on the pad" compares x positions with the current location's pad.
+func is_on_pad() -> bool:
+	return absf(position.x - pad_center_x()) <= PAD_WIDTH / 2.0
+
+
+# Radians from upright; angle_difference() wraps to [-PI, PI], so e.g. 350° counts as 10°.
+func tilt() -> float:
+	return absf(angle_difference(0.0, rotation))
+
+
 func is_safe_landing(impact_velocity: Vector2) -> bool:
-	# angle_difference() wraps to [-PI, PI], so e.g. 350° counts as 10° from upright.
-	var tilt := absf(angle_difference(0.0, rotation))
-	# The pad has no collider: "on the pad" compares x positions with the current location's pad.
-	var on_pad := absf(position.x - pad_center_x()) <= PAD_WIDTH / 2.0
 	return impact_velocity.y <= MAX_LANDING_VERTICAL_SPEED \
 		and absf(impact_velocity.x) <= MAX_LANDING_HORIZONTAL_SPEED \
-		and tilt <= deg_to_rad(MAX_LANDING_ANGLE_DEG) \
-		and on_pad
+		and tilt() <= deg_to_rad(MAX_LANDING_ANGLE_DEG)
+
+
+# A touch of any solid off the pad: the hardest contact of the move sets the impact speed. It
+# damages the ship in service (a hit to 0% Condition crashes it) and bounces it, or crashes it
+# above CRASH_SPEED. It never disturbs the controls, and the ship keeps its attitude. Returns
+# whether the ship bounced.
+func touch(impact_velocity: Vector2) -> bool:
+	var impact := 0.0
+	var normal := Vector2.UP
+	for i in get_slide_collision_count():
+		var collision := get_slide_collision(i)
+		var into := -impact_velocity.dot(collision.get_normal())
+		if into > impact:
+			impact = into
+			normal = collision.get_normal()
+	if impact > CRASH_SPEED:
+		crash()
+		return false
+	if impact < NO_DAMAGE_SPEED:
+		return false
+	var loss := MAX_HIT_DAMAGE * (impact - NO_DAMAGE_SPEED) / (CRASH_SPEED - NO_DAMAGE_SPEED)
+	ship.condition = maxf(ship.condition - loss, 0.0)
+	if ship.condition <= 0.0:
+		crash()
+		return false
+	damaged.emit(loss)
+	var along := impact_velocity + normal * impact
+	velocity = along * SURFACE_SPEED_KEPT + normal * impact * BOUNCE_SHARE
+	return true
+
+
+# In contact with a solid off the pad without bouncing: on a floor, sliding slows by friction
+# (not while thrusting, so lift-off isn't braked). At rest (slower than REST_SPEED, on a floor or
+# wedged against a steep face), tipped over crashes after TIPPED_TIME, and an empty tank is Stranded.
+func on_ground(thrusting: bool, delta: float) -> void:
+	if is_on_floor() and not thrusting:
+		velocity = velocity.move_toward(Vector2.ZERO, GROUND_FRICTION * delta)
+	if velocity.length() >= REST_SPEED:
+		tipped_time = 0.0
+		return
+	if tilt() > deg_to_rad(TIPPED_ANGLE_DEG):
+		tipped_time += delta
+		if tipped_time >= TIPPED_TIME:
+			crash()
+		return
+	tipped_time = 0.0
+	if fuel <= 0.0:
+		enter(State.STRANDED)
+		stranded.emit()
 
 
 func land() -> void:

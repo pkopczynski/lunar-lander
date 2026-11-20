@@ -1,7 +1,8 @@
 extends Control
 # Draws the fuel bar and weight readout from the lander's state, the clock line (`VALLEY  14:07`)
 # from the planet clock's, the destination and flight deadline under it (`MINE BY 14:30`) from the
-# Economy's, and the green `+€X` payout that rises above the ship and fades. Attached to `UI/Hud`.
+# Economy's, the green `+€X` payout that rises above the ship and fades, and the ship in service's
+# Condition under the weight (`CONDITION 87%`) with a brief red flash of each loss under it (`−6%`). Attached to `UI/Hud`.
 # Its static `format_kg()` and `group_thousands()` (`1 234 567`) also write the Office's masses and
 # `Economy.eur()`'s euros.
 
@@ -37,6 +38,10 @@ const PAYOUT_START_HEIGHT := 40.0
 const PAYOUT_RISE := 60.0
 const PAYOUT_TIME := 2.0
 
+# The flash of a Condition loss under the Condition line, fading out.
+const LOSS_COLOR := Color(1.0, 0.3, 0.3)
+const LOSS_TIME := 1.5
+
 const LEVEL_EASE_SPEED := 6.0
 const WAVE_HEIGHT := 2.0
 const WAVE_LENGTH := 14.0
@@ -50,6 +55,9 @@ var frame_style := StyleBoxFlat.new()
 var payout := ""
 var payout_progress := 0.0
 var payout_tween: Tween
+# The flashing −6%, "" when none; loss_left counts down from LOSS_TIME.
+var loss := ""
+var loss_left := 0.0
 
 @onready var lander: Lander = $"../../Lander"
 @onready var economy: Economy = $"../../Economy"
@@ -61,10 +69,14 @@ func _ready() -> void:
 	frame_style.set_border_width_all(BORDER_WIDTH)
 	frame_style.set_corner_radius_all(CORNER_RADIUS)
 	economy.paid_out.connect(show_payout)
+	lander.damaged.connect(show_loss)
 
 
 func _process(delta: float) -> void:
 	time += delta
+	loss_left = maxf(loss_left - delta, 0.0)
+	if loss_left <= 0.0:
+		loss = ""
 	var level := lander.tank_level()
 	shown_level = lerpf(shown_level, level, 1.0 - exp(-LEVEL_EASE_SPEED * delta))
 	queue_redraw()
@@ -84,6 +96,12 @@ func _draw() -> void:
 		HORIZONTAL_ALIGNMENT_CENTER, text_width, FONT_SIZE, TEXT_COLOR)
 	draw_string(font, Vector2(text_x, bar.end.y + TEXT_GAP + FONT_SIZE), format_kg(lander.total_mass()),
 		HORIZONTAL_ALIGNMENT_CENTER, text_width, FONT_SIZE, TEXT_COLOR)
+	var condition_y := bar.end.y + 2.0 * (TEXT_GAP + FONT_SIZE)
+	draw_string(font, Vector2(0.0, condition_y), condition_text(), HORIZONTAL_ALIGNMENT_RIGHT,
+		size.x - TEXT_GAP, FONT_SIZE, TEXT_COLOR)
+	if loss != "":
+		draw_string(font, Vector2(0.0, condition_y + TEXT_GAP + FONT_SIZE), loss, HORIZONTAL_ALIGNMENT_RIGHT,
+			size.x - TEXT_GAP, FONT_SIZE, Color(LOSS_COLOR, loss_left / LOSS_TIME))
 
 	draw_string(font, Vector2(0.0, TIMER_MARGIN.y), clock_text(), HORIZONTAL_ALIGNMENT_RIGHT,
 		size.x - TIMER_MARGIN.x, TIMER_FONT_SIZE, TEXT_COLOR)
@@ -107,6 +125,21 @@ func show_payout(total: int) -> void:
 	payout_tween = create_tween()
 	payout_tween.tween_property(self, "payout_progress", 1.0, PAYOUT_TIME)
 	payout_tween.tween_callback(func() -> void: payout = "")
+
+
+func show_loss(share: float) -> void:
+	loss = "−%d%%" % maxi(roundi(share * 100.0), 1)
+	loss_left = LOSS_TIME
+
+
+# The ship in service's Condition: CONDITION 87%.
+func condition_text() -> String:
+	return "CONDITION %d%%" % roundi(lander.ship.condition * 100.0)
+
+
+# The flash of the last Condition loss while it shows (−6%), else "".
+func loss_text() -> String:
+	return loss
 
 
 # The current location's name and the local time: VALLEY  14:07.

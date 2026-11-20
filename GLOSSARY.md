@@ -9,7 +9,7 @@ The one continuing game: the bank account and its transactions, the owned ships,
 _Avoid_: Run, save, game
 
 **Recovery**:
-Bringing the ship back to the station after a crash, for a recovery fee of 5% of its ship type's price: R after a crash. It happens in place: the wreck is Docked at the station, still in service, and the office opens; the clock, location and transport offers carry on.
+Bringing the ship back to the station after a crash or when Stranded, for a recovery fee of 5% of its ship type's price: R after a crash or while Stranded. It happens in place: the ship (a wreck after a crash, keeping its condition when Stranded) is Docked at the station, still in service, and the office opens; the clock, location and transport offers carry on.
 _Avoid_: Respawn, retry, restart, towing
 
 ## World
@@ -27,7 +27,7 @@ The horizontal line between the surface and deep space.
 _Avoid_: Boundary, edge, atmosphere line
 
 **Mountains**:
-Solid side walls of the lower surface, the same shape at every location but dressed in each location's own look. Touching them crashes the ship.
+Solid side walls of the lower surface, the same shape at every location but dressed in each location's own look. Touching them damages the ship by its impact speed.
 _Avoid_: Side borders, cliffs
 
 **Backdrop**:
@@ -87,11 +87,11 @@ The location the game started with: flat ground between the mountains, with the 
 _Avoid_: Mountains (that's the solid side walls), Tatras
 
 **Mine**:
-The open-pit mine location: stepped benches cut down into the ground, with the pad on the pit floor, and one solid crane whose arm reaches over the left benches. Touching the benches or the crane crashes the ship; the cranes in its Backdrop are only scenery.
+The open-pit mine location: stepped benches cut down into the ground, with the pad on the pit floor, and one solid crane whose arm reaches over the left benches. The benches and the crane are solid: touching them damages the ship by its impact speed; the cranes in its Backdrop are only scenery.
 _Avoid_: Quarry, pit
 
 **Metropolis**:
-The futuristic city location: buildings of several heights, with the pad on a rooftop, the only place the ship can land there. Touching a solid building, the street or the antenna, or touching down on the pad's roof beside the pad, crashes the ship. It comes after the Mine in drift order.
+The futuristic city location: buildings of several heights, with the pad on a rooftop, the only place the ship can land there. A solid building, the street, the antenna and the pad's roof beside the pad are solid but not landed on: touching them damages the ship by its impact speed. It comes after the Mine in drift order.
 _Avoid_: City (on its own), downtown
 
 **Location profile**:
@@ -107,7 +107,7 @@ The part of the day a mission starts in, chosen in the office: Morning, Day, Eve
 _Avoid_: Time of day, start time
 
 **Station**:
-The structure spanning the top of deep space and forming the world's ceiling. Inside is a maze leading to the parking spot. Touching any of its walls crashes the ship.
+The structure spanning the top of deep space and forming the world's ceiling. Inside is a maze leading to the parking spot. Touching any of its walls damages the ship by its impact speed.
 _Avoid_: Space station maze, base
 
 **Parking spot**:
@@ -170,7 +170,7 @@ Giving up all of a mission's contracts at once, back in the office after loading
 _Avoid_: Removing (that's dropping one contract before loading), abort, refund
 
 **Failed contract**:
-A contract aboard a ship that crashed, settled for a failure fee instead of a payout: 50% of its reward, taken from the bank account, one transaction each, marked failed. A free flight's crash charges none.
+A contract aboard a ship that crashed or was stranded, settled for a failure fee instead of a payout: 50% of its reward, taken from the bank account, one transaction each, marked failed. A free flight charges none.
 _Avoid_: Lost contract, cancellation (that's on purpose, in the office)
 
 **Mission**:
@@ -239,6 +239,16 @@ _Avoid_: Slot
 An owned ship that crashed: condition 0%. It is recovered to the station, can't fly or be put in service until repaired, and keeps everything else. While the ship in service is a wreck, the player can't leave the office.
 _Avoid_: Destroyed ship, dead ship
 
+**Condition**:
+How undamaged an owned ship is, from 100% (new) to 0% (a wreck). Hits wear it down; it has no effect on flight and never harms cargo.
+_Avoid_: Health, HP, hull
+
+**Impact speed**:
+The ship's speed into a surface it touches, which sets the damage: none below 15 px/s, then rising in a straight line up to 50% of condition just under the crash speed.
+
+**Crash speed**:
+The impact speed above which touching a solid is a crash: 120 px/s.
+
 **Repair**:
 Restoring an owned ship's condition, from its ship page: instant and always back to 100%, for the missing condition × its ship type's repair rate × its value. Allowed with contracts and in debt.
 _Avoid_: Fix, service
@@ -285,10 +295,10 @@ _Avoid_: Cargo limit, comfortable load, safe cargo
 
 ## Ship states
 
-A ship is always in exactly one of these four states.
+A ship is always in exactly one of these five states.
 
 **Flying**:
-The ship is in free flight, under the player's control. It's the state between leaving the pad or the parking spot and landing, docking or crashing.
+The ship is in free flight, under the player's control. It's the state between leaving the pad or the parking spot and landing, docking or crashing, and it includes resting on a solid off the pad, from where the ship can take off again.
 _Avoid_: Airborne, in flight, free
 
 **Landed**:
@@ -300,5 +310,9 @@ The ship is resting inside the parking spot. This is the deep-space counterpart 
 _Avoid_: Parked, landed (in deep space)
 
 **Crashed**:
-The ship hit something it shouldn't have, or touched down unsafely. The ship in service becomes a wreck, the crash is settled at once (the recovery fee, and failed contracts for any contracts aboard), and the ship stays Crashed until the player presses R for recovery.
+The ship hit a solid above the crash speed, took a hit that left its condition at 0%, touched down on the pad unsafely, or rested tipped over (past 90° for 2 s). Simply touching a solid is no longer a crash. The ship in service becomes a wreck, the crash is settled at once (the recovery fee, and failed contracts for any contracts aboard), and the ship stays Crashed until the player presses R for recovery.
 _Avoid_: Destroyed, dead
+
+**Stranded**:
+Resting on a solid off the pad with an empty tank, which ends only by recovery. The stop is settled at once like a crash (the recovery fee, and failed contracts for any contracts aboard), but the ship keeps its condition and isn't a wreck.
+_Avoid_: Stuck, out of gas

@@ -42,7 +42,7 @@ func test_landing_is_judged_against_the_current_locations_pad() -> void:
 	check(message().begins_with("Landed"), "landing on the current location's pad should land, got %s" % message())
 	place(Vector2(1000, 580), Vector2(0, 20))
 	await seconds(1.0)
-	check(message().begins_with("Crashed"), "touching down where the Valley's pad was should crash, got %s" % message())
+	check(lander().state == Lander.State.FLYING, "touching down where the Valley's pad was shouldn't land, says %s" % message())
 
 
 # A rooftop pad: the landing surface is a narrow roof raised above a street that spans the

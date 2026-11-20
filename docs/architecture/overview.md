@@ -35,7 +35,7 @@ Main (Node2D)                  world.gd; draws the surface gradient behind every
 │   └── Camera (Camera2D)      camera.gd
 ├── Hangar (Node)              hangar.gd; the owned ships in their berths and the ship in service; its _ready() puts SPARROW 1 in service
 ├── UI (CanvasLayer)
-│   ├── Message (Label)        shows Docked!/Landed!/Crashed!, hidden in flight
+│   ├── Message (Label)        shows Docked!/Landed!/Crashed!/Stranded!, hidden in flight
 │   └── Hud (Control)          hud.gd; full-rect, draws itself on the right edge
 ├── Economy (Node)             economy.gd; process mode Always, so it keeps running while the Office pauses the tree
 ├── Office (CanvasLayer)       office.gd; layer 10, process mode Always; pauses the tree while showing
@@ -47,7 +47,7 @@ Main (Node2D)                  world.gd; draws the surface gradient behind every
 
 | System | Scripts | Owns |
 |---|---|---|
-| **Flight** | `lander.gd`, `camera.gd`, `station.gd`, `ship_type.gd` | The ship's state (Flying, Landed, Docked, Crashed), position, mass and Load, and burning and refuelling the fuel in tank of the ship in service; the station maze and parking spot; the ship type table. |
+| **Flight** | `lander.gd`, `camera.gd`, `station.gd`, `ship_type.gd` | The ship's state (Flying, Landed, Docked, Crashed, Stranded), position, mass and Load, burning and refuelling the fuel in tank of the ship in service, and wearing its Condition on hits; the station maze and parking spot; the ship type table. |
 | **Hangar** | `hangar.gd`, `owned_ship.gd` | The owned ships (four berths), the ship in service and the per-type name counters (run state, ADR 0003). `OwnedShip` is data: its Ship type, name, fuel in tank, Condition, its effective numbers, value and sale price. |
 | **Surface** | `world.gd`, `location.gd`, `mountain_look.gd` | Building the current location: ground, pad, terrain, the Mountains' look, and hosting the decor. The location table (pure data). |
 | **Planet clock and sky** | `planet_clock.gd`, `sky_look.gd` | Local time, the current location and the drift count (`PlanetClock`); time → sky look, a pure step (`SkyLook`). |
@@ -85,7 +85,9 @@ Camera ──► Lander (its parent), World and Station constants
 | `Lander.landed_on_pad` | Landed on the current pad (real landing or debug shortcut) | `Economy.start_unloading()` (ignored unless delivering) |
 | `Lander.docked_at_station` | Docked and finished easing upright | `Office.ask_to_enter()` |
 | `Lander.crashed` | Entered Crashed | `Hangar.wreck()` (the ship in service becomes a Wreck), then `Economy.settle_crash()` (Failed contracts, recovery fee) |
-| `Lander.recovery_requested` | R while Crashed | `Office.recover()`: `Hangar.recover()` docks the Wreck, the Office opens |
+| `Lander.stranded` | Entered Stranded | `Economy.settle_crash()` (Failed contracts, recovery fee); no Wreck |
+| `Lander.damaged` | A hit took Condition without crashing | `show_loss()` in `hud.gd` (the `−6%` flash) |
+| `Lander.recovery_requested` | R while Crashed or Stranded | `Office.recover()`: `Hangar.recover()` docks the ship, the Office opens |
 | `Economy.paid_out` | Unloading finished and Contracts were settled | `show_payout()` in `hud.gd` |
 | `Economy.offer_expired` | An offer timed out | `TransportOffersScreen.on_offer_expired()` |
 
@@ -98,7 +100,7 @@ Camera ──► Lander (its parent), World and Station constants
 | Ship state | `Lander.state` | `Lander.enter()`. Held, loading and lift-off-blocked are flags beside the state, set by the Office or the Economy. |
 | Delivery phase | `Economy.phase` | One function per transition, each checking the phase it leaves (see [domain-model.md](domain-model.md#mission-and-delivery-phase)). |
 | Money, offers, Contracts | `Economy` | `accept()`, `remove_contract()`, `finish_unloading()`, `cancel_mission()`, `settle_crash()`, `pay_for_ship()`, `get_paid_for_ship()`, `pay_for_repair()`; each balance change records exactly one Transaction per ship or Contract. |
-| Owned ships, the ship in service, name counters | `Hangar` | Its named operations: `buy()`, `sell()`, `put_in_service()` (the Ship swap), `add_ship()`, `wreck()` (on a crash), `recover()`, `repair()`. The Office's Shipyard and Hangar screens call them (and the Economy's for the money) and never edit an `OwnedShip`. The one exception: the Lander burns and refuels the fuel in tank of the ship in service. |
+| Owned ships, the ship in service, name counters | `Hangar` | Its named operations: `buy()`, `sell()`, `put_in_service()` (the Ship swap), `add_ship()`, `wreck()` (on a crash), `recover()`, `repair()`. The Office's Shipyard and Hangar screens call them (and the Economy's for the money) and never edit an `OwnedShip`. The exceptions: the Lander burns and refuels the fuel in tank of the ship in service, and wears its Condition on hits. |
 | Sky | none (derived) | The World pulls `SkyLook.at(minutes)` once per in-game minute and pushes it to every decor script's `show_sky()`. |
 
 ## Frame and pause model

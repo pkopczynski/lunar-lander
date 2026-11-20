@@ -4,9 +4,10 @@ extends Node
 # state in a scene node, ADR 0003). Owned ships change only through its named operations; the
 # Office calls them and never edits a ship. Attached to `Hangar`.
 #
-# `_ready()` starts the Career with SPARROW 1 in service. A crash (the Lander's `crashed`) makes the
-# ship in service a Wreck (Condition 0%); `recover()` brings it back Docked at the station, still in
-# service (Recovery); `repair(ship)` restores any owned ship to 100%. `buy(type)` adds a new owned ship of that
+# `_ready()` starts the Career with SPARROW 1 in service. Hits wear its Condition down in flight
+# (the Lander does that). A crash (the Lander's `crashed`) makes the ship in service a Wreck
+# (Condition 0%); `recover()` brings it back Docked at the station, still in service (Recovery,
+# after a crash or when Stranded); `repair(ship)` restores any owned ship to 100%. `buy(type)` adds a new owned ship of that
 # type to a free berth, full tank, not in service; `sell(ship)` takes one that isn't in service out
 # of the Hangar; `put_in_service(ship)` is the Ship swap: it hands the ship to the Lander (`fly()`)
 # and docks it in the parking spot (`start_docked()`), keeping each ship's own fuel. The Lander
@@ -39,7 +40,8 @@ func wreck() -> void:
 	in_service.condition = 0.0
 
 
-# Recovery: the ship in service, a Wreck after a crash, goes back Docked into the parking spot.
+# Recovery: the ship in service, a Wreck after a crash or as it was when Stranded, goes back
+# Docked into the parking spot.
 func recover() -> void:
 	lander.start_docked()
 
