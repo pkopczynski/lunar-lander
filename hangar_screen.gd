@@ -42,6 +42,8 @@ const WRECK_REASON := "WRECK: REPAIR IT FIRST"
 
 const ROW_HEIGHT := TransportOffersScreen.ROW_HEIGHT
 const ROW_PADDING := TransportOffersScreen.ROW_PADDING
+# Space above and below the rule under the column headings.
+const HEADING_RULE_GAP := 8.0
 const ACTION_SIZE := Vector2(300, 36)
 # From the top of one action's button to the next, leaving a line for its reason.
 const ACTION_STEP := 36.0 + 2.0 * Office.LINE_GAP + Office.TEXT_SIZE
@@ -231,7 +233,8 @@ func draw(area: Rect2) -> void:
 		draw_table(area)
 
 
-# BERTHS n/4, the column headings, then one row per berth; the selected row is inverted.
+# BERTHS n/4, the column headings in green over a rule, then one row per berth; the selected
+# row is inverted.
 func draw_table(area: Rect2) -> void:
 	var y := area.position.y + Office.TEXT_SIZE
 	office.draw_text(berths_text(), Vector2(area.position.x, y), Office.TEXT_SIZE, -1.0,
@@ -239,8 +242,10 @@ func draw_table(area: Rect2) -> void:
 	y += Office.LINE_GAP
 	var width := area.size.x - 2.0 * ROW_PADDING
 	var heading := Rect2(area.position.x, y, area.size.x, ROW_HEIGHT)
-	draw_cells(PackedStringArray(COLUMNS), heading, width, Office.DIM_GREEN, Office.DIM_GREEN)
-	y += ROW_HEIGHT
+	draw_cells(PackedStringArray(COLUMNS), heading, width, Office.GREEN, Office.GREEN)
+	y += ROW_HEIGHT + HEADING_RULE_GAP
+	office.terminal.draw_line(Vector2(area.position.x, y), Vector2(area.end.x, y), Office.GREEN, Office.LINE_WIDTH)
+	y += Office.LINE_WIDTH + HEADING_RULE_GAP
 	for i in Hangar.BERTHS:
 		var rect := Rect2(area.position.x, y, area.size.x, ROW_HEIGHT)
 		var selected := i == row
