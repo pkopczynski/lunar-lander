@@ -2,7 +2,7 @@ class_name Office
 extends CanvasLayer
 # The player's Office: a full-window Terminal with a main screen of tiles opening the Shipyard,
 # the Hangar (and each owned ship's Ship page), Transport offers and the Bank account. It pauses
-# the world while showing. R after a crash opens it by Recovery (`recover()`), and it can't be left
+# the world while showing. R after a crash or while Stranded opens it by Recovery (`recover()`), and it can't be left
 # while the ship in service is a Wreck (`leave_reason()`); the main screen then tags it WRECKED. Buying, selling and the Ship swap go through the Hangar's and the
 # Economy's named operations; it never edits an owned ship itself.
 #
@@ -275,9 +275,9 @@ func open() -> void:
 	power_to(1.0)
 
 
-# Recovery, R after a crash: the Wreck goes back Docked at the station, still in service, and the
-# Office opens on its main screen. Nothing reloads: the clock, location and offers carry on, and the
-# crash was already settled when it happened.
+# Recovery, R after a crash or while Stranded: the ship (a Wreck after a crash) goes back Docked at
+# the station, still in service, and the Office opens on its main screen. Nothing reloads: the
+# clock, location and offers carry on, and the stop was already settled when it happened.
 func recover() -> void:
 	hangar.recover()
 	open()

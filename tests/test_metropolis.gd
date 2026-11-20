@@ -14,7 +14,7 @@ func test_drift_goes_valley_mine_metropolis_and_back_to_the_valley() -> void:
 	check(hud().clock_text().begins_with("VALLEY  "), "the HUD should read VALLEY, got '%s'" % hud().clock_text())
 
 
-func test_touching_down_on_the_rooftop_pad_lands_and_on_the_roof_beside_it_crashes() -> void:
+func test_touching_down_on_the_rooftop_pad_lands_and_on_the_roof_beside_it_does_not() -> void:
 	await choose_ship()
 	clock().move_to(Location.METROPOLIS)
 	var roof := Location.METROPOLIS.ground_y
@@ -26,19 +26,21 @@ func test_touching_down_on_the_rooftop_pad_lands_and_on_the_roof_beside_it_crash
 	# The same roof, past the pad's right edge.
 	place(Vector2(pad_x() + 110.0, roof - 28.0), Vector2(0, 20))
 	await seconds(1.0)
-	check(message().begins_with("Crashed"), "touching down on the roof beside the pad should crash, got %s" % message())
+	check(lander().state == Lander.State.FLYING,
+		"touching down on the roof beside the pad should leave the ship resting there, Flying, says %s" % message())
+	check(lander().position.y < roof, "the ship should rest on the roof beside the pad, y %s" % lander().position.y)
 
 
 # Drops the ship gently from a point and waits for it to touch something, or 6 s.
 func drop_from(start: Vector2) -> void:
 	place(start, Vector2(0, 20))
 	for i in roundi(6.0 * PHYSICS_FPS):
-		if lander().state != Lander.State.FLYING:
+		if lander().state != Lander.State.FLYING or lander().get_slide_collision_count() > 0:
 			break
 		await frames(1)
 
 
-func test_touching_a_tower_the_street_or_the_antenna_crashes() -> void:
+func test_a_tower_the_street_and_the_antenna_are_solid() -> void:
 	var spots := {
 		# Onto the second tower's flat roof, high above the pad's.
 		"a tower's roof": Vector2(710, 200),
@@ -51,9 +53,10 @@ func test_touching_a_tower_the_street_or_the_antenna_crashes() -> void:
 		await choose_ship()
 		clock().move_to(Location.METROPOLIS)
 		await drop_from(spots[what])
-		check(message().begins_with("Crashed"), "touching %s should crash, got %s" % [what, message()])
+		check(lander().get_slide_collision_count() > 0 or lander().state == Lander.State.CRASHED,
+			"the ship should touch %s, says %s" % [what, message()])
 		check(lander().position.y < spots[what].y + 150.0,
-			"the ship should crash on %s, not fall far past it, y %s" % [what, lander().position.y])
+			"the ship should stop on %s, not fall far past it, y %s" % [what, lander().position.y])
 		await start_over()
 
 
