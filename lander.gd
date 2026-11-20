@@ -2,7 +2,9 @@ class_name Lander
 extends CharacterBody2D
 # Flight physics, fuel, mass (`load_mass`, the Load) and the fuel cap (`fuel_cap()`), border
 # crossing and its disturbance (with a seedable `rng`), steering, landing and docking judgement (the
-# "on the pad" check reads the current location's pad through `pad_center_x()`), refuelling, result
+# "on the pad" check reads the current location's pad through `pad_center_x()`; `touch_down()` judges
+# the landing bands: Landed, a Hard landing that wears Condition and shows `HARD LANDING −12%`
+# as the Landed title, or a crash), refuelling, result
 # display (with a `status` line, set through `show_status()`, under Docked!/Landed!), touching a
 # solid off the pad (`touch()`: damage by impact speed to the ship in service's Condition and a
 # bounce, `damaged` for each loss; a crash above the crash speed or at 0%), resting on the ground
@@ -15,7 +17,7 @@ extends CharacterBody2D
 # Attached to `Lander`. It flies the ship in service, an `OwnedShip` handed over by the Hangar's
 # `fly(ship)` (hull, collision shape and flame from its Ship type), and reads only that ship's
 # effective numbers, never its Ship type's. Its fuel is the ship's fuel in tank: the Lander burns
-# and refuels it, wears the ship's Condition on hits, and changes nothing else on the ship. `start_docked()` puts it in the parking spot.
+# and refuels it, wears the ship's Condition on hits and Hard landings, and changes nothing else on the ship. `start_docked()` puts it in the parking spot.
 #
 # The Lander's `state` (Flying, Landed, Docked, Crashed, Stranded) changes only through `enter()`, which
 # starts every state fresh: not held, no lift-off burn, docking armed, leveling stopped, with the
@@ -64,9 +66,16 @@ const REFUEL_DELAY := 2.0
 # Share of the tank refilled per second: half a tank per 6 s.
 const REFUEL_TANK_SHARE := 0.5 / 6.0
 
+# Landing bands, judged at touchdown on the pad: safe up to the MAX_LANDING_* limits, a crash
+# above the CRASH_LANDING_* ones, and a Hard landing in between, losing Condition in a straight
+# line from 0% at the safe edge to MAX_HARD_LANDING_DAMAGE at the crash edge, the worst band counting.
 const MAX_LANDING_VERTICAL_SPEED := 50.0
 const MAX_LANDING_HORIZONTAL_SPEED := 25.0
 const MAX_LANDING_ANGLE_DEG := 15.0
+const CRASH_LANDING_VERTICAL_SPEED := 80.0
+const CRASH_LANDING_HORIZONTAL_SPEED := 40.0
+const CRASH_LANDING_ANGLE_DEG := 25.0
+const MAX_HARD_LANDING_DAMAGE := 0.25
 const MAX_DOCKING_SPEED := 40.0
 
 const PAD_WIDTH := 120.0
@@ -94,7 +103,7 @@ const STEER_DISTANCE := 150.0
 const STEER_SPEED := 100.0
 const STEER_BRAKING := 600.0
 
-# Touching a solid (anything but the pad's ground, judged by the landing limits) damages the
+# Touching a solid (anything but the pad's ground, judged by the landing bands) damages the
 # ship by its impact speed, the speed into the surface: none below NO_DAMAGE_SPEED, rising in a
 # straight line to MAX_HIT_DAMAGE of Condition just under CRASH_SPEED, a crash above it. A hit
 # leaves the surface at BOUNCE_SHARE of its impact speed, keeping SURFACE_SPEED_KEPT of its speed
@@ -127,12 +136,14 @@ signal crashed
 signal stranded
 # R while Crashed or Stranded: the Office performs Recovery. The Lander doesn't know who answers.
 signal recovery_requested
-# A hit took this share of Condition (0.06 is 6%) from the ship in service; it didn't crash it.
+# A hit or a Hard landing took this share of Condition (0.06 is 6%) from the ship in service;
+# it didn't crash it.
 signal damaged(loss: float)
 
 enum State { FLYING, LANDED, DOCKED, CRASHED, STRANDED }
 
 const LANDED_COLOR := Color(0.3, 1.0, 0.4)
+const HARD_LANDING_TEXT := "HARD LANDING −%d%%"
 const CRASHED_COLOR := Color(1.0, 0.3, 0.3)
 const CRASHED_TEXT := "Crashed!\nPress R for recovery"
 const STRANDED_COLOR := Color(1.0, 0.75, 0.3)
@@ -189,6 +200,8 @@ var tipped_time := 0.0
 var status := ""
 # Whether the last rest refuelled, so a new status keeps the Refueling… line.
 var refueling := false
+# The Condition the last touchdown on the pad took, 0.0 for a safe one; the Landed title shows it.
+var hard_landing_loss := 0.0
 
 @onready var body: Polygon2D = $Body
 @onready var flame: Polygon2D = $Flame
@@ -260,6 +273,7 @@ func enter(new_state: State) -> void:
 	status = ""
 	refueling = false
 	tipped_time = 0.0
+	hard_landing_loss = 0.0
 	if level_tween:
 		level_tween.kill()
 	match new_state:
@@ -267,7 +281,7 @@ func enter(new_state: State) -> void:
 			modulate = Color.WHITE
 			message.visible = false
 		State.LANDED:
-			show_state("Landed!", LANDED_COLOR)
+			show_state(landed_title(), LANDED_COLOR)
 		State.DOCKED:
 			show_state("Docked!", LANDED_COLOR)
 		State.CRASHED:
@@ -342,10 +356,7 @@ func _physics_process(delta: float) -> void:
 
 	if get_slide_collision_count() > 0:
 		if touched_only_ground() and is_on_pad():
-			if is_safe_landing(impact_velocity):
-				land()
-			else:
-				crash()
+			touch_down(impact_velocity)
 			return
 		var bounced := touch(impact_velocity)
 		if state != State.FLYING:
@@ -508,10 +519,43 @@ func tilt() -> float:
 	return absf(angle_difference(0.0, rotation))
 
 
-func is_safe_landing(impact_velocity: Vector2) -> bool:
-	return impact_velocity.y <= MAX_LANDING_VERTICAL_SPEED \
-		and absf(impact_velocity.x) <= MAX_LANDING_HORIZONTAL_SPEED \
-		and tilt() <= deg_to_rad(MAX_LANDING_ANGLE_DEG)
+# How far into the landing bands a touchdown is: 0.0 inside every safe limit, 1.0 at a crash
+# edge, above 1.0 past one. The worst band counts.
+func landing_band_share(impact_velocity: Vector2) -> float:
+	return maxf(maxf(maxf(
+		band_share(impact_velocity.y, MAX_LANDING_VERTICAL_SPEED, CRASH_LANDING_VERTICAL_SPEED),
+		band_share(absf(impact_velocity.x), MAX_LANDING_HORIZONTAL_SPEED, CRASH_LANDING_HORIZONTAL_SPEED)),
+		band_share(rad_to_deg(tilt()), MAX_LANDING_ANGLE_DEG, CRASH_LANDING_ANGLE_DEG)), 0.0)
+
+
+func band_share(value: float, safe: float, crash_edge: float) -> float:
+	return inverse_lerp(safe, crash_edge, value)
+
+
+# Takes a loss from the ship in service's Condition: to 0% crashes it, else it emits `damaged`.
+# Returns whether the ship survived.
+func wear(loss: float) -> bool:
+	ship.condition = maxf(ship.condition - loss, 0.0)
+	if ship.condition <= 0.0:
+		crash()
+		return false
+	damaged.emit(loss)
+	return true
+
+
+# A touchdown on the pad: past a band it crashes; inside one it's a Hard landing, which costs the
+# ship in service Condition (to 0% crashes it) but still lands; inside the safe limits it just lands.
+func touch_down(impact_velocity: Vector2) -> void:
+	var share := landing_band_share(impact_velocity)
+	if share > 1.0:
+		crash()
+		return
+	var loss := MAX_HARD_LANDING_DAMAGE * share
+	if loss <= 0.0:
+		land()
+		return
+	if wear(loss):
+		land(loss)
 
 
 # A touch of any solid off the pad: the hardest contact of the move sets the impact speed. It
@@ -532,12 +576,8 @@ func touch(impact_velocity: Vector2) -> bool:
 		return false
 	if impact < NO_DAMAGE_SPEED:
 		return false
-	var loss := MAX_HIT_DAMAGE * (impact - NO_DAMAGE_SPEED) / (CRASH_SPEED - NO_DAMAGE_SPEED)
-	ship.condition = maxf(ship.condition - loss, 0.0)
-	if ship.condition <= 0.0:
-		crash()
+	if not wear(MAX_HIT_DAMAGE * inverse_lerp(NO_DAMAGE_SPEED, CRASH_SPEED, impact)):
 		return false
-	damaged.emit(loss)
 	var along := impact_velocity + normal * impact
 	velocity = along * SURFACE_SPEED_KEPT + normal * impact * BOUNCE_SHARE
 	return true
@@ -563,8 +603,11 @@ func on_ground(thrusting: bool, delta: float) -> void:
 		stranded.emit()
 
 
-func land() -> void:
+# Lands on the pad; a Hard landing passes the Condition it took, for the Landed title.
+func land(loss := 0.0) -> void:
 	enter(State.LANDED)
+	hard_landing_loss = loss
+	message.text = landed_title()
 	settle()
 	# Leveling lifts the corner that touched down, so drop back onto the ground.
 	level_tween.tween_callback(move_and_collide.bind(Vector2.DOWN * PAD_HEIGHT * 4.0))
@@ -633,12 +676,19 @@ func show_status(text: String) -> void:
 func show_rest_message() -> void:
 	if state != State.DOCKED and state != State.LANDED:
 		return
-	var lines := PackedStringArray(["Docked!" if state == State.DOCKED else "Landed!"])
+	var lines := PackedStringArray(["Docked!" if state == State.DOCKED else landed_title()])
 	if status != "":
 		lines.append(status)
 	if refueling:
 		lines.append("Refueling…")
 	message.text = "\n".join(lines)
+
+
+# Landed!, or HARD LANDING −12% after a Hard landing; the loss reads as the HUD's flash does.
+func landed_title() -> String:
+	if hard_landing_loss <= 0.0:
+		return "Landed!"
+	return HARD_LANDING_TEXT % maxi(roundi(hard_landing_loss * 100.0), 1)
 
 
 func lift_off() -> void:

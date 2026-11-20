@@ -80,7 +80,7 @@ func test_mule_lands_on_the_pad_with_the_sparrows_limits() -> void:
 	check(ship.state == Lander.State.LANDED, "a gentle Mule should land on the pad, says %s" % message())
 	await start_over()
 	await choose_ship(ShipType.MULE)
-	place(Vector2(pad_x(), 500), Vector2(0, Lander.MAX_LANDING_VERTICAL_SPEED + 30.0))
+	place(Vector2(pad_x(), 500), Vector2(0, Lander.CRASH_LANDING_VERTICAL_SPEED + 10.0))
 	await seconds(2.0)
 	check(message().begins_with("Crashed"), "a hard Mule landing should crash, got %s" % message())
 

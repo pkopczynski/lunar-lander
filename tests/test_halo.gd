@@ -70,7 +70,7 @@ func test_halo_lands_on_the_pad_with_the_sparrows_limits() -> void:
 	check(ship.state == Lander.State.LANDED, "a gentle Halo should land on the pad")
 	await start_over()
 	await choose_ship(ShipType.HALO)
-	place(Vector2(pad_x(), 520), Vector2(0, Lander.MAX_LANDING_VERTICAL_SPEED + 30.0))
+	place(Vector2(pad_x(), 520), Vector2(0, Lander.CRASH_LANDING_VERTICAL_SPEED + 10.0))
 	await seconds(2.0)
 	check(message().begins_with("Crashed"), "a hard Halo landing should crash, got %s" % message())
 
