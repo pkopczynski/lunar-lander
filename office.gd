@@ -71,6 +71,8 @@ const BLACK := Color.BLACK
 const WHITE := Color(0.9, 1.0, 0.92)
 const DIM_WHITE := Color(0.9, 1.0, 0.92, 0.25)
 const RED := Color(1.0, 0.3, 0.25)
+# A red price on a blocked (dimmed) button.
+const DIM_RED := Color(1.0, 0.3, 0.25, 0.25)
 # Faint list tints: alternating rows, and open details a little stronger.
 const ROW_TINT_LIGHT := Color(0.25, 1.0, 0.4, 0.08)
 const ROW_TINT_DARK := Color(0.25, 1.0, 0.4, 0.04)
@@ -570,7 +572,8 @@ func draw_action(button: Rect2, label: String, price: String, selected: bool, re
 	else:
 		terminal.draw_rect(button, lit, false, LINE_WIDTH)
 	var label_color := BLACK if selected else lit
-	var price_color := RED if price_red else BLACK if selected else DIM_WHITE if blocked else WHITE
+	var price_color := (DIM_RED if blocked else RED) if price_red \
+		else BLACK if selected else DIM_WHITE if blocked else WHITE
 	var width := text_width(label, TEXT_SIZE) + text_width(price, TEXT_SIZE)
 	var baseline := Vector2(button.get_center().x - width / 2.0, button.get_center().y + TEXT_SIZE / 2.0)
 	draw_text(label, baseline, TEXT_SIZE, -1.0, HORIZONTAL_ALIGNMENT_LEFT, label_color)
