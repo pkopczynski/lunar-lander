@@ -162,6 +162,26 @@ func test_closing_a_transaction_shrinks_its_details_back() -> void:
 	check(bank().list.open_share(transaction) == 0.0, "the details should be gone after %s s" % ExpandableList.OPEN_TIME)
 
 
+func test_gains_show_their_amount_in_white_and_losses_in_red() -> void:
+	economy().balance = 400000
+	await buy_ship(ShipType.MULE)
+	await select_action(HangarScreen.Action.SELL)
+	await press(&"ui_accept")
+	for i in 3:
+		if office().screen != Office.Screen.MAIN:
+			await press(&"ui_cancel")
+	await open_bank_account()
+	check(bank().rows()[0].ends_with("€200 000") and bank().rows()[1].ends_with("-€400 000"),
+		"the sale and then the purchase should be listed, rows %s" % bank().rows())
+	while bank().list.selected_index() > 0:
+		await press(&"ui_up")
+	check(bank().amount_color(1) == Office.RED, "a loss's amount should be red")
+	check(bank().amount_color(0) == Office.BLACK, "the selected row stays black on its green bar")
+	await press(&"ui_down")
+	check(bank().amount_color(0) == Office.WHITE, "a gain's amount should be white")
+	check(bank().amount_color(1) == Office.BLACK, "the selected row stays black, even a loss")
+
+
 func bank() -> BankAccountScreen:
 	return office().bank_account
 
