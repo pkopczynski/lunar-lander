@@ -9,7 +9,7 @@ extends RefCounted
 # The Ship page shows the ship's name, IN SERVICE tag, wireframe and fitted upgrades on the left,
 # CONDITION, FUEL, DRY MASS, CARGO and VALUE in the middle, and its actions in a column on the
 # right: PUT IN SERVICE (the Ship swap: free and instant, each ship keeps its own fuel; blocked with
-# Contracts and for a Wreck), REPAIR €x (instant and always full, at the ship's `repair_cost()`;
+# Contracts and for a Wreck), FUEL (opens its `FuelScreen`; blocked for a Wreck), REPAIR €x (instant and always full, at the ship's `repair_cost()`;
 # allowed with Contracts and on credit, its confirm warning in red when it ends below €0; blocked with
 # NO DAMAGE at 100%) and SELL €x (blocked for the ship in service; allowed in debt). A Wreck's
 # Condition reads WRECKED in red. Every action asks first;
@@ -17,7 +17,7 @@ extends RefCounted
 # back to the berths table. The Office creates it and calls it while either screen shows; it calls
 # the Hangar's and the Economy's named operations and never edits a ship.
 
-enum Action { PUT_IN_SERVICE, REPAIR, SELL }
+enum Action { PUT_IN_SERVICE, FUEL, REPAIR, SELL }
 
 const BERTHS_TEXT := "BERTHS %d/%d"
 const EMPTY_BERTH_TEXT := "EMPTY BERTH: BUY A SHIP IN THE SHIPYARD"
@@ -27,7 +27,8 @@ const COLUMN_SHARES := [0.0, 0.4, 0.55, 0.72, 0.87]
 const CONDITION_COLUMN := 1
 const NO_PARACHUTE := "–"
 const NO_UPGRADES := "NO UPGRADES"
-const ACTION_LABELS := {Action.PUT_IN_SERVICE: "PUT IN SERVICE", Action.REPAIR: "REPAIR ", Action.SELL: "SELL "}
+const ACTION_LABELS := {Action.PUT_IN_SERVICE: "PUT IN SERVICE", Action.FUEL: "FUEL", Action.REPAIR: "REPAIR ",
+	Action.SELL: "SELL "}
 const SERVICE_QUESTION := "PUT %s IN SERVICE?"
 const SELL_QUESTION := "SELL %s FOR %s?"
 const REPAIR_QUESTION := "REPAIR %s FOR %s?"
@@ -65,9 +66,9 @@ func _init(owner: Office, owner_hangar: Hangar, owner_economy: Economy) -> void:
 	economy = owner_economy
 
 
-func open_page(owned: OwnedShip) -> void:
+func open_page(owned: OwnedShip, at := Action.PUT_IN_SERVICE) -> void:
 	ship = owned
-	action = Action.PUT_IN_SERVICE
+	action = at
 	row = hangar.ships.find(owned)
 
 
@@ -112,6 +113,8 @@ func take_action() -> void:
 	match action:
 		Action.PUT_IN_SERVICE:
 			office.ask(SERVICE_QUESTION % owned.name, "", func() -> void: hangar.put_in_service(owned))
+		Action.FUEL:
+			office.open_fuel_screen(owned)
 		Action.REPAIR:
 			var cost := owned.repair_cost()
 			var after := economy.balance - cost
@@ -170,7 +173,7 @@ func status() -> Array[Array]:
 		["VALUE", Economy.eur(ship.value())]]
 
 
-# The action column's labels, top to bottom: PUT IN SERVICE, REPAIR €62 500, SELL €125 000.
+# The action column's labels, top to bottom: PUT IN SERVICE, FUEL, REPAIR €62 500, SELL €125 000.
 func actions() -> PackedStringArray:
 	var texts := PackedStringArray()
 	for each: Action in Action.values():
@@ -199,6 +202,9 @@ func action_reason(which: Action) -> String:
 				return WRECK_REASON
 			if not economy.contracts.is_empty():
 				return CONTRACTS_LOCK
+		Action.FUEL:
+			if ship.is_wreck():
+				return WRECK_REASON
 		Action.REPAIR:
 			if ship.condition >= 1.0:
 				return NO_DAMAGE

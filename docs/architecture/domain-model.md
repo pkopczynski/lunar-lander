@@ -74,12 +74,13 @@ Bought (full tank, 100%) → in service or in a berth → **damaged** by hits an
 
 ### Ship states
 
-Exactly one of Flying, Landed, Docked, Crashed, Stranded, changed only by `Lander.enter()`, which starts each state fresh. Three flags sit beside the state and are set from outside:
+Exactly one of Flying, Landed, Docked, Crashed, Stranded, changed only by `Lander.enter()`, which starts each state fresh. Four flags sit beside the state and are set from outside:
 
 | Flag | Set by | Effect |
 |---|---|---|
-| `held` | Office (`hold()` / `release()`) | Frozen: no input, no refuel timer. Cleared by `enter()`. |
-| `loading` | Economy via `start_loading()` / `finish_loading()` | Docked ship can't turn or undock, refuels to the fuel cap. |
+| `held` | Office (`hold()` / `release()`) | Frozen: no input, no refuel timer (the pad's). Cleared by `enter()`. |
+| `loading` | Economy via `start_loading()` / `finish_loading()` | Docked ship can't turn or undock. Adds no fuel. |
+| `pump_time_left` | Hangar's pump (`refuel()`, ticked even behind the Office) | While above 0 the ship can't undock or lift off; the message shows `Pumping fuel… 6s`. Not cleared by `enter()`. |
 | `lift_off_blocked` | Economy (unloading) | Landed ship can't lift off. Not cleared by `enter()`, so a ship settling back stays grounded. |
 
 A ship touching the pad's ground stays Flying while it settles: the landing bands are judged when it comes onto the pad (from the air or sliding), and it enters Landed once at rest there inside the bands' tilt (`Lander.rest_on_ground()`), carrying a Hard landing's loss into the Landed title. A ship resting on a solid off the pad stays Flying and can take off again; resting tipped over (90° or more for 2 s) anywhere enters Crashed. Resting there with an empty tank (and not tipped over) enters Stranded. Crashed and Stranded last until R: Recovery puts the ship (a Wreck after a crash) Docked at the station (`Lander.start_docked()`), which starts Docked fresh.
@@ -92,10 +93,11 @@ Each rule below holds in the code today; the parenthesis says where it's enforce
 - **Capacity counts the Contracts.** Seats and maximum capacity are checked against what's left after accepted Contracts; fuel never blocks an offer (`Economy.misfit_reason()`).
 - **No ship swap while there are Contracts** (`HangarScreen.action_reason()`). Buying is allowed with Contracts: it doesn't change the ship in service.
 - **The floor: the ship in service can't be sold**, so the player always owns at least one ship, and it can always be repaired on credit (`HangarScreen.action_reason()`, asserted in `Hangar.sell()`). There is no game over.
-- **Debt only through Recovery and Repair:** they may take the balance below €0 (`Economy.settle_crash()`, `pay_for_repair()`). Buying a ship needs the balance to stay ≥ €0 after paying, and a free berth (`ShipyardScreen.reason()`, `Economy.shortfall()`, `Hangar.full()`). Selling is allowed in debt.
+- **Debt only through Recovery, Repair and fuel:** they may take the balance below €0 (`Economy.settle_crash()`, `pay_for_repair()`, `pay_for_fuel()`). Buying a ship needs the balance to stay ≥ €0 after paying, and a free berth (`ShipyardScreen.reason()`, `Economy.shortfall()`, `Hangar.full()`). Selling is allowed in debt.
 - **No flight in a Wreck:** a Wreck can't be put in service, and the Office can't be left (Escape, START, START LOADING) while the ship in service is one (`HangarScreen.action_reason()`, `Office.leave_reason()`).
 - **Every change of the balance is one Transaction** (`Economy.record()`), and names are never reused: each Ship type counts its owned ships' numbers up, past sold ones (`Hangar.last_numbers`).
-- **Mass:** total = dry mass + fuel + Load, and fuel ≤ fuel cap = min(Tank, Maximum weight − dry mass − Load) (`Lander.total_mass()`, `fuel_cap_for()`). The Load joins the mass only when loading finishes.
+- **Mass:** total = dry mass + fuel + Load, and fuel ≤ fuel cap = min(Tank, Maximum weight − dry mass − Load) (`Lander.total_mass()`, `OwnedShip.fuel_cap()`). Fuel is kept in kg and shown in litres at 0.8 kg/l (`OwnedShip.KG_PER_LITRE`), so the cap in litres is the same rule. Buying never goes past the cap (`FuelScreen.highest()`, counting fuel still being pumped); START LOADING sells back and pumps out the fuel above the cap for the Load (`Economy.start_loading()`), so it can sit above the new cap only until pumping ends, with the ship held docked meanwhile. The Load joins the mass only when loading finishes.
+- **Fuel is never free at the station:** only the Hangar adds fuel there, paid first, one Transaction per purchase or sell-back (`FuelScreen.confirm()`, `Economy.pay_for_fuel()`, `Hangar.refuel()`). Docking, loading, Recovery and a Ship swap add none. (Pads still refuel for free until the Workshop.)
 - **The current location changes only through `PlanetClock.move_to()`**, and a location change never changes the local time. Only starting a mission re-rolls the time ([ADR 0002](../adr/0002-one-planet-clock.md)).
 - **Drift never swaps a visible surface** (`PlanetClock.count_drift()` waits for `World.surface_in_view()` to be false).
 - **Time is presentation only.** It sets the sky and how deadlines are shown; deadlines and penalties count real seconds from the end of loading (`Economy.delivery_time`).

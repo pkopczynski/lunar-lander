@@ -33,7 +33,7 @@ Main (Node2D)                  world.gd; draws the surface gradient behind every
 │   ├── Flame (Polygon2D)      ship type's flame, shown while thrusting
 │   ├── CollisionPolygon2D     same hull as Body
 │   └── Camera (Camera2D)      camera.gd
-├── Hangar (Node)              hangar.gd; the owned ships in their berths and the ship in service; its _ready() puts SPARROW 1 in service
+├── Hangar (Node)              hangar.gd; process mode Always (its fuel pump runs behind the Office); the owned ships in their berths and the ship in service; its _ready() puts SPARROW 1 in service
 ├── UI (CanvasLayer)
 │   ├── Message (Label)        shows Docked!/Landed!/Crashed!/Stranded!, hidden in flight
 │   └── Hud (Control)          hud.gd; full-rect, draws itself on the right edge
@@ -47,13 +47,13 @@ Main (Node2D)                  world.gd; draws the surface gradient behind every
 
 | System | Scripts | Owns |
 |---|---|---|
-| **Flight** | `lander.gd`, `camera.gd`, `station.gd`, `ship_type.gd` | The ship's state (Flying, Landed, Docked, Crashed, Stranded), position, mass and Load, burning and refuelling the fuel in tank of the ship in service, and wearing its Condition on hits and Hard landings; the station maze and parking spot; the ship type table. |
-| **Hangar** | `hangar.gd`, `owned_ship.gd` | The owned ships (four berths), the ship in service and the per-type name counters (run state, ADR 0003). `OwnedShip` is data: its Ship type, name, fuel in tank, Condition, its effective numbers, value and sale price. |
+| **Flight** | `lander.gd`, `camera.gd`, `station.gd`, `ship_type.gd` | The ship's state (Flying, Landed, Docked, Crashed, Stranded), position, mass and Load, burning the fuel in tank of the ship in service (and refuelling it for free on the pad), and wearing its Condition on hits and Hard landings; the station maze and parking spot; the ship type table. |
+| **Hangar** | `hangar.gd`, `owned_ship.gd` | The owned ships (four berths), the ship in service, the per-type name counters (run state, ADR 0003) and the station's fuel pump. `OwnedShip` is data: its Ship type, name, fuel in tank, Condition, its effective numbers, fuel cap, fuel price, value and sale price. |
 | **Surface** | `world.gd`, `location.gd`, `mountain_look.gd` | Building the current location: ground, pad, terrain, the Mountains' look, and hosting the decor. The location table (pure data). |
 | **Planet clock and sky** | `planet_clock.gd`, `sky_look.gd` | Local time, the current location and the drift count (`PlanetClock`); time → sky look, a pure step (`SkyLook`). |
 | **Decor** | `backdrop.gd`, `skyline.gd`, `moons.gd`, `clouds.gd`, `foreground.gd`, `beacon.gd`, `city_lights.gd`, `activity.gd`, `vehicles.gd`, `anchored_parallax.gd`, `decor_kit.gd` | Collider-free scenery, built per location and tinted by the sky. |
 | **Economy** | `economy.gd`, `transport_offer.gd`, `transaction.gd` | Balance, transactions, offer pool, Contracts and the delivery phase. `TransportOffer` is pure data plus the offer generator; `Transaction` is one balance change and how it reads. |
-| **Office** | `office.gd`, `shipyard_screen.gd`, `hangar_screen.gd`, `transport_offers_screen.gd`, `bank_account_screen.gd`, `expandable_list.gd`, `version.gd` | The Terminal UI: screens, popups, input while paused. Screens are `RefCounted` helpers the Office creates and draws on its one `Terminal` control. |
+| **Office** | `office.gd`, `shipyard_screen.gd`, `hangar_screen.gd`, `fuel_screen.gd`, `transport_offers_screen.gd`, `bank_account_screen.gd`, `expandable_list.gd`, `version.gd` | The Terminal UI: screens, popups, input while paused. Screens are `RefCounted` helpers the Office creates and draws on its one `Terminal` control. |
 | **HUD** | `hud.gd` | Fuel bar, mass, clock line, deadline and payout float. Read-only. |
 
 ## Dependencies
@@ -63,7 +63,7 @@ Nodes find each other by fixed `NodePath`s (`$"../Lander"`); there is no autoloa
 ```
 Office ──► Lander, Hangar, Economy, PlanetClock
 Hangar ──► Lander
-Economy ─► Lander, PlanetClock
+Economy ─► Lander, Hangar, PlanetClock
 Hud ─────► Lander, Economy, PlanetClock          (read only)
 World ───► PlanetClock, Lander, every decor script
 Lander ──► World (current pad, World constants), Station, Ground
@@ -73,7 +73,7 @@ Camera ──► Lander (its parent), World and Station constants
 - **Data tables sit at the bottom.** `Location`, `ShipType`, `OwnedShip`, `TransportOffer`, `Transaction`, `SkyLook`, `MountainLook` and `Skyline` hold no node references. `Location` does name the decor scripts' inner data types (`Backdrop.Ridge`, `Clouds.Cloud`, …), so the location table depends on the decor scripts' data shapes, not their nodes.
 - **`World` has no per-location code.** Everything location-specific is data in `location.gd`; the World builds whatever the current `Location` lists.
 - **The Lander flies an `OwnedShip`, never a bare `ShipType`.** It reads the ship in service's effective numbers (`ship.thrust()`, `ship.tank()`…), and its `ship_type`, `dry_mass` and `fuel` read through to that ship. It doesn't know the Hangar: the Hangar hands it the ship with `fly()` and docks it with `start_docked()`.
-- **The Lander doesn't know the Economy, the Hangar or the Office.** They drive it through its public methods (`hold()`, `release()`, `start_docked()`, `start_loading()`, `finish_loading()`, `show_status()`, `lift_off_blocked`) and hear from it only through signals.
+- **The Lander doesn't know the Economy, the Hangar or the Office.** They drive it through its public methods (`hold()`, `release()`, `start_docked()`, `start_loading()`, `finish_loading()`, `show_status()`, `lift_off_blocked`, `pump_time_left`) and hear from it only through signals.
 - **`PlanetClock` and `SkyLook` know nothing of what reads them** (no sky, HUD or contracts in the clock; no clock or World in `SkyLook`).
 - One reach upward: `economy.gd` and `office.gd` `preload("res://hud.gd")` for its `format_kg()` formatter.
 
@@ -97,16 +97,16 @@ Camera ──► Lander (its parent), World and Station constants
 |---|---|---|
 | Current location | `PlanetClock.location` | `move_to()` (via `start_mission()` or drift). The World follows the signal; never set it elsewhere. |
 | Local time | `PlanetClock.minutes` | Its own tick, and `start_mission()` re-rolling it within a start period. See [ADR 0002](../adr/0002-one-planet-clock.md). |
-| Ship state | `Lander.state` | `Lander.enter()`. Held, loading and lift-off-blocked are flags beside the state, set by the Office or the Economy. |
+| Ship state | `Lander.state` | `Lander.enter()`. Held, loading, lift-off-blocked and the pump's time left are flags beside the state, set by the Office, the Economy or the Hangar. |
 | Delivery phase | `Economy.phase` | One function per transition, each checking the phase it leaves (see [domain-model.md](domain-model.md#mission-and-delivery-phase)). |
-| Money, offers, Contracts | `Economy` | `accept()`, `remove_contract()`, `finish_unloading()`, `cancel_mission()`, `settle_crash()`, `pay_for_ship()`, `get_paid_for_ship()`, `pay_for_repair()`; each balance change records exactly one Transaction per ship or Contract. |
-| Owned ships, the ship in service, name counters | `Hangar` | Its named operations: `buy()`, `sell()`, `put_in_service()` (the Ship swap), `add_ship()`, `wreck()` (on a crash), `recover()`, `repair()`. The Office's Shipyard and Hangar screens call them (and the Economy's for the money) and never edit an `OwnedShip`. The exceptions: the Lander burns and refuels the fuel in tank of the ship in service, and wears its Condition on hits and Hard landings. |
+| Money, offers, Contracts | `Economy` | `accept()`, `remove_contract()`, `finish_unloading()`, `cancel_mission()`, `settle_crash()`, `pay_for_ship()`, `get_paid_for_ship()`, `pay_for_repair()`, `pay_for_fuel()` (also at `start_loading()`, selling back fuel above the cap); each balance change records exactly one Transaction per ship or Contract. |
+| Owned ships, the ship in service, name counters | `Hangar` | Its named operations: `buy()`, `sell()`, `put_in_service()` (the Ship swap), `add_ship()`, `wreck()` (on a crash), `recover()`, `repair()`, `refuel()` (fuel already paid for: at once into a berth, pumped into the ship in service). The Office's Shipyard, Hangar and fuel screens call them (and the Economy's for the money) and never edit an `OwnedShip`. The exceptions: the Lander burns the fuel in tank of the ship in service (and refuels it on the pad), and wears its Condition on hits and Hard landings. |
 | Sky | none (derived) | The World pulls `SkyLook.at(minutes)` once per in-game minute and pushes it to every decor script's `show_sky()`. |
 
 ## Frame and pause model
 
 - **Gameplay ticks in `_physics_process`** (Lander, PlanetClock, Economy, World's sky check and drift feed), so `--fixed-fps 60` tests are deterministic. Decor movement (clouds, vehicles, Activity) and the Office's animations use `_process`.
-- **The Office pauses the whole tree** while showing. The Economy runs with process mode Always (offer timers keep running); the planet clock stays pausable (time stops). See [ADR 0003](../adr/0003-run-state-in-scene-nodes.md).
+- **The Office pauses the whole tree** while showing. The Economy runs with process mode Always (offer timers keep running), and so does the Hangar (fuel keeps pumping); the planet clock stays pausable (time stops). See [ADR 0003](../adr/0003-run-state-in-scene-nodes.md).
 - **Only a fresh start reloads the scene;** a crash never does. Recovery resets only the ship's place and the view in place; see [ADR 0008](../adr/0008-career-replaces-the-run.md) (and ADR 0003 for why Career state lives in scene nodes).
 - **Ready order matters:** `Station` must stay above `Lander`, and `Hangar` below `Lander` and above `UI`, `Economy` and `Office`, in `main.tscn` (see the README's Gotchas).
 

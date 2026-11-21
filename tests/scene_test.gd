@@ -241,6 +241,18 @@ func put_in_service() -> void:
 	await press(&"ui_accept")
 
 
+# From the main screen: the Hangar, the ship's Ship page, then FUEL.
+func open_fuel_screen(ship: OwnedShip) -> void:
+	await open_hangar()
+	await open_ship_page(ship)
+	await select_action(HangarScreen.Action.FUEL)
+	check(office().screen == Office.Screen.FUEL, "FUEL should open the fuel screen, screen %s" % office().screen)
+
+
+func fuel_screen() -> FuelScreen:
+	return office().fuel_screen
+
+
 # Puts the lander Flying at a set position, upright, out of whatever state it was in.
 func place(position: Vector2, velocity := Vector2.ZERO) -> void:
 	lander().fly_from(position, velocity)

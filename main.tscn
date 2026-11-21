@@ -59,6 +59,7 @@ position_smoothing_speed = 5.0
 script = ExtResource("5_camera")
 
 [node name="Hangar" type="Node" parent="."]
+process_mode = 3
 script = ExtResource("9_hangar")
 
 [node name="UI" type="CanvasLayer" parent="."]

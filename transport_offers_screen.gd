@@ -7,7 +7,7 @@ extends RefCounted
 # The offer list and the Contracts column (Contracts with their X, load summary, FUEL LIMITED,
 # DELIVER WITHIN, TOTAL VALUE, the mission rows (DESTINATION, set by the first Contract and locked
 # while there are any, START PERIOD), START LOADING (START without Contracts, CANCEL MISSION during
-# a loaded mission)) and the rows' red FUEL LIMITED notes: input, observable text and drawing. The
+# a loaded mission)) and the rows' red SELLS N L FUEL and FUEL LIMITED notes: input, observable text and drawing. The
 # Office creates it and calls it while that screen shows.
 
 enum Column { OFFERS, CONTRACTS }
@@ -34,6 +34,7 @@ const ACCEPT_TEXT := "ACCEPT"
 const CONTRACTS_TEXT := "CONTRACTS"
 const FUEL_LIMITED_LABEL := "FUEL LIMITED:"
 const FUEL_LIMITED_NOTE := "FUEL LIMITED"
+const SELLS_FUEL_NOTE := "SELLS %s FUEL"
 const START_LOADING_TEXT := "START LOADING"
 const START_TEXT := "START"
 const CANCEL_MISSION_TEXT := "CANCEL MISSION"
@@ -319,8 +320,7 @@ func red_summary_lines() -> PackedStringArray:
 	return lines
 
 
-# Per row, the red note under a fitting offer that would leave less room than a full Tank
-# on top of the Contracts, or "".
+# Per row, the red note under a fitting offer (SELLS N L FUEL or FUEL LIMITED), or "".
 func red_notes() -> PackedStringArray:
 	var lines := PackedStringArray()
 	for offer in economy.offers:
@@ -328,10 +328,19 @@ func red_notes() -> PackedStringArray:
 	return lines
 
 
+# SELLS 400 L FUEL when its Load would push the fuel aboard over the cap (the fuel it adds to what
+# START LOADING sells back), else FUEL LIMITED when it leaves less room than a full Tank.
 func red_note(offer: TransportOffer) -> String:
-	if economy.misfit_reason(offer) != "" or not limits_fuel(economy.contract_load_mass() + offer.load_mass()):
+	if economy.misfit_reason(offer) != "":
 		return ""
-	return FUEL_LIMITED_NOTE
+	var contract_load := economy.contract_load_mass()
+	var with_offer := contract_load + offer.load_mass()
+	var sells := economy.fuel_sold_for(with_offer) - economy.fuel_sold_for(contract_load)
+	if sells > 0.0:
+		return SELLS_FUEL_NOTE % Office.litres(sells)
+	if limits_fuel(with_offer):
+		return FUEL_LIMITED_NOTE
+	return ""
 
 
 # The summary as [label, value, label colour, value colour].
@@ -345,7 +354,7 @@ func summary_parts() -> Array[Array]:
 		["CARGO", kg_of(economy.contract_cargo(), lander.ship.full_tank_cargo(passengers)), Office.GREEN,
 			Office.RED if fuel_limited else Office.WHITE]]
 	if fuel_limited:
-		parts.append([FUEL_LIMITED_LABEL, kg_of(lander.fuel_cap_for(load_mass), lander.ship.tank()),
+		parts.append([FUEL_LIMITED_LABEL, litres_of(lander.fuel_cap_for(load_mass), lander.ship.tank()),
 			Office.RED, Office.RED])
 	if not economy.contracts.is_empty():
 		parts.append(["DELIVER WITHIN", PlanetClock.duration(economy.deadline()), Office.GREEN, Office.WHITE])
@@ -376,6 +385,11 @@ func start_text() -> String:
 # Two masses as 2 500/8 000 KG.
 static func kg_of(part: float, whole: float) -> String:
 	return "%s/%s" % [Office.kg(part).trim_suffix(KG_SUFFIX), Office.kg(whole)]
+
+
+# Two amounts of fuel (kg) in litres, as 5 000/6 000 L.
+static func litres_of(part: float, whole: float) -> String:
+	return "%s/%s" % [Office.litres(part).trim_suffix(" L"), Office.litres(whole)]
 
 
 static func row_text(offer: TransportOffer) -> String:
