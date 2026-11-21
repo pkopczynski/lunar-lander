@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.0](https://github.com/pkopczynski/lunar-lander/compare/v0.8.0...v0.9.0) (2026-11-21)
+
+
+### Features
+
+* a rough touchdown on the pad is a Hard landing that delivers but costs Condition ([#137](https://github.com/pkopczynski/lunar-lander/issues/137)) ([0dd6d8f](https://github.com/pkopczynski/lunar-lander/commit/0dd6d8fd095ff0f0164ed3f239a05ece27e453f2))
+* a ship on the ground tips over, rocks onto its legs, rolls and slides ([#139](https://github.com/pkopczynski/lunar-lander/issues/139)) ([99c97f6](https://github.com/pkopczynski/lunar-lander/commit/99c97f6728a4179c1880ea9b437d3663de8f3821))
+
 ## [0.8.0](https://github.com/pkopczynski/lunar-lander/compare/v0.7.0...v0.8.0) (2026-11-20)
 
 
