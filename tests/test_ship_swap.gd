@@ -91,15 +91,15 @@ func test_r_in_the_office_popup_does_nothing() -> void:
 		"R should leave the Enter-the-Office popup open")
 
 
-func test_no_closes_the_office_popup_and_refuels_after_the_delay() -> void:
-	await declining_refuels_after_the_delay(&"ui_accept")
+func test_no_closes_the_office_popup_and_leaves_the_ship_free_to_undock() -> void:
+	await declining_leaves_the_ship_free_to_undock(&"ui_accept")
 
 
-func test_escape_closes_the_office_popup_and_refuels_after_the_delay() -> void:
-	await declining_refuels_after_the_delay(&"ui_cancel")
+func test_escape_closes_the_office_popup_and_leaves_the_ship_free_to_undock() -> void:
+	await declining_leaves_the_ship_free_to_undock(&"ui_cancel")
 
 
-func declining_refuels_after_the_delay(action: StringName) -> void:
+func declining_leaves_the_ship_free_to_undock(action: StringName) -> void:
 	await choose_ship()
 	await dock_in_spot()
 	var ship := lander()
@@ -108,11 +108,9 @@ func declining_refuels_after_the_delay(action: StringName) -> void:
 	check(office().popup == Office.PopupKind.NONE, "%s should close the Enter-the-Office popup" % action)
 	check(not office().showing, "%s should not open the Office" % action)
 	check(ship.state == Lander.State.DOCKED, "the ship should stay Docked")
-	await seconds(Lander.REFUEL_DELAY - 0.3)
-	check_near(ship.fuel, 1000.0, 0.0001, "fuel before the refuel delay is over")
-	await seconds(1.0)
-	check(ship.fuel > 1000.0, "should refuel after the delay, fuel is %s" % ship.fuel)
-	check(message().contains("Refueling"), "message should mention refuelling, got %s" % message())
+	await seconds(Lander.REFUEL_DELAY + 1.0)
+	check_near(ship.fuel, 1000.0, 0.0001, "docking at the station adds no fuel")
+	check(message() == "Docked!", "no Refueling… at the station, got %s" % message())
 	hold(&"ui_up")
 	await seconds(0.4)
 	release(&"ui_up")
@@ -206,7 +204,5 @@ func leaving_the_office_returns_to_the_dock(choose_in_service: bool) -> void:
 	check(ship.ship_type == ShipType.HALO, "the ship should still be the Halo, got %s" % ship.ship_type.name)
 	check(ship.state == Lander.State.DOCKED and ship.position == spot, "the ship should stay Docked where it was")
 	check_near(dry_mass(), ShipType.HALO.default_dry_mass, 0.01, "the Halo's dry mass should be kept")
-	await seconds(Lander.REFUEL_DELAY - 0.3)
-	check_near(ship.fuel, 1000.0, 0.0001, "fuel before the refuel delay is over")
-	await seconds(1.0)
-	check(ship.fuel > 1000.0, "should refuel after the delay, fuel is %s" % ship.fuel)
+	await seconds(Lander.REFUEL_DELAY + 1.0)
+	check_near(ship.fuel, 1000.0, 0.0001, "docking at the station adds no fuel")

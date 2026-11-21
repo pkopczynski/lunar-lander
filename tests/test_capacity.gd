@@ -5,7 +5,7 @@ extends "res://tests/scene_test.gd"
 
 func test_the_cargo_line_compares_against_the_full_tank_cargo_of_each_ship_type() -> void:
 	await open_transport_offers()
-	check("CARGO 0/7 000 KG" in offers().summary(), "an empty Sparrow's full-Tank cargo, got %s" % offers().summary())
+	check("CARGO 0/7 200 KG" in offers().summary(), "an empty Sparrow's full-Tank cargo, got %s" % offers().summary())
 	for expected: Array in [[ShipType.HALO, "CARGO 0/10 000 KG"], [ShipType.MULE, "CARGO 0/9 000 KG"]]:
 		await switch_ship(expected[0])
 		check(expected[1] in offers().summary(), "%s's full-Tank cargo should read %s, got %s" % [expected[0].name, expected[1], offers().summary()])
@@ -16,11 +16,11 @@ func test_the_full_tank_cargo_drops_by_each_accepted_passengers_mass() -> void:
 	economy().put_offer(crew)
 	await open_transport_offers()
 	await accept(crew)
-	check("CARGO 0/6 760 KG" in offers().summary(), "3 passengers should take 240 kg off the full-Tank cargo, got %s" % offers().summary())
+	check("CARGO 0/6 960 KG" in offers().summary(), "3 passengers should take 240 kg off the full-Tank cargo, got %s" % offers().summary())
 
 
 func test_cargo_past_the_full_tank_cargo_is_accepted_and_turns_red_with_fuel_limited() -> void:
-	var at_the_line := known_offer(0, 7000.0)
+	var at_the_line := known_offer(0, 7200.0)
 	var past_it := known_offer(0, 500.0)
 	for offer in [at_the_line, past_it]:
 		economy().put_offer(offer)
@@ -30,7 +30,7 @@ func test_cargo_past_the_full_tank_cargo_is_accepted_and_turns_red_with_fuel_lim
 	check(not has_fuel_limited(offers().summary()), "no FUEL LIMITED at the full-Tank cargo, got %s" % offers().summary())
 	await accept(past_it)
 	var red := offers().red_summary_lines()
-	check(red == PackedStringArray(["CARGO 7 500/7 000 KG", "FUEL LIMITED: 4 500/5 000 KG"]),
+	check(red == PackedStringArray(["CARGO 7 700/7 200 KG", "FUEL LIMITED: 5 375/6 000 L"]),
 		"CARGO and FUEL LIMITED should both be red past the full-Tank cargo, red %s of %s" % [red, offers().summary()])
 
 
@@ -48,8 +48,10 @@ func test_an_offer_past_the_maximum_capacity_reads_overloaded_and_cant_be_accept
 
 
 func test_a_fitting_offer_that_would_limit_fuel_stays_lit_with_a_red_note_and_can_be_accepted() -> void:
-	var light := known_offer(0, 7000.0)
-	var heavy := known_offer(1, 7000.0)
+	# Part-empty, so the heavy offer limits the fuel without selling any.
+	lander().fuel = 1000.0
+	var light := known_offer(0, 7200.0)
+	var heavy := known_offer(1, 7200.0)
 	for offer in [light, heavy]:
 		economy().put_offer(offer)
 	await open_transport_offers()

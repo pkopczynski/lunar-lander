@@ -104,33 +104,33 @@ func test_the_summary_shows_passengers_cargo_and_start_loading() -> void:
 	var offer := known_offer(3, 2500.0)
 	economy().put_offer(offer)
 	await open_transport_offers()
-	check(offers().summary() == PackedStringArray(["PASSENGERS 0/4", "CARGO 0/7 000 KG"]),
+	check(offers().summary() == PackedStringArray(["PASSENGERS 0/4", "CARGO 0/7 200 KG"]),
 		"an empty Sparrow's summary, got %s" % offers().summary())
 	check(offers().start_text() == "START", "with no Contracts the button should read START")
 	await accept(offer)
-	check(offers().summary() == PackedStringArray(["PASSENGERS 3/4", "CARGO 2 500/6 760 KG",
+	check(offers().summary() == PackedStringArray(["PASSENGERS 3/4", "CARGO 2 500/6 960 KG",
 		"DELIVER WITHIN 3H 00M", "TOTAL VALUE €42 000"]),
 		"the summary should count the Contract, got %s" % offers().summary())
 	check(offers().start_text() == "START LOADING", "with a Contract the button should read START LOADING")
 
 
 func test_the_summary_warns_fuel_limited_when_the_load_leaves_less_room_than_a_full_tank() -> void:
-	# A Sparrow has 12 000 kg for fuel and Load together, and a 5 000 kg Tank.
-	var heavy := known_offer(2, 7000.0)
+	# A Sparrow has 12 000 kg for fuel and Load together, and a 4 800 kg (6 000 L) Tank.
+	var heavy := known_offer(2, 7200.0)
 	economy().put_offer(heavy)
 	await open_transport_offers()
 	await accept(heavy)
-	check("FUEL LIMITED: 4 840/5 000 KG" in offers().summary(),
-		"7 160 kg of Load should leave room for 4 840 kg of fuel, got %s" % offers().summary())
+	check("FUEL LIMITED: 5 800/6 000 L" in offers().summary(),
+		"7 360 kg of Load should leave room for 4 640 kg (5 800 L) of fuel, got %s" % offers().summary())
 
 
 func test_no_fuel_warning_while_a_full_tank_still_fits() -> void:
-	var light := known_offer(0, 7000.0)
+	var light := known_offer(0, 7200.0)
 	economy().put_offer(light)
 	await open_transport_offers()
 	await accept(light)
 	check(not offers().summary()[2].begins_with("FUEL LIMITED"),
-		"7 000 kg of Load leaves room for a full Tank, got %s" % offers().summary())
+		"7 200 kg of Load leaves room for a full Tank, got %s" % offers().summary())
 
 
 func test_the_summary_shows_the_shortest_deadline_and_the_total_value_of_the_contracts() -> void:
@@ -143,7 +143,7 @@ func test_the_summary_shows_the_shortest_deadline_and_the_total_value_of_the_con
 	for offer in [slow, quick]:
 		economy().put_offer(offer)
 	await open_transport_offers()
-	check(offers().summary() == PackedStringArray(["PASSENGERS 0/4", "CARGO 0/7 000 KG"]),
+	check(offers().summary() == PackedStringArray(["PASSENGERS 0/4", "CARGO 0/7 200 KG"]),
 		"DELIVER WITHIN and TOTAL VALUE should be hidden with no Contracts, got %s" % offers().summary())
 	await accept(slow)
 	await accept(quick)

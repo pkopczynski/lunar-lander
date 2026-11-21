@@ -1,7 +1,7 @@
 class_name OwnedShip
 extends RefCounted
 # An Owned ship: one ship the player owns. Its Ship type, its automatic name (the type plus a
-# per-type number, "SPARROW 1"), its fuel in tank (kg) and its Condition (1.0 is 100%; no effect
+# per-type number, "SPARROW 1"), its fuel in tank (in kg) and its Condition (1.0 is 100%; no effect
 # on flight).
 #
 # Its effective numbers (`dry_mass()`, `maximum_weight()`, `tank()`, `thrust()`, `burn_rate()`,
@@ -15,14 +15,23 @@ extends RefCounted
 # (`recovery_fee()`: `RECOVERY_FEE_SHARE` of its type's price) and what selling it pays (`sale_price()`:
 # `SALE_SHARE` of its value less the repair cost, never below €0; the fuel in its tank earns nothing).
 #
+# Fuel is kept in kg (it's mass) and shown in litres, `KG_PER_LITRE` to the litre. Its station price
+# per litre (`fuel_price()`, in cents) is `FUEL_PRICE_CENTS` × its type's fuel multiplier, rounded to
+# the cent; `fuel_cost(kg)` is that many litres at that price, in whole euros, for buying and selling
+# back alike. `fuel_cap(load)` is the most fuel it may hold with that Load aboard.
+#
 # Owned ships belong to the Hangar: only its named operations create or change them. The
-# exceptions are the ship in service's fuel in tank, which the Lander burns and refuels in flight,
+# exceptions are the ship in service's fuel in tank, which the Lander burns (and refuels on the pad),
 # and its Condition, which the Lander wears down on each hit (ADR 0009).
 
 # Selling a ship pays this share of its value, less its repair cost.
 const SALE_SHARE := 0.5
 # Recovery after a crash costs this share of its Ship type's price (upgrades not counted).
 const RECOVERY_FEE_SHARE := 0.05
+# Fuel's density, everywhere.
+const KG_PER_LITRE := 0.8
+# A litre of fuel at the station for a ship type whose fuel multiplier is 1, in cents.
+const FUEL_PRICE_CENTS := 60
 
 var ship_type: ShipType
 var name: String
@@ -68,6 +77,21 @@ func turn_rate() -> float:
 func full_tank_cargo(passengers := 0) -> float:
 	return clampf(maximum_weight() - dry_mass() - tank() - passengers * TransportOffer.PASSENGER_MASS,
 		0.0, ship_type.cargo_capacity)
+
+
+# The fuel cap: a full Tank, or less if this Load would push it past its Maximum weight.
+func fuel_cap(load_mass := 0.0) -> float:
+	return clampf(maximum_weight() - dry_mass() - load_mass, 0.0, tank())
+
+
+# Cents per litre of fuel at the station.
+func fuel_price() -> int:
+	return roundi(FUEL_PRICE_CENTS * ship_type.fuel_multiplier)
+
+
+# Euros this much fuel (kg) costs at the station, or pays when sold back.
+func fuel_cost(kg: float) -> int:
+	return roundi(kg / KG_PER_LITRE * fuel_price() / 100.0)
 
 
 # Euros: its Ship type's price.

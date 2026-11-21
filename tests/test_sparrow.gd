@@ -14,8 +14,8 @@ func test_starts_as_a_sparrow_with_a_full_tank() -> void:
 	await choose_ship()
 	var ship := lander()
 	check(ship.ship_type == ShipType.SPARROW, "ship type should be the Sparrow, got %s" % ship.ship_type.name)
-	check_near(ship.fuel, 5000.0, 0.01, "fuel")
-	check_near(ship.total_mass(), 15000.0, 0.01, "total mass")
+	check_near(ship.fuel, 4800.0, 0.01, "fuel: 6 000 L")
+	check_near(ship.total_mass(), 14800.0, 0.01, "total mass")
 	check_near(ship.tank_level(), 1.0, 0.0001, "tank level")
 
 
@@ -25,7 +25,7 @@ func test_plus_and_minus_keys_no_longer_change_the_ship() -> void:
 	for key: Key in [KEY_EQUAL, KEY_MINUS, KEY_KP_ADD, KEY_KP_SUBTRACT]:
 		await press_key(key)
 	check_near(ship.dry_mass, ShipType.SPARROW.default_dry_mass, 0.01, "dry mass after + and -")
-	check_near(ship.total_mass(), 15000.0, 0.01, "total mass after + and -")
+	check_near(ship.total_mass(), 14800.0, 0.01, "total mass after + and -")
 	for action: StringName in [&"weight_up", &"weight_down"]:
 		check(not InputMap.has_action(action), "the %s action should be gone" % action)
 
@@ -39,7 +39,7 @@ func press_key(key: Key) -> void:
 		await frames(1)
 
 
-func test_docks_in_the_parking_spot_and_refuels() -> void:
+func test_docks_in_the_parking_spot() -> void:
 	await choose_ship()
 	var ship := lander()
 	place(station().parking_spot.get_center())
@@ -47,31 +47,11 @@ func test_docks_in_the_parking_spot_and_refuels() -> void:
 	await seconds(0.5)
 	check(ship.state == Lander.State.DOCKED, "Sparrow should be docked")
 	check(message() == "Docked!", "message should say Docked!, got %s" % message())
-	ship.fuel = 1000.0
-	# Decline the Ship swap.
-	await press(&"ui_accept")
-	await seconds(3.0)
-	check(ship.fuel > 1000.0, "should refuel after the delay, fuel is %s" % ship.fuel)
-	check(message().contains("Refueling"), "message should mention refuelling, got %s" % message())
 
 
 # Sparrow: 22 000 kg Maximum weight − 10 000 kg dry mass − 9 000 kg Load leaves room for 3 000 kg of fuel.
 const LOAD_FOR_TESTS := 9000.0
 const FUEL_CAP_WITH_LOAD := 3000.0
-
-
-func test_a_load_stops_refuelling_at_the_station_short_of_a_full_tank() -> void:
-	await choose_ship()
-	var ship := lander()
-	await dock_in_spot()
-	ship.load_mass = LOAD_FOR_TESTS
-	ship.fuel = 1000.0
-	# Decline the Ship swap.
-	await press(&"ui_accept")
-	await seconds(10.0)
-	check_near(ship.fuel_cap(), FUEL_CAP_WITH_LOAD, 0.01, "fuel cap with a Load")
-	check_near(ship.fuel, FUEL_CAP_WITH_LOAD, 0.01, "fuel after refuelling with a Load")
-	check(message() == "Docked!", "refuelling should be over, got %s" % message())
 
 
 func test_a_load_stops_refuelling_on_the_pad_short_of_a_full_tank() -> void:
@@ -105,9 +85,9 @@ func test_crosses_the_border_at_maximum_weight() -> void:
 	check(top_speed >= Lander.CROSSING_SPEED, "should reach the crossing speed, top speed %s" % top_speed)
 
 
-# Sparrow with a full Tank: 10 000 kg dry mass + 5 000 kg fuel = the 15 000 kg reference
-# mass. A 6 000 kg Load still leaves room for a full Tank, and burn counts it at half:
-# (15 000 + 3 000) / 15 000 × 250 kg/s = 300 kg/s, against 350 kg/s at full weight.
+# Sparrow with a full Tank: 10 000 kg dry mass + 4 800 kg fuel, against the 15 000 kg reference
+# mass, burning 240 kg/s there. A 6 000 kg Load still leaves room for a full Tank, and burn counts
+# it at half: (14 800 + 3 000) / 15 000 × 240 kg/s ≈ 285 kg/s, against 333 kg/s at full weight.
 const BURN_TEST_LOAD := 6000.0
 
 
@@ -118,9 +98,9 @@ func test_a_load_burns_fuel_at_half_its_weight() -> void:
 	ship.fuel = ship.ship_type.tank
 	ship.load_mass = BURN_TEST_LOAD
 	var loaded := await fuel_burned_in_a_second_of_thrust()
-	check_near(unloaded, 250.0, 10.0, "fuel burned in 1 s of thrust without a Load")
-	check_near(loaded, 300.0, 10.0, "fuel burned in 1 s of thrust with a 6 000 kg Load")
-	check(loaded < 350.0, "a Load should burn less than full-weight scaling would, burned %s" % loaded)
+	check_near(unloaded, 237.0, 10.0, "fuel burned in 1 s of thrust without a Load")
+	check_near(loaded, 285.0, 10.0, "fuel burned in 1 s of thrust with a 6 000 kg Load")
+	check(loaded < 330.0, "a Load should burn less than full-weight scaling would, burned %s" % loaded)
 	check(loaded > unloaded, "a Load should burn more than no Load, burned %s against %s" % [loaded, unloaded])
 
 

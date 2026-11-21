@@ -3,7 +3,7 @@ extends Control
 # from the planet clock's, the destination and flight deadline under it (`MINE BY 14:30`) from the
 # Economy's, the green `+€X` payout that rises above the ship and fades, and the ship in service's
 # Condition under the weight (`CONDITION 87%`) with a brief red flash of each loss under it (`−6%`). Attached to `UI/Hud`.
-# Its static `format_kg()` and `group_thousands()` (`1 234 567`) also write the Office's masses and
+# Its static `format_kg()`, `format_litres()` (fuel, `2 000 l (1 600 kg)`) and `group_thousands()` (`1 234 567`) also write the Office's masses and
 # `Economy.eur()`'s euros.
 
 const BAR_SIZE := Vector2(24, 200)
@@ -185,6 +185,11 @@ func wave(x: float) -> float:
 
 static func format_kg(kg: float) -> String:
 	return group_thousands(roundi(kg)) + " kg"
+
+
+# Fuel (kg) in litres with its mass second, as 2 000 l (1 600 kg).
+static func format_litres(kg: float) -> String:
+	return "%s l (%s)" % [group_thousands(roundi(kg / OwnedShip.KG_PER_LITRE)), format_kg(kg)]
 
 
 # A whole number of zero or more with its thousands split by spaces, as 1 234 567.

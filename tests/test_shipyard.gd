@@ -7,7 +7,7 @@ func test_the_shipyard_opens_on_the_sparrow_with_its_price_tank_and_what_is_owne
 	await open_shipyard()
 	var lines := shipyard().lines()
 	for expected: String in ["SPARROW", "SMALL, LIGHT AND QUICK. BUILT FOR SHORT HOPS.", "PRICE €250 000",
-			"TANK 6 250 L FULL", "SEATS 4", "CARGO 7 000 KG", "MAX CAPACITY 8 000 KG", "THRUST ■■■■■",
+			"TANK 6 000 L FULL", "SEATS 4", "CARGO 7 200 KG", "MAX CAPACITY 8 000 KG", "THRUST ■■■■■",
 			"HANDLING ■■■■■", "< 1/3 >", "OWNED: 1", "HANGAR 1/4", "BUY €250 000"]:
 		check(expected in lines, "the Sparrow's Ship offer should show %s, shows %s" % [expected, lines])
 	check(shipyard().picture() == ShipType.SPARROW.hull, "the picture should be the Sparrow's hull")

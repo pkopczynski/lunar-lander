@@ -1,7 +1,7 @@
 class_name Office
 extends CanvasLayer
 # The player's Office: a full-window Terminal with a main screen of tiles opening the Shipyard,
-# the Hangar (and each owned ship's Ship page), Transport offers and the Bank account. It pauses
+# the Hangar (and each owned ship's Ship page and its FUEL screen), Transport offers and the Bank account. It pauses
 # the world while showing. R after a crash or while Stranded opens it by Recovery (`recover()`), and it can't be left
 # while the ship in service is a Wreck (`leave_reason()`); the main screen then tags it WRECKED. Buying, selling and the Ship swap go through the Hangar's and the
 # Economy's named operations; it never edits an owned ship itself.
@@ -10,7 +10,7 @@ extends CanvasLayer
 # mission at the chosen destination in the chosen start period at START LOADING (or START, a free
 # flight), the Terminal's colours (green, dim green and black, white and red for values, and faint
 # green list tints, alternating by row), the header with the balance top right (red below €0), the
-# Terminal's screens (the main screen's tiles; `ShipyardScreen`, `HangarScreen`,
+# Terminal's screens (the main screen's tiles; `ShipyardScreen`, `HangarScreen`, `FuelScreen`,
 # `TransportOffersScreen` and `BankAccountScreen` handle the others), the YES/NO popups ("ARE YOU
 # SURE?" for a Transport offer, "REMOVE CONTRACT?", "CANCEL MISSION?", "ENTER THE OFFICE?", also
 # while delivering, and `ask()`'s confirms naming a thing and its price in white, with an optional
@@ -20,7 +20,7 @@ extends CanvasLayer
 # blocks, the IN SERVICE tag), pausing the world while showing, and drawing the Terminal.
 # Attached to `Office`.
 
-enum Screen { MAIN, SHIPYARD, HANGAR, SHIP_PAGE, TRANSPORT_OFFERS, BANK_ACCOUNT }
+enum Screen { MAIN, SHIPYARD, HANGAR, SHIP_PAGE, FUEL, TRANSPORT_OFFERS, BANK_ACCOUNT }
 # CONFIRM is `ask()`'s: its question and price, and what Yes does.
 enum PopupKind { NONE, CONFIRM, ENTER_OFFICE, ACCEPT_OFFER, REMOVE_CONTRACT, CANCEL_MISSION }
 enum Choice { YES, NO }
@@ -32,6 +32,7 @@ const KEY_HINTS := {
 	Screen.SHIPYARD: "← → BROWSE   RETURN BUY   ESC BACK",
 	Screen.HANGAR: "UP DOWN MOVE   RETURN OPEN   ESC BACK",
 	Screen.SHIP_PAGE: "UP DOWN MOVE   RETURN SELECT   ESC BACK",
+	Screen.FUEL: "← → AMOUNT   UP DOWN MOVE   RETURN SELECT   ESC BACK",
 	Screen.TRANSPORT_OFFERS: "← → COLUMNS   UP DOWN MOVE   RETURN SELECT   ESC BACK",
 	Screen.BANK_ACCOUNT: "UP DOWN MOVE   RETURN OPEN   ESC BACK",
 }
@@ -56,8 +57,6 @@ const SCREEN_TITLES := {
 }
 # Ratings are drawn as this many blocks.
 const RATING_BLOCKS := 5
-# Fuel is shown in litres: this many kg to the litre.
-const KG_PER_LITRE := 0.8
 # Seconds the notice line shows.
 const NOTICE_TIME := 2.5
 
@@ -142,6 +141,7 @@ var powering := false
 var power := 1.0
 var shipyard: ShipyardScreen
 var hangar_screen: HangarScreen
+var fuel_screen: FuelScreen
 var transport_offers: TransportOffersScreen
 var bank_account: BankAccountScreen
 
@@ -155,6 +155,7 @@ var bank_account: BankAccountScreen
 func _ready() -> void:
 	shipyard = ShipyardScreen.new(self, hangar, economy)
 	hangar_screen = HangarScreen.new(self, hangar, economy)
+	fuel_screen = FuelScreen.new(self, hangar, economy)
 	transport_offers = TransportOffersScreen.new(self, economy)
 	bank_account = BankAccountScreen.new(self, economy)
 	terminal.draw.connect(draw_terminal)
@@ -191,6 +192,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		handled()
 	elif screen in [Screen.HANGAR, Screen.SHIP_PAGE] and hangar_screen.handle_input(event):
 		handled()
+	elif screen == Screen.FUEL and fuel_screen.handle_input(event):
+		handled()
 	elif event.is_action_pressed("ui_cancel"):
 		screen = Screen.MAIN
 		notice_left = 0.0
@@ -205,7 +208,7 @@ func handle_main_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("ui_accept"):
 		open_screen(TILES[tile_index])
 	elif event.is_action_pressed("ui_cancel"):
-		# Leaves the ship Docked as it is; one held since docking refuels after the usual delay.
+		# Leaves the ship Docked as it is, free to undock.
 		if leave_reason() != "":
 			show_notice(leave_reason(), true)
 		else:
@@ -230,9 +233,14 @@ func open_screen(which: Screen) -> void:
 		transport_offers.focus = TransportOffersScreen.Column.OFFERS
 
 
-func open_ship_page(ship: OwnedShip) -> void:
+func open_ship_page(ship: OwnedShip, at := HangarScreen.Action.PUT_IN_SERVICE) -> void:
 	open_screen(Screen.SHIP_PAGE)
-	hangar_screen.open_page(ship)
+	hangar_screen.open_page(ship, at)
+
+
+func open_fuel_screen(ship: OwnedShip) -> void:
+	open_screen(Screen.FUEL)
+	fuel_screen.open(ship)
 
 
 # Asks YES/NO (Yes selected) with this question, its %s replaced by the price in white (none when
@@ -356,7 +364,7 @@ func answer(choice: Choice) -> void:
 		[PopupKind.ENTER_OFFICE, Choice.YES]:
 			open()
 		[PopupKind.ENTER_OFFICE, Choice.NO]:
-			# Docked as before: the ship refuels after the usual delay.
+			# Docked as before, free to undock.
 			close()
 			lander.release()
 		[PopupKind.CONFIRM, Choice.YES]:
@@ -406,6 +414,8 @@ func selected_tile() -> String:
 func screen_title() -> String:
 	if screen == Screen.SHIP_PAGE:
 		return "%s // %s" % [SCREEN_TITLES[Screen.HANGAR], hangar_screen.ship.name]
+	if screen == Screen.FUEL:
+		return "%s // %s // FUEL" % [SCREEN_TITLES[Screen.HANGAR], fuel_screen.ship.name]
 	return SCREEN_TITLES[screen]
 
 
@@ -432,12 +442,22 @@ static func kg(value: float) -> String:
 
 
 static func to_litres(kg_of_fuel: float) -> float:
-	return kg_of_fuel / KG_PER_LITRE
+	return kg_of_fuel / OwnedShip.KG_PER_LITRE
 
 
-# Fuel in kg written in litres, as 6 250 L.
+# Fuel in kg written in litres, as 6 000 L.
 static func litres(kg_of_fuel: float) -> String:
 	return Hud.group_thousands(roundi(to_litres(kg_of_fuel))) + " L"
+
+
+# Fuel in kg written in litres with its mass second, as 2 000 L (1 600 KG).
+static func litres_and_kg(kg_of_fuel: float) -> String:
+	return "%s (%s)" % [litres(kg_of_fuel), kg(kg_of_fuel)]
+
+
+# A price per litre in cents, as €0.60 / L.
+static func per_litre(cents: int) -> String:
+	return "€%d.%02d / L" % [cents / 100, cents % 100]
 
 
 # Drawing
@@ -505,6 +525,8 @@ func draw_screen(view: Rect2) -> void:
 			shipyard.draw(body)
 		Screen.HANGAR, Screen.SHIP_PAGE:
 			hangar_screen.draw(body)
+		Screen.FUEL:
+			fuel_screen.draw(body)
 		Screen.TRANSPORT_OFFERS:
 			transport_offers.draw(body)
 		Screen.BANK_ACCOUNT:

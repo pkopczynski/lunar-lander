@@ -20,12 +20,12 @@ func test_start_loading_closes_the_office_and_counts_down_3_s_plus_1_s_per_passe
 	check(economy().phase == Economy.Phase.DELIVERING, "loading should finish after 12 s")
 
 
-func test_starting_loading_pumps_out_fuel_above_the_cap_for_the_contracts_load() -> void:
-	# A Sparrow has 12 000 kg for fuel and Load; 7 160 kg of Load leaves 4 840 kg for fuel.
+func test_the_load_counts_toward_the_mass_only_when_loading_ends() -> void:
+	# A full Sparrow's 4 800 kg of fuel fits under the cap for 7 160 kg of Load (4 840 kg).
 	await start_loading([known_offer(2, 7000.0)])
 	check(economy().phase == Economy.Phase.LOADING, "loading should be under way")
-	check(lander().fuel == 4840.0, "fuel above the cap should be pumped out as loading starts, has %s kg" % lander().fuel)
-	check(lander().total_mass() == 14840.0, "the Load shouldn't count before loading ends, got %s" % lander().total_mass())
+	check(lander().fuel == 4800.0, "a Load that leaves room sells no fuel, has %s kg" % lander().fuel)
+	check(lander().total_mass() == 14800.0, "the Load shouldn't count before loading ends, got %s" % lander().total_mass())
 
 
 func test_up_doesnt_undock_and_left_right_dont_turn_while_loading() -> void:
@@ -40,59 +40,37 @@ func test_up_doesnt_undock_and_left_right_dont_turn_while_loading() -> void:
 	check(economy().phase == Economy.Phase.LOADING, "loading should still run")
 
 
-func test_a_ship_refuels_while_loading_up_to_the_cap_from_the_first_frame() -> void:
-	# 3 s + 2 passengers + 7 000 kg = 12 s; the cap for that Load is 4 840 kg.
+func test_a_ship_never_refuels_while_loading_or_after() -> void:
+	# 3 s + 2 passengers + 7 000 kg = 12 s.
 	await start_loading([known_offer(2, 7000.0)])
 	lander().fuel = 4000.0
-	await frames(1)
-	check(lander().fuel > 4000.0, "refuelling should start without the usual delay, has %s kg" % lander().fuel)
-	check(message() == "Docked!\nLoading… 12s\nRefueling…",
-		"Refueling… should show under the loading countdown, got %s" % message())
 	await seconds(4.0)
 	check(economy().phase == Economy.Phase.LOADING, "loading should still run")
-	check(lander().fuel == 4840.0, "refuelling should stop at the cap for the Contracts' Load, has %s kg" % lander().fuel)
-	check(message() == "Docked!\nLoading… 8s", "no Refueling… once at the cap, got %s" % message())
-	check(lander().total_mass() == 14840.0, "the Load shouldn't count before loading ends, got %s" % lander().total_mass())
+	check(lander().fuel == 4000.0, "loading adds no fuel, has %s kg" % lander().fuel)
+	check(message() == "Docked!\nLoading… 8s", "no Refueling… while loading, got %s" % message())
 	await seconds(8.5)
 	check(economy().phase == Economy.Phase.DELIVERING, "loading should have finished")
-	check(lander().total_mass() == 22000.0, "the Load should join the mass when loading ends, got %s" % lander().total_mass())
+	check(lander().total_mass() == 21160.0, "the Load should join the mass when loading ends, got %s" % lander().total_mass())
+	await seconds(Lander.REFUEL_DELAY + 1.0)
+	check(lander().fuel == 4000.0, "no fuel after loading either, has %s kg" % lander().fuel)
 
 
-func test_loading_adds_the_load_and_pumps_out_fuel_above_the_cap() -> void:
-	# A Sparrow has 12 000 kg for fuel and Load; 7 160 kg of Load leaves 4 840 kg for fuel.
-	await start_loading([known_offer(2, 7000.0)])
+func test_loading_a_load_that_limits_the_fuel_says_so_once_loaded() -> void:
+	# A Sparrow has 12 000 kg for fuel and Load; 7 360 kg of Load leaves 4 640 kg (5 800 L) for
+	# fuel, so 160 kg (200 L) of a full tank is sold back.
+	await start_loading([known_offer(2, 7200.0)])
 	set_time(10, 0)
-	# 3 s + 2 passengers + 7 tonnes: loading finishes at 10:24, and 90 s is 3 in-game hours.
+	# 3 s + 2 passengers + 7.2 tonnes: loading finishes at 10:24, and 90 s is 3 in-game hours.
 	await seconds(12.5)
 	check(lander().total_mass() == 22000.0, "the Load should bring the Sparrow to 22 000 kg, got %s" % lander().total_mass())
-	check(lander().fuel == 4840.0, "fuel above the cap should be pumped out, has %s kg" % lander().fuel)
-	check(message() == "Docked!\nLoaded! Deliver by 13:24\nFuel limited to 4 840 kg",
+	check(lander().fuel == 4640.0, "fuel above the cap should be sold back, has %s kg" % lander().fuel)
+	check(message() == "Docked!\nLoaded! Deliver by 13:24\nFuel limited to 5 800 l (4 640 kg)",
 		"the loaded message should give the deadline and the fuel cap, got %s" % message())
-	await seconds(Lander.REFUEL_DELAY + 1.0)
-	check(lander().fuel == 4840.0, "refuelling should stop at the cap, has %s kg" % lander().fuel)
 	hold(&"ui_up")
 	await seconds(0.3)
 	release(&"ui_up")
 	check(lander().state == Lander.State.FLYING, "Up should undock once loaded")
 	check(message() == "", "the loaded message should go when the ship undocks, got %s" % message())
-
-
-func test_after_loading_refuelling_resumes_up_to_the_cap() -> void:
-	await start_loading([known_offer(1, 0.0)])
-	lander().fuel = 0.0
-	set_time(10, 0)
-	# 3 s + 1 passenger: loading finishes at 10:08, and 90 s is 3 in-game hours.
-	await seconds(4.5)
-	check(economy().phase == Economy.Phase.DELIVERING, "loading should have finished")
-	var after_loading := lander().fuel
-	check(after_loading > 0.0 and after_loading < lander().ship_type.tank,
-		"the ship should have refuelled part of the Tank while loading, has %s kg" % after_loading)
-	check(message() == "Docked!\nLoaded! Deliver by 13:08\nRefueling…",
-		"a light Load gives no fuel warning and refuelling goes on, got %s" % message())
-	await seconds(Lander.REFUEL_DELAY + 0.5)
-	check(lander().fuel > after_loading, "refuelling should carry on after loading, has %s kg" % lander().fuel)
-	check(message().ends_with("Loaded! Deliver by 13:08\nRefueling…"),
-		"the loaded message should stay while refuelling, got %s" % message())
 
 
 func test_the_hud_shows_the_shortest_deadline_as_a_local_time_then_turns_red_once_overdue() -> void:

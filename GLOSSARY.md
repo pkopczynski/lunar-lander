@@ -133,7 +133,7 @@ The terminal screen where ship offers are bought. A bought ship goes into a free
 _Avoid_: Shop, ship selection
 
 **Ship page**:
-The hangar's screen for one owned ship, with its status, its fitted upgrades and its actions (put in service, sell).
+The hangar's screen for one owned ship, with its status, its fitted upgrades and its actions (put in service, fuel, repair, sell).
 _Avoid_: Ship details, garage
 
 **Ship selection**:
@@ -144,7 +144,7 @@ The owned ship (not the ship type) currently in the parking spot: the one the pl
 _Avoid_: Current ship, active ship
 
 **Bank account**:
-The pilot's money, in euros, and the transactions that made it. It starts at €20 000 with every career. Recovery and repair may take it below €0 (debt); buying never does.
+The pilot's money, in euros, and the transactions that made it. It starts at €20 000 with every career. Recovery, repair and fuel may take it below €0 (debt); buying a ship never does.
 _Avoid_: Wallet, credits, score
 
 **Ship offer**:
@@ -194,7 +194,7 @@ A delivery still under way after its deadline has passed.
 _Avoid_: Late (on its own), expired
 
 **Loading**:
-Putting the load aboard at the parking spot, after the player accepts their contracts. The ship stays docked and held until it finishes, refuelling meanwhile, and the deadline starts counting then.
+Putting the load aboard at the parking spot, after the player accepts their contracts. The ship stays docked and held until it finishes, and the deadline starts counting then. Loading never adds fuel: fuel above the fuel cap for the load is sold back at the station price as loading starts and pumped out meanwhile.
 _Avoid_: Boarding, embarking
 
 **Unloading**:
@@ -206,7 +206,7 @@ What a contract pays into the bank account once unloaded: its reward less a pena
 _Avoid_: Reward (that's before the penalty), income, score
 
 **Transaction**:
-One line in the bank account for anything that changed the balance: a ship purchase or sale (naming the owned ship, opening to show its price, or its value, the selling share and the repair cost), a recovery fee (naming the owned ship, opening to show its ship type's price and the fee's share), a repair (naming the owned ship, opening to show the condition restored, the repair rate and the value), or a delivered, cancelled or failed contract: its payout (negative for a cancellation fee), opening to show its reward, penalty (or, when unloaded away from its destination, the wrong destination taking the whole reward), the flight's deadline it was settled against and the landing, both as local times, and the location it was delivered to (and its destination, when they differ). A cancelled contract's shows its reward, the cancellation fee and that it was cancelled instead; a failed contract's its reward, the failure fee and that it failed.
+One line in the bank account for anything that changed the balance: fuel bought or sold back (`FUEL  STATION  2 000 L`, opening to show the owned ship, the litres and kg, the price per litre, the ship type's factor when it isn't 1, and the place), a ship purchase or sale (naming the owned ship, opening to show its price, or its value, the selling share and the repair cost), a recovery fee (naming the owned ship, opening to show its ship type's price and the fee's share), a repair (naming the owned ship, opening to show the condition restored, the repair rate and the value), or a delivered, cancelled or failed contract: its payout (negative for a cancellation fee), opening to show its reward, penalty (or, when unloaded away from its destination, the wrong destination taking the whole reward), the flight's deadline it was settled against and the landing, both as local times, and the location it was delivered to (and its destination, when they differ). A cancelled contract's shows its reward, the cancellation fee and that it was cancelled instead; a failed contract's its reward, the failure fee and that it failed.
 _Avoid_: Receipt, entry, log
 
 **Load**:
@@ -286,8 +286,12 @@ The heaviest a ship type may be in total: dry mass, fuel and load together. Load
 _Avoid_: Max load, payload
 
 **Tank**:
-How much fuel a ship type holds when full.
+How much fuel a ship type holds when full, in litres (Sparrow 6 000 l, Mule 15 000 l, Halo 10 000 l). Fuel weighs 0.8 kg a litre; amounts of fuel are shown in litres, with kg second.
 _Avoid_: Capacity (on its own), fuel max
+
+**Refuelling**:
+Buying fuel for an owned ship on its fuel screen in the hangar, paid at once, then pumped into the ship in service at 500 l/s (a ship in a berth is filled at once). While it pumps, the ship can't undock or lift off. The hangar also buys fuel back at the station price. Docking and loading never add fuel; for now a pad still refuels a landed ship for free.
+_Avoid_: Filling up, topping up
 
 **Maximum capacity**:
 The most cargo a ship type can take at all. A transport offer that would go past it is overloaded and can't be accepted.
@@ -310,7 +314,7 @@ The ship is resting on the pad after a touchdown that went past no landing band 
 _Avoid_: Touched down, parked
 
 **Docked**:
-The ship is resting inside the parking spot. This is the deep-space counterpart of Landed. From the moment the office popup shows (once the ship has finished easing upright after docking) until the player declines to enter the office or leaves it, a Docked ship is held: it ignores the controls and doesn't refuel. During loading it also ignores the controls, but refuels.
+The ship is resting inside the parking spot. This is the deep-space counterpart of Landed. From the moment the office popup shows (once the ship has finished easing upright after docking) until the player declines to enter the office or leaves it, a Docked ship is held: it ignores the controls. During loading it also ignores the controls. A docked ship never refuels by itself: fuel is bought in the hangar.
 _Avoid_: Parked, landed (in deep space)
 
 **Crashed**:

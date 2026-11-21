@@ -8,7 +8,7 @@ func test_the_hangar_lists_four_berths_with_sparrow_1_in_service() -> void:
 		% hangar_screen().berths_text())
 	var rows := hangar_screen().rows()
 	check(rows.size() == 4, "there should be a row per berth, shows %s" % rows)
-	check(rows[0] == "SPARROW 1 IN SERVICE  100%  6 250 L  –  0",
+	check(rows[0] == "SPARROW 1 IN SERVICE  100%  6 000 L  –  0",
 		"SPARROW 1's row should show its name, IN SERVICE, condition, fuel, parachute and upgrades, got %s" % rows[0])
 	for i in range(1, 4):
 		check(rows[i] == HangarScreen.EMPTY_BERTH_TEXT, "berth %d should be empty, got %s" % [i + 1, rows[i]])
@@ -29,11 +29,11 @@ func test_return_on_a_ship_opens_its_ship_page() -> void:
 	check(office().screen_title() == "HANGAR // SPARROW 1", "the header should read HANGAR // SPARROW 1, got %s"
 		% office().screen_title())
 	var lines := hangar_screen().page_lines()
-	for expected: String in ["SPARROW 1", "IN SERVICE", "NO UPGRADES", "CONDITION 100%", "FUEL 3 200 / 6 250 L",
-			"DRY MASS 10 000 KG", "CARGO 7 000 KG", "VALUE €250 000"]:
+	for expected: String in ["SPARROW 1", "IN SERVICE", "NO UPGRADES", "CONDITION 100%", "FUEL 3 200 / 6 000 L",
+			"DRY MASS 10 000 KG", "CARGO 7 200 KG", "VALUE €250 000"]:
 		check(expected in lines, "the Ship page should show %s, shows %s" % [expected, lines])
-	check(hangar_screen().actions() == PackedStringArray(["PUT IN SERVICE", "REPAIR €0", "SELL €125 000"]),
-		"the actions should be PUT IN SERVICE, REPAIR €0 and SELL €125 000, are %s" % hangar_screen().actions())
+	check(hangar_screen().actions() == PackedStringArray(["PUT IN SERVICE", "FUEL", "REPAIR €0", "SELL €125 000"]),
+		"the actions should be PUT IN SERVICE, FUEL, REPAIR €0 and SELL €125 000, are %s" % hangar_screen().actions())
 	await press(&"ui_cancel")
 	check(office().screen == Office.Screen.HANGAR, "Escape should go back to the berths table")
 
@@ -41,8 +41,8 @@ func test_return_on_a_ship_opens_its_ship_page() -> void:
 func test_the_ship_in_service_cant_be_sold() -> void:
 	await open_hangar()
 	await press(&"ui_accept")
-	check(hangar_screen().reasons() == PackedStringArray(["ALREADY IN SERVICE", "NO DAMAGE", "THE SHIP IN SERVICE CAN'T BE SOLD"]),
-		"every action should be blocked for an undamaged ship in service, reasons %s" % hangar_screen().reasons())
+	check(hangar_screen().reasons() == PackedStringArray(["ALREADY IN SERVICE", "", "NO DAMAGE", "THE SHIP IN SERVICE CAN'T BE SOLD"]),
+		"every action but FUEL should be blocked for an undamaged ship in service, reasons %s" % hangar_screen().reasons())
 	await select_action(HangarScreen.Action.SELL)
 	check(office().popup == Office.PopupKind.NONE, "Return on a blocked SELL should not ask")
 	check(office().notice() == "THE SHIP IN SERVICE CAN'T BE SOLD", "Return should show the reason, got %s" % office().notice())

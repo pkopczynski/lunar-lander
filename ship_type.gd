@@ -6,7 +6,8 @@ extends RefCounted
 # Each ship type's name, flavour line, hull and flame shapes, default dry mass, Maximum weight,
 # Tank, passenger seats, cargo capacity (the maximum capacity), thrust, fuel burn, turn rate, the
 # derived full-Tank cargo (`full_tank_cargo(passengers)`), the Ship offer's THRUST and HANDLING
-# ratings (out of 5 blocks), its price in the Shipyard (a full Tank included) and its repair rate.
+# ratings (out of 5 blocks), its price in the Shipyard (a full Tank included), its repair rate and
+# its fuel multiplier.
 # The Sparrow, the Mule and the Halo (`ShipType.SPARROW`, `ShipType.MULE`, `ShipType.HALO`, listed
 # in `ShipType.ALL` in Ship offer order).
 
@@ -18,6 +19,7 @@ var hull: PackedVector2Array
 var flame: PackedVector2Array
 var default_dry_mass: float
 var maximum_weight: float
+# In kg of fuel, a round number of litres (OwnedShip.KG_PER_LITRE).
 var tank: float
 var passenger_seats: int
 # The maximum capacity: the most cargo it can carry at all, in kg.
@@ -35,6 +37,8 @@ var handling_rating: int
 var price: int
 # Share of an owned ship's value one whole Condition (100%) costs to repair, at the station.
 var repair_rate: float
+# Its fuel's price per litre over the base fuel price (OwnedShip.FUEL_PRICE_CENTS).
+var fuel_multiplier: float
 
 # Named like constants: GDScript can't build objects in a const, so never reassign these.
 static var SPARROW := sparrow()
@@ -58,7 +62,8 @@ static func sparrow() -> ShipType:
 	type.flame = PackedVector2Array([Vector2(-7, 14), Vector2(7, 14), Vector2(0, 30)])
 	type.default_dry_mass = 10000.0
 	type.maximum_weight = 22000.0
-	type.tank = 5000.0
+	# 6 000 l.
+	type.tank = 4800.0
 	type.passenger_seats = 4
 	type.cargo_capacity = 8000.0
 	type.thrust = 150.0
@@ -71,6 +76,7 @@ static func sparrow() -> ShipType:
 	type.handling_rating = 5
 	type.price = 250000
 	type.repair_rate = 0.25
+	type.fuel_multiplier = 1.0
 	return type
 
 
@@ -83,6 +89,7 @@ static func mule() -> ShipType:
 	type.flame = PackedVector2Array([Vector2(-10, 34), Vector2(10, 34), Vector2(0, 54)])
 	type.default_dry_mass = 20000.0
 	type.maximum_weight = 41000.0
+	# 15 000 l.
 	type.tank = 12000.0
 	type.passenger_seats = 4
 	type.cargo_capacity = 16000.0
@@ -93,6 +100,7 @@ static func mule() -> ShipType:
 	type.handling_rating = 2
 	type.price = 400000
 	type.repair_rate = 0.15
+	type.fuel_multiplier = 0.6
 	return type
 
 
@@ -106,6 +114,7 @@ static func halo() -> ShipType:
 	type.flame = PackedVector2Array([Vector2(-6, 18), Vector2(6, 18), Vector2(0, 33)])
 	type.default_dry_mass = 14000.0
 	type.maximum_weight = 32000.0
+	# 10 000 l.
 	type.tank = 8000.0
 	type.passenger_seats = 10
 	type.cargo_capacity = 11000.0
@@ -118,6 +127,7 @@ static func halo() -> ShipType:
 	type.handling_rating = 4
 	type.price = 650000
 	type.repair_rate = 0.30
+	type.fuel_multiplier = 1.3
 	return type
 
 
