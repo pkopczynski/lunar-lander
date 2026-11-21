@@ -3,12 +3,14 @@ extends CharacterBody2D
 # Flight physics, fuel, mass (`load_mass`, the Load) and the fuel cap (`fuel_cap()`), border
 # crossing and its disturbance (with a seedable `rng`), steering, landing and docking judgement (the
 # "on the pad" check reads the current location's pad through `pad_center_x()`; `touch_down()` judges
-# the landing bands: Landed, a Hard landing that wears Condition and shows `HARD LANDING −12%`
-# as the Landed title, or a crash), refuelling, result
-# display (with a `status` line, set through `show_status()`, under Docked!/Landed!), touching a
-# solid off the pad (`touch()`: damage by impact speed to the ship in service's Condition and a
-# bounce, `damaged` for each loss; a crash above the crash speed or at 0%), resting on the ground
-# (friction, tipped over, Stranded), the R key (`recovery_requested` after a crash or while
+# the landing bands as the ship comes down onto the pad: safe, a Hard landing that wears Condition
+# and shows `HARD LANDING −12%` as the Landed title, or a crash), refuelling, result
+# display (with a `status` line, set through `show_status()`, under Docked!/Landed!), ground
+# contact as a rigid body (`move()`: contact points from `find_contacts()`, the push and friction
+# at each from `push_off()`, the ship's `spin` about its `centre_of_mass`), touching a solid off
+# the pad (`touch()`: damage by impact speed to the ship in service's Condition, `damaged` for each
+# loss; a crash above the crash speed or at 0%), resting on the ground (`rest_on_ground()`: Landed
+# once settled on the pad, tipped over, Stranded), the R key (`recovery_requested` after a crash or while
 # Stranded, else the debug pad shortcut on the Surface; it never restarts),
 # `landed_on_pad` (from a real landing and from the debug pad shortcut) and `lift_off_blocked`
 # (keeps the ship resting and refuelling but grounded, for unloading), and
@@ -30,7 +32,11 @@ extends CharacterBody2D
 # pad while unloading stays grounded; the Economy clears it when unloading finishes. `lift_off()` is
 # the only transition that looks at the state it leaves (the lift-off burn from the pad, no
 # re-docking from the spot). Crashed, Stranded and held make `_physics_process` return early;
-# Landed and Docked skip gravity and judging. A ship resting on a solid off the pad stays Flying.
+# Landed and Docked skip gravity and judging. A ship touching the ground stays Flying: on the pad
+# until it has settled (then Landed), off it for good. The spin lives only in Flying (`enter()` and
+# `move_to()` stop it); docking still eases the ship upright with a tween, landing doesn't.
+# `touching` is last frame's contact: the controls turn the ship by torque while it's set, and
+# coming down onto the pad is judged when it wasn't.
 # R is handled in `_unhandled_input`. Entering Crashed emits `crashed` and entering Stranded
 # `stranded`; the Lander still flies a Wreck like any ship, since only the Office keeps one docked.
 #
@@ -104,22 +110,43 @@ const STEER_SPEED := 100.0
 const STEER_BRAKING := 600.0
 
 # Touching a solid (anything but the pad's ground, judged by the landing bands) damages the
-# ship by its impact speed, the speed into the surface: none below NO_DAMAGE_SPEED, rising in a
-# straight line to MAX_HIT_DAMAGE of Condition just under CRASH_SPEED, a crash above it. A hit
-# leaves the surface at BOUNCE_SHARE of its impact speed, keeping SURFACE_SPEED_KEPT of its speed
-# along it; below NO_DAMAGE_SPEED the ship just settles. A ship on the ground slides to a stop at
-# GROUND_FRICTION.
+# ship by its impact speed, the speed into the surface of the hardest-hitting contact point: none
+# below NO_DAMAGE_SPEED, rising in a straight line to MAX_HIT_DAMAGE of Condition just under
+# CRASH_SPEED, a crash above it. A hit leaves the surface at the contact point at BOUNCE_SHARE of
+# its impact speed, keeping SURFACE_SPEED_KEPT of its speed along it; below NO_DAMAGE_SPEED the
+# point just stops going in. The pad never bounces: its legs take the touchdown.
 const NO_DAMAGE_SPEED := 15.0
 const CRASH_SPEED := 120.0
 const MAX_HIT_DAMAGE := 0.5
 const BOUNCE_SHARE := 0.35
 const SURFACE_SPEED_KEPT := 0.8
+# Ground contact is a rigid body: each contact point pushes (never pulls) and turns the ship about
+# its centre of mass (the hull's area centroid, as a plate of even density). Coulomb friction at
+# each point brakes sliding at GROUND_FRICTION (its coefficient is GROUND_FRICTION / GRAVITY). A
+# spin on the ground fades at GROUND_SPIN_DAMPING per second; in the air it doesn't fade at all.
 const GROUND_FRICTION := 60.0
-# Resting on the ground tilted past TIPPED_ANGLE_DEG for TIPPED_TIME is a crash.
+const GROUND_SPIN_DAMPING := 0.5
+# The controls spin a ship touching the ground at this torque (rad/s²) for a Sparrow's turn rate,
+# scaled by the ship's own; in the air, turning against a spin brakes it at the same rate.
+const GROUND_TURN := 6.0
+# Hull points this close to a solid count as touching it; at most CONTACT_POINTS_PER_SHAPE points
+# per hull shape, and points closer than CONTACT_MERGE_DISTANCE are one. Each point's surface
+# normal comes from a ray CONTACT_RAY_REACH long either way through it, outward from the centre.
+const CONTACT_MARGIN := 1.5
+const CONTACT_POINTS_PER_SHAPE := 16
+const CONTACT_MERGE_DISTANCE := 3.0
+const CONTACT_RAY_REACH := 4.0
+const CONTACT_ITERATIONS := 10
+# A ship touching the ground is at rest below REST_SPEED and REST_SPIN. Resting at
+# TIPPED_ANGLE_DEG or more for TIPPED_TIME is a crash; resting on the pad, inside the landing
+# bands' tilt, for SETTLE_TIME is Landed; resting off it with an empty tank is Stranded.
+const REST_SPEED := 4.0
+const REST_SPIN := 0.15
 const TIPPED_ANGLE_DEG := 90.0
 const TIPPED_TIME := 2.0
-# A ship on the ground slower than this is resting (Stranded, with an empty tank).
-const REST_SPEED := 4.0
+const SETTLE_TIME := 0.3
+# The worst touchdown on the pad counts until the ship has been off the ground this long.
+const TOUCHDOWN_MEMORY := 1.0
 
 const SOFT_WALL_WIDTH := 150.0
 const SOFT_WALL_DAMPING := 8.0
@@ -193,8 +220,21 @@ var disturb_offset := 0.0
 # Seedable, for tests.
 var rng := RandomNumberGenerator.new()
 var can_dock := true
-# How long the ship has rested on the ground tipped over.
+# The ship as a rigid body: its spin (rad/s, positive clockwise like rotation), its centre of
+# mass in its own coordinates and its moment of inertia per unit mass (px²), both from the hull.
+var spin := 0.0
+var centre_of_mass := Vector2.ZERO
+var inertia := 1.0
+# Whether the hull touched a solid on the last physics frame, whether that was only the pad's
+# ground, and for how long it hasn't touched anything.
+var touching := false
+var over_pad := false
+var airborne_time := 0.0
+# How long the ship has rested on the ground tipped over, and on the pad settled.
 var tipped_time := 0.0
+var settle_time := 0.0
+# The Condition the worst touchdown on the pad has taken since the ship came down onto it.
+var touchdown_loss := 0.0
 # A line the resting message adds under Docked!/Landed!, such as the loading countdown.
 # Set it through show_status(): the message is rewritten every frame while resting.
 var status := ""
@@ -235,6 +275,25 @@ func fly(owned: OwnedShip) -> void:
 	body.polygon = ship.ship_type.hull
 	hull.polygon = ship.ship_type.hull
 	flame.polygon = ship.ship_type.flame
+	weigh_hull()
+
+
+# The hull's centre of mass and moment of inertia per unit mass, as a plate of even density.
+func weigh_hull() -> void:
+	var outline := hull.polygon
+	var area := 0.0
+	var moment := Vector2.ZERO
+	var second_moment := 0.0
+	for i in outline.size():
+		var p := outline[i]
+		var q := outline[(i + 1) % outline.size()]
+		var cross := p.cross(q)
+		area += cross / 2.0
+		moment += (p + q) * cross
+		second_moment += cross * (p.dot(p) + p.dot(q) + q.dot(q))
+	centre_of_mass = moment / (6.0 * area)
+	# About the origin, then moved to the centre of mass (parallel axis).
+	inertia = second_moment / 12.0 / area - centre_of_mass.length_squared()
 
 
 # Puts the ship in service Docked in the station's parking spot, facing up and at rest, keeping
@@ -273,6 +332,9 @@ func enter(new_state: State) -> void:
 	status = ""
 	refueling = false
 	tipped_time = 0.0
+	settle_time = 0.0
+	spin = 0.0
+	touchdown_loss = 0.0
 	hard_landing_loss = 0.0
 	if level_tween:
 		level_tween.kill()
@@ -303,6 +365,9 @@ func move_to(at: Vector2, at_velocity := Vector2.ZERO) -> void:
 	position = at
 	rotation = 0.0
 	velocity = at_velocity
+	spin = 0.0
+	touching = false
+	over_pad = false
 	in_deep_space = at.y < World.BORDER_Y
 	bouncing = false
 	steering_after_crossing = false
@@ -331,7 +396,7 @@ func _physics_process(delta: float) -> void:
 	if disturb_left > 0.0:
 		disturb(delta)
 	else:
-		rotation += Input.get_axis("ui_left", "ui_right") * ship.turn_rate() * delta
+		turn(delta)
 
 	var mass_factor := total_mass() / REFERENCE_MASS
 	velocity.y += GRAVITY * (1.0 + GRAVITY_MASS_SCALE * (mass_factor - 1.0)) * gravity_share() * delta
@@ -350,27 +415,8 @@ func _physics_process(delta: float) -> void:
 		velocity = velocity.limit_length(move_toward(velocity.length(), STEER_SPEED, STEER_BRAKING * delta))
 	push_off_soft_walls(delta)
 
-	# move_and_slide() cancels velocity into the ground, so keep the impact velocity.
-	var impact_velocity := velocity
-	move_and_slide()
-
-	if get_slide_collision_count() > 0:
-		if touched_only_ground() and is_on_pad():
-			touch_down(impact_velocity)
-			return
-		var bounced := touch(impact_velocity)
-		if state != State.FLYING:
-			return
-		if not bounced:
-			on_ground(thrusting, delta)
-			if state != State.FLYING:
-				return
-	elif is_on_floor():
-		on_ground(thrusting, delta)
-		if state != State.FLYING:
-			return
-	else:
-		tipped_time = 0.0
+	if not move(thrusting, delta):
+		return
 
 	keep_inside_world()
 	cross_border()
@@ -497,14 +543,6 @@ func is_inside_spot() -> bool:
 	return true
 
 
-# Only touching the pad's ground goes to landing judgement.
-func touched_only_ground() -> bool:
-	for i in get_slide_collision_count():
-		if get_slide_collision(i).get_collider() != ground:
-			return false
-	return true
-
-
 func pad_center_x() -> float:
 	return world.location.pad_center_x
 
@@ -543,74 +581,233 @@ func wear(loss: float) -> bool:
 	return true
 
 
-# A touchdown on the pad: past a band it crashes; inside one it's a Hard landing, which costs the
-# ship in service Condition (to 0% crashes it) but still lands; inside the safe limits it just lands.
-func touch_down(impact_velocity: Vector2) -> void:
+# Turns the ship with the controls: in the air at its turn rate, braking any spin the turn opposes;
+# touching the ground, as a torque on its spin.
+func turn(delta: float) -> void:
+	var input := Input.get_axis("ui_left", "ui_right")
+	var torque := GROUND_TURN * ship.turn_rate() / ShipType.SPARROW.turn_rate
+	if touching:
+		spin += input * torque * delta
+		return
+	rotation += input * ship.turn_rate() * delta
+	if input * spin < 0.0:
+		spin = move_toward(spin, 0.0, absf(input) * torque * delta)
+
+
+# One physics step of the ship's motion: contact with any solid it touches (damage, the pad's
+# touchdown, the push and friction at each contact point), then its spin about its centre of mass
+# and its move. Coming onto the pad, from the air or sliding onto it, is a touchdown; then the
+# pad's rules (no bounce, Landed once settled) hold while the ship is tilted inside the landing
+# bands. Tipping past them, it's touching the ground like anywhere else: its hull hitting the pad
+# is a hit. Returns whether it's still Flying.
+func move(thrusting: bool, delta: float) -> bool:
+	var contacts := find_contacts()
+	var came_onto_pad := not over_pad
+	touching = not contacts.is_empty()
+	over_pad = touching and is_on_pad_only(contacts)
+	if not touching:
+		airborne_time += delta
+		if airborne_time > TOUCHDOWN_MEMORY:
+			touchdown_loss = 0.0
+		tipped_time = 0.0
+		settle_time = 0.0
+	else:
+		airborne_time = 0.0
+		spin *= exp(-GROUND_SPIN_DAMPING * delta)
+	var centre := to_global(centre_of_mass)
+	if over_pad and came_onto_pad and not touch_down(velocity):
+		return false
+	var on_pad := over_pad and rad_to_deg(tilt()) <= CRASH_LANDING_ANGLE_DEG
+	if touching and not on_pad and not touch(contacts, centre):
+		return false
+	push_off(contacts, centre, on_pad)
+
+	var turned := spin * delta
+	global_position = centre + (global_position - centre).rotated(turned)
+	rotation += turned
+	var collision := move_and_collide(velocity * delta)
+	if collision:
+		# Slide the rest of the way; the push next frame deals with the velocity.
+		move_and_collide(collision.get_remainder().slide(collision.get_normal()))
+	if not touching:
+		return true
+	return rest_on_ground(on_pad, thrusting, delta)
+
+
+# A point where the hull touches a solid: its surface normal there, and the impulses (per unit
+# mass, px/s) pushing the ship off it and along it this frame.
+class Contact:
+	var point: Vector2
+	var normal: Vector2
+	var collider: Object
+	var hit := false
+	var target_speed := 0.0
+	var target_along := 0.0
+	var push := 0.0
+	var friction := 0.0
+
+
+# Every point where the hull is within CONTACT_MARGIN of a solid.
+func find_contacts() -> Array[Contact]:
+	var space := get_world_2d().direct_space_state
+	var centre := to_global(centre_of_mass)
+	var found: Array[Contact] = []
+	for owner_id in get_shape_owners():
+		var shape_transform := global_transform * shape_owner_get_transform(owner_id)
+		for i in shape_owner_get_shape_count(owner_id):
+			var query := PhysicsShapeQueryParameters2D.new()
+			query.shape = shape_owner_get_shape(owner_id, i)
+			query.transform = shape_transform
+			query.margin = CONTACT_MARGIN
+			query.collision_mask = collision_mask
+			query.exclude = [get_rid()]
+			var points := space.collide_shape(query, CONTACT_POINTS_PER_SHAPE)
+			if points.is_empty():
+				continue
+			var nearest := space.get_rest_info(query)
+			for j in range(0, points.size(), 2):
+				var point: Vector2 = (points[j] + points[j + 1]) / 2.0
+				if found.any(func(known: Contact) -> bool: return known.point.distance_to(point) < CONTACT_MERGE_DISTANCE):
+					continue
+				var contact := Contact.new()
+				contact.point = point
+				contact.normal = nearest.get("normal", Vector2.UP)
+				contact.collider = instance_from_id(nearest.get("collider_id", 0))
+				# The surface's own normal and solid at the point.
+				var outward := (point - centre).normalized()
+				var ray := PhysicsRayQueryParameters2D.create(point - outward * CONTACT_RAY_REACH,
+					point + outward * CONTACT_RAY_REACH,
+					collision_mask, [get_rid()])
+				var surface := space.intersect_ray(ray)
+				if surface and surface.normal != Vector2.ZERO:
+					contact.normal = surface.normal
+					contact.collider = surface.collider
+				found.append(contact)
+	return found
+
+
+# Touching only the ground, with the ship over the pad: the pad's landing rules apply. The pad has
+# no collider, so "over the pad" compares x positions with the current location's pad.
+func is_on_pad_only(contacts: Array[Contact]) -> bool:
+	if in_deep_space or not is_on_pad():
+		return false
+	return contacts.all(func(contact: Contact) -> bool: return contact.collider == ground)
+
+
+func point_velocity(centre: Vector2, point: Vector2) -> Vector2:
+	var arm := point - centre
+	return velocity + Vector2(-spin * arm.y, spin * arm.x)
+
+
+func apply_impulse_at(impulse: Vector2, arm: Vector2) -> void:
+	velocity += impulse
+	spin += arm.cross(impulse) / inertia
+
+
+# Coming down onto the pad: past a landing band it crashes; inside one it's a Hard landing, which
+# costs the ship in service Condition (to 0% crashes it). The worst touchdown counts: a later,
+# gentler one costs nothing more. Returns whether the ship survived. It lands once it settles.
+func touch_down(impact_velocity: Vector2) -> bool:
 	var share := landing_band_share(impact_velocity)
 	if share > 1.0:
 		crash()
-		return
+		return false
 	var loss := MAX_HARD_LANDING_DAMAGE * share
-	if loss <= 0.0:
-		land()
-		return
-	if wear(loss):
-		land(loss)
+	if loss <= touchdown_loss:
+		return true
+	var worse := loss - touchdown_loss
+	touchdown_loss = loss
+	return wear(worse)
 
 
-# A touch of any solid off the pad: the hardest contact of the move sets the impact speed. It
-# damages the ship in service (a hit to 0% Condition crashes it) and bounces it, or crashes it
-# above CRASH_SPEED. It never disturbs the controls, and the ship keeps its attitude. Returns
-# whether the ship bounced.
-func touch(impact_velocity: Vector2) -> bool:
+# Touching any solid off the pad: the hardest-hitting contact point sets the impact speed. It
+# damages the ship in service (a hit to 0% Condition crashes it), or crashes it above CRASH_SPEED.
+# The bounce is the push's. Returns whether the ship survived.
+func touch(contacts: Array[Contact], centre: Vector2) -> bool:
 	var impact := 0.0
-	var normal := Vector2.UP
-	for i in get_slide_collision_count():
-		var collision := get_slide_collision(i)
-		var into := -impact_velocity.dot(collision.get_normal())
-		if into > impact:
-			impact = into
-			normal = collision.get_normal()
+	for contact in contacts:
+		impact = maxf(impact, -point_velocity(centre, contact.point).dot(contact.normal))
 	if impact > CRASH_SPEED:
 		crash()
 		return false
 	if impact < NO_DAMAGE_SPEED:
-		return false
-	if not wear(MAX_HIT_DAMAGE * inverse_lerp(NO_DAMAGE_SPEED, CRASH_SPEED, impact)):
-		return false
-	var along := impact_velocity + normal * impact
-	velocity = along * SURFACE_SPEED_KEPT + normal * impact * BOUNCE_SHARE
-	return true
+		return true
+	return wear(MAX_HIT_DAMAGE * inverse_lerp(NO_DAMAGE_SPEED, CRASH_SPEED, impact))
 
 
-# In contact with a solid off the pad without bouncing: on a floor, sliding slows by friction
-# (not while thrusting, so lift-off isn't braked). At rest (slower than REST_SPEED, on a floor or
-# wedged against a steep face), tipped over crashes after TIPPED_TIME, and an empty tank is Stranded.
-func on_ground(thrusting: bool, delta: float) -> void:
-	if is_on_floor() and not thrusting:
-		velocity = velocity.move_toward(Vector2.ZERO, GROUND_FRICTION * delta)
-	if velocity.length() >= REST_SPEED:
+# Pushes the ship off every contact point at once (sequential impulses): no point keeps going into
+# a surface, and none is pulled. A point hitting off the pad bounces out and keeps
+# SURFACE_SPEED_KEPT of its speed along the surface; any other is held by Coulomb friction.
+func push_off(contacts: Array[Contact], centre: Vector2, on_pad: bool) -> void:
+	var grip := GROUND_FRICTION / GRAVITY
+	for contact in contacts:
+		var point_speed := point_velocity(centre, contact.point)
+		var into := -point_speed.dot(contact.normal)
+		contact.hit = not on_pad and into >= NO_DAMAGE_SPEED
+		contact.target_speed = into * BOUNCE_SHARE if contact.hit else 0.0
+		contact.target_along = point_speed.dot(contact.normal.orthogonal()) * SURFACE_SPEED_KEPT
+		contact.push = 0.0
+		contact.friction = 0.0
+	for _iteration in CONTACT_ITERATIONS:
+		for contact in contacts:
+			var arm := contact.point - centre
+			var normal := contact.normal
+			var arm_normal := arm.cross(normal)
+			var push := (contact.target_speed - point_velocity(centre, contact.point).dot(normal)) \
+				/ (1.0 + arm_normal * arm_normal / inertia)
+			var total := maxf(contact.push + push, 0.0)
+			apply_impulse_at(normal * (total - contact.push), arm)
+			contact.push = total
+			var along := normal.orthogonal()
+			var arm_along := arm.cross(along)
+			var speed_along := point_velocity(centre, contact.point).dot(along)
+			var target := contact.target_along if contact.hit else 0.0
+			total = contact.friction + (target - speed_along) / (1.0 + arm_along * arm_along / inertia)
+			if not contact.hit:
+				total = clampf(total, -grip * contact.push, grip * contact.push)
+			apply_impulse_at(along * (total - contact.friction), arm)
+			contact.friction = total
+
+
+# Touching the ground: at rest (not thrusting, slower than REST_SPEED and REST_SPIN), tipped over
+# crashes after TIPPED_TIME; under the pad's rules it lands after SETTLE_TIME (a Hard landing
+# keeps its loss); otherwise an empty tank is Stranded. Returns whether it's still Flying.
+func rest_on_ground(on_pad: bool, thrusting: bool, delta: float) -> bool:
+	if thrusting or velocity.length() >= REST_SPEED or absf(spin) >= REST_SPIN:
 		tipped_time = 0.0
-		return
-	if tilt() > deg_to_rad(TIPPED_ANGLE_DEG):
+		settle_time = 0.0
+		return true
+	# Rounded to the degree: a Mule that falls onto its side rests at about 89.7° (the contact
+	# margin), and it must count as 90°.
+	if roundf(rad_to_deg(tilt())) >= TIPPED_ANGLE_DEG:
+		settle_time = 0.0
 		tipped_time += delta
-		if tipped_time >= TIPPED_TIME:
-			crash()
-		return
+		if tipped_time < TIPPED_TIME:
+			return true
+		crash()
+		return false
 	tipped_time = 0.0
+	if on_pad:
+		settle_time += delta
+		if settle_time < SETTLE_TIME:
+			return true
+		land(touchdown_loss)
+		return false
+	settle_time = 0.0
 	if fuel <= 0.0:
 		enter(State.STRANDED)
 		stranded.emit()
+		return false
+	return true
 
 
-# Lands on the pad; a Hard landing passes the Condition it took, for the Landed title.
+# Lands on the pad where the ship settled; a Hard landing passes the Condition it took, for the
+# Landed title.
 func land(loss := 0.0) -> void:
 	enter(State.LANDED)
 	hard_landing_loss = loss
 	message.text = landed_title()
-	settle()
-	# Leveling lifts the corner that touched down, so drop back onto the ground.
-	level_tween.tween_callback(move_and_collide.bind(Vector2.DOWN * PAD_HEIGHT * 4.0))
+	velocity = Vector2.ZERO
 	landed_on_pad.emit()
 
 
@@ -646,7 +843,7 @@ func finish_loading() -> void:
 	incoming_load = 0.0
 
 
-# Stops the ship where it touched down and levels it.
+# Stops the ship where it docked and levels it.
 func settle() -> void:
 	velocity = Vector2.ZERO
 	# Wrap first so leveling never unwinds the player's full spins.

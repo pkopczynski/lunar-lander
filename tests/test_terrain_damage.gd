@@ -12,12 +12,13 @@ func condition() -> float:
 
 
 # Drops the Sparrow onto the ground off the pad, from just above it, at a falling speed (and a
-# sideways one), and waits for the frame it stops falling: it bounces, settles or crashes.
+# sideways one), and waits for the frame it stops falling (the push off the ground may leave a
+# trace of downward speed): it bounces, settles or crashes.
 func hit_ground(falling: float, sideways := 0.0) -> void:
 	place(Vector2(pad_x() + OFF_PAD, RESTING_Y - 0.5), Vector2(sideways, falling))
 	for i in 30:
 		await frames(1)
-		if lander().state != Lander.State.FLYING or lander().velocity.y <= 0.0:
+		if lander().state != Lander.State.FLYING or lander().velocity.y < 0.5:
 			break
 
 
@@ -91,9 +92,10 @@ func test_friction_slows_a_sliding_ship_by_60_px_per_second_squared() -> void:
 
 func test_resting_tipped_over_for_two_seconds_crashes() -> void:
 	await choose_ship()
-	# Lying on its side: turned 100°, its lowest corner is about 11.4 px below its centre.
-	place(Vector2(pad_x() + OFF_PAD, World.GROUND_TOP_Y - 12.0), Vector2(0, 5))
-	lander().rotation = deg_to_rad(100.0)
+	# Lying flat on its flank, turned about 112°.
+	var rotation := deg_to_rad(112.4)
+	place(Vector2(pad_x() + OFF_PAD, World.GROUND_TOP_Y - hull_bottom(rotation) - 0.5), Vector2(0, 5))
+	lander().rotation = rotation
 	await seconds(1.5)
 	check(lander().state == Lander.State.FLYING, "a tipped ship shouldn't crash before 2 s, says %s" % message())
 	await seconds(1.0)

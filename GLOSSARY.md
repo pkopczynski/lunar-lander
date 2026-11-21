@@ -306,7 +306,7 @@ The ship is in free flight, under the player's control. It's the state between l
 _Avoid_: Airborne, in flight, free
 
 **Landed**:
-The ship is resting on the pad after a touchdown that went past no landing band: a safe one, or a hard landing.
+The ship is resting on the pad after a touchdown that went past no landing band (a safe one, or a hard landing), once it has settled onto its legs and come to rest.
 _Avoid_: Touched down, parked
 
 **Docked**:
@@ -314,7 +314,7 @@ The ship is resting inside the parking spot. This is the deep-space counterpart 
 _Avoid_: Parked, landed (in deep space)
 
 **Crashed**:
-The ship hit a solid above the crash speed, took a hit or a hard landing that left its condition at 0%, touched down on the pad past a landing band, or rested tipped over (past 90° for 2 s). Simply touching a solid is no longer a crash. The ship in service becomes a wreck, the crash is settled at once (the recovery fee, and failed contracts for any contracts aboard), and the ship stays Crashed until the player presses R for recovery.
+The ship hit a solid above the crash speed, took a hit or a hard landing that left its condition at 0%, touched down on the pad past a landing band, or rested tipped over (90° or more from upright for 2 s, so a Mule on its side counts). Simply touching a solid is no longer a crash. The ship in service becomes a wreck, the crash is settled at once (the recovery fee, and failed contracts for any contracts aboard), and the ship stays Crashed until the player presses R for recovery.
 _Avoid_: Destroyed, dead
 
 **Stranded**:
