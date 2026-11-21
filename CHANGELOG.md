@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/pkopczynski/lunar-lander/compare/v0.9.0...v0.10.0) (2026-11-21)
+
+
+### Features
+
+* fuel is bought in litres at the station and pumped in, no longer free ([#141](https://github.com/pkopczynski/lunar-lander/issues/141)) ([7756de2](https://github.com/pkopczynski/lunar-lander/commit/7756de2e8a8c27fc660c82593c445ba9d868b127))
+
 ## [0.9.0](https://github.com/pkopczynski/lunar-lander/compare/v0.8.0...v0.9.0) (2026-11-21)
 
 
