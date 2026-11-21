@@ -246,6 +246,14 @@ func place(position: Vector2, velocity := Vector2.ZERO) -> void:
 	lander().fly_from(position, velocity)
 
 
+# How far below its origin the ship in service's hull reaches, turned by rotation.
+func hull_bottom(rotation := 0.0) -> float:
+	var bottom := -INF
+	for point in lander().ship_type.hull:
+		bottom = maxf(bottom, point.rotated(rotation).y)
+	return bottom
+
+
 # Flies the ship up into the station's underside, away from the entry, which crashes it in deep space.
 func crash_in_deep_space() -> void:
 	place(Vector2(World.WORLD_WIDTH / 4.0, World.SPACE_TOP_Y + 60.0), Vector2(0, -300))

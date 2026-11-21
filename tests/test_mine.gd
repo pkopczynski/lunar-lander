@@ -157,7 +157,8 @@ func test_landing_on_the_mines_pad_while_delivering_unloads_and_is_delivered_to_
 	await seconds(4.5)
 	check(economy().phase == Economy.Phase.DELIVERING, "loading should have finished")
 	place(Vector2(pad_x(), Location.MINE.ground_y - 28.0), Vector2(0, 20))
-	await seconds(0.5)
+	# About 0.4 s down to the pad, then the ship is Landed once it has rested there 0.3 s.
+	await seconds(1.0)
 	check(lander().state == Lander.State.LANDED, "touching down on the Mine's pad should land, says %s" % message())
 	check(economy().phase == Economy.Phase.UNLOADING, "landing on the Mine's pad should start unloading")
 	await seconds(3.0)

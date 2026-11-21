@@ -1,7 +1,8 @@
 extends "res://tests/scene_test.gd"
 # A touchdown on the pad is judged by three landing bands (falling 50 → 80 px/s, sideways
 # 25 → 40 px/s, tilt 15° → 25°): safe, a Hard landing that still lands and delivers but loses
-# 0% → 25% of Condition (the worst band counts), or a crash past any band.
+# 0% → 25% of Condition (the worst band counts), or a crash past any band. The ship then settles
+# onto its legs without bouncing and is Landed once at rest.
 
 const OVER_PAD := 0.5
 
@@ -11,15 +12,10 @@ func condition() -> float:
 
 
 # Touches the Sparrow down on the Valley's pad from just above it, at a falling and sideways
-# speed and a tilt, and waits for the frame it touches down.
+# speed and a tilt, and waits until it has settled and landed, or crashed.
 func touch_down(falling: float, sideways := 0.0, tilt_deg := 0.0) -> void:
-	var rotation := deg_to_rad(tilt_deg)
-	var hull_bottom := -INF
-	for point in lander().ship_type.hull:
-		hull_bottom = maxf(hull_bottom, point.rotated(rotation).y)
-	place(Vector2(pad_x(), World.GROUND_TOP_Y - hull_bottom - OVER_PAD), Vector2(sideways, falling))
-	lander().rotation = rotation
-	for i in 30:
+	place_over_pad(falling, sideways, tilt_deg)
+	for i in 240:
 		await frames(1)
 		if lander().state != Lander.State.FLYING:
 			break
@@ -97,3 +93,51 @@ func test_a_hard_landing_to_zero_condition_crashes() -> void:
 	await touch_down(10.0, 32.2)
 	check(lander().state == Lander.State.CRASHED, "a 12%% Hard landing on a 10%% ship should crash, says %s" % message())
 	check(economy().phase == Economy.Phase.NONE, "a crash delivers nothing")
+
+
+func test_the_ship_settles_on_the_pad_without_bouncing_and_lands_once_at_rest() -> void:
+	await choose_ship()
+	await touch_down_and_watch(45.0, 0.0, 12.0)
+
+
+func place_over_pad(falling: float, sideways: float, tilt_deg: float) -> void:
+	var rotation := deg_to_rad(tilt_deg)
+	place(Vector2(pad_x(), World.GROUND_TOP_Y - hull_bottom(rotation) - OVER_PAD), Vector2(sideways, falling))
+	lander().rotation = rotation
+
+
+# Touches down and watches every frame until Landed: never moving up off the pad, and Flying
+# until it has been still (slower than 4 px/s, turning slower than 0.15 rad/s) for 0.3 s.
+func touch_down_and_watch(falling: float, sideways: float, tilt_deg: float) -> void:
+	place_over_pad(falling, sideways, tilt_deg)
+	var still_frames := 0
+	var fastest_rise := 0.0
+	var last_rotation := lander().rotation
+	for i in 240:
+		await frames(1)
+		if lander().state != Lander.State.FLYING:
+			break
+		fastest_rise = maxf(fastest_rise, -lander().velocity.y)
+		var turning := absf(lander().rotation - last_rotation) * PHYSICS_FPS
+		last_rotation = lander().rotation
+		var still := lander().velocity.length() < 4.0 and turning < 0.15
+		still_frames = still_frames + 1 if still else 0
+	check(lander().state == Lander.State.LANDED, "the ship should land once it settles, says %s" % message())
+	check(fastest_rise < 2.0, "the ship shouldn't bounce off the pad, rose at %s px/s" % fastest_rise)
+	check(still_frames >= roundi(0.3 * PHYSICS_FPS) - 1,
+		"it should be Landed only after resting 0.3 s, rested %d frames" % still_frames)
+	check(lander().tilt() < deg_to_rad(2.0), "it should settle onto its legs, tilt %s°" % rad_to_deg(lander().tilt()))
+
+
+func test_sliding_onto_the_pad_along_the_ground_is_judged_as_a_touchdown() -> void:
+	await choose_ship()
+	# Resting on the ground 2 px short of the pad, sliding onto it at 34 px/s.
+	place(Vector2(pad_x() - Lander.PAD_WIDTH / 2.0 - 2.0, World.GROUND_TOP_Y - 14.0), Vector2(34.0, 0.0))
+	for i in 240:
+		await frames(1)
+		if lander().state != Lander.State.FLYING:
+			break
+	check(lander().state == Lander.State.LANDED, "sliding onto the pad should land once settled, says %s" % message())
+	# Friction takes ~1 px/s a frame, so it reaches the pad at about 30 px/s sideways:
+	# (30 − 25) / (40 − 25) × 25% ≈ 8%. Without the touchdown it would land undamaged.
+	check_near(condition(), 0.92, 0.02, "sliding onto the pad at ~30 px/s should be a Hard landing")

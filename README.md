@@ -28,7 +28,7 @@ Every script sits at the repo root.
 
 - `main.tscn`: the only scene, and the main scene (F5 runs it). Its tree is in `docs/architecture/overview.md`.
 - `project.godot`: renderer settings, black clear colour (deep space), main scene, the `restart` input action (R: Recovery after a crash; it never restarts), the enabled `godot_mcp` editor plugin. The Office uses Godot's built-in `ui_*` actions.
-- **Flight:** `lander.gd` (flight physics, fuel, mass, Border, steering, landing and docking judgement, contact damage and bounce, Stranded, refuelling, the R key), `ship_type.gd` (the ship type table), `owned_ship.gd` (an Owned ship and its effective numbers), `hangar.gd` (the owned ships, the ship in service, wrecking, Recovery and repair), `station.gd` (the station maze and parking spot), `camera.gd` (follows, zooms, shakes), `hud.gd` (fuel bar, mass, Condition and its losses, clock line, deadline, payout).
+- **Flight:** `lander.gd` (flight physics, fuel, mass, Border, steering, landing and docking judgement, rigid-body ground contact (tipping, rolling, damage and bounce), Stranded, refuelling, the R key), `ship_type.gd` (the ship type table), `owned_ship.gd` (an Owned ship and its effective numbers), `hangar.gd` (the owned ships, the ship in service, wrecking, Recovery and repair), `station.gd` (the station maze and parking spot), `camera.gd` (follows, zooms, shakes), `hud.gd` (fuel bar, mass, Condition and its losses, clock line, deadline, payout).
 - **Surface:** `world.gd` (layout constants, the current location's ground, pad, terrain and Mountains, hosts the decor and the sky), `location.gd` (the location table), `mountain_look.gd` (the Mountains' look per location).
 - **Clock and sky:** `planet_clock.gd` (local time, current location, drift, time formatters), `sky_look.gd` (local time → sky look, one pure step).
 - **Decor:** `backdrop.gd` (ridges behind the surface), `skyline.gd` (the Metropolis's skyline), `moons.gd`, `clouds.gd`, `foreground.gd` (silhouettes in front of the ship), `beacon.gd` (the pad's lights), `city_lights.gd`, `activity.gd` (the Mine's warning lights and slow movers), `vehicles.gd` (flying vehicles), `anchored_parallax.gd` (a parallax layer anchored on the pad), `decor_kit.gd` (shared helpers).
@@ -51,7 +51,7 @@ Every script sits at the repo root.
 - Each script opens with a header comment: its role, API and local traps. Keep it current when the script changes.
 - Node references are `@onready var` with typed `$Path` lookups.
 - Static typing everywhere (`:=`, typed parameters and return values).
-- Comments only for non-obvious reasons (see the `move_and_slide()` note in `lander.gd`).
+- Comments only for non-obvious reasons (see the note on wrapping before leveling in `lander.gd`'s `settle()`).
 
 ## Gotchas
 

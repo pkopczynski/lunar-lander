@@ -6,6 +6,8 @@ extends RefCounted
 #
 # The pilot, the balance and the transactions, each opening to show how its payout was worked out:
 # input, observable text and drawing. The Office creates it and calls it while that screen shows.
+# A row's amount is white for a gain (or €0) and red for a loss; the rest of the row stays green,
+# and the selected row is all black on its green bar.
 
 # The rows and details share the Transport offers list's layout.
 const ROW_HEIGHT := TransportOffersScreen.ROW_HEIGHT
@@ -86,7 +88,18 @@ func details(row: int) -> PackedStringArray:
 
 # The row's right-hand part: the kind and the payout.
 static func row_value(transaction: Transaction) -> String:
-	return "%s  %s" % [transaction.kind_label(), Economy.eur(transaction.payout)]
+	return kind_text(transaction) + Economy.eur(transaction.payout)
+
+
+static func kind_text(transaction: Transaction) -> String:
+	return transaction.kind_label() + "  "
+
+
+# The colour the row's amount is drawn in.
+func amount_color(row: int) -> Color:
+	if row == list.selected_index():
+		return Office.BLACK
+	return Office.RED if economy.transactions[row].payout < 0 else Office.WHITE
 
 
 # Drawing
@@ -113,7 +126,10 @@ func draw(area: Rect2) -> void:
 		if ExpandableList.line_fits(baseline.y, Office.TEXT_SIZE, column):
 			office.draw_text(transaction.label(), baseline, Office.TEXT_SIZE, width,
 				HORIZONTAL_ALIGNMENT_LEFT, color)
-			office.draw_text(row_value(transaction), baseline, Office.TEXT_SIZE, width, HORIZONTAL_ALIGNMENT_RIGHT, color)
+			var amount := Economy.eur(transaction.payout)
+			office.draw_text(amount, baseline, Office.TEXT_SIZE, width, HORIZONTAL_ALIGNMENT_RIGHT, amount_color(i))
+			office.draw_text(kind_text(transaction), baseline, Office.TEXT_SIZE,
+				width - office.text_width(amount, Office.TEXT_SIZE), HORIZONTAL_ALIGNMENT_RIGHT, color)
 		y += ROW_HEIGHT
 		var open_height := measure(transaction).y * list.open_share(transaction)
 		if open_height > 0.0:
