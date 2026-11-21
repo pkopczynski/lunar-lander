@@ -71,7 +71,17 @@ func test_fuel_for_the_ship_in_service_is_pumped_at_500_litres_a_second_and_hold
 	check(economy().balance == Economy.START_BALANCE - 3000, "paid at once, balance %d" % economy().balance)
 	await seconds(1.0)
 	check_near(ship.fuel, 800.0 + 400.0, 8.0, "500 L (400 kg) pumped in 1 s with the Terminal open")
-	check(fuel_screen().lines()[0] == "IN TANK 6 000 L (4 800 KG)", "IN TANK counts the fuel still to pump, got %s" % fuel_screen().lines()[0])
+	var early := fuel_screen().lines()[0]
+	check(early.begins_with("IN TANK 1 4") or early.begins_with("IN TANK 1 5"), "IN TANK grows as it pumps, got %s" % early)
+	check(fuel_screen().amount_text() == "< BUY +0 L >", "fuel still to pump counts toward the cap, got %s" % fuel_screen().amount_text())
+	await press(&"ui_cancel")
+	var page_fuel := fuel_line()
+	await seconds(1.0)
+	check(fuel_line() != page_fuel, "the Ship page's FUEL grows while pumping, %s then %s" % [page_fuel, fuel_line()])
+	await press(&"ui_cancel")
+	var row := hangar_screen().rows()[0]
+	await seconds(1.0)
+	check(hangar_screen().rows()[0] != row, "the berths table's fuel grows while pumping, %s then %s" % [row, hangar_screen().rows()[0]])
 	await leave_office()
 	await frames(2)
 	check(message().begins_with("Docked!\nPumping fuel… "), "the HUD says it's pumping, got %s" % message())
@@ -182,3 +192,26 @@ func test_a_ship_swap_while_pumping_leaves_the_paid_fuel_in_the_ship_it_was_boug
 	await leave_office()
 	await frames(2)
 	check(message() == "Docked!", "nothing is pumping into the Mule, got %s" % message())
+
+
+
+func fuel_line() -> String:
+	for line in hangar_screen().page_lines():
+		if line.begins_with("FUEL "):
+			return line
+	return ""
+
+
+func test_the_fuel_bar_shows_the_tank_and_the_chosen_amount_on_top_of_it() -> void:
+	lander().fuel = 800.0
+	await open_fuel_screen(hangar().in_service)
+	var bar := fuel_screen().bar()
+	# 1 000 L in a 6 000 L Tank, +1 000 L chosen on top of it.
+	check_near(bar.x, 1.0 / 6.0, 0.001, "the green fill is the fuel in the tank")
+	check_near(bar.y, 2.0 / 6.0, 0.001, "the pulsing part reaches the tank after buying")
+	check_near(bar.z, 1.0, 0.001, "the fuel cap is the whole Tank without a Load")
+	await press(&"ui_left")
+	await press(&"ui_left")
+	bar = fuel_screen().bar()
+	check_near(bar.x, 0.0, 0.001, "selling everything back leaves no green fill")
+	check_near(bar.y, 1.0 / 6.0, 0.001, "the pulsing part is what is sold back")

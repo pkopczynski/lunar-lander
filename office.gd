@@ -171,7 +171,8 @@ func _process(delta: float) -> void:
 	if notice_left > 0.0:
 		notice_left = maxf(notice_left - delta, 0.0)
 		terminal.queue_redraw()
-	if showing and screen in [Screen.TRANSPORT_OFFERS, Screen.BANK_ACCOUNT]:
+	# The FUEL screen's bar pulses, and fuel being pumped changes the Hangar's readouts.
+	if showing and (screen in [Screen.TRANSPORT_OFFERS, Screen.BANK_ACCOUNT, Screen.FUEL] or hangar.pumping):
 		terminal.queue_redraw()
 
 
