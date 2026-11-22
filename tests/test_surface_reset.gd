@@ -36,6 +36,7 @@ func test_the_teleported_ship_rests_on_the_pad_and_can_lift_off() -> void:
 	await seconds(1.0)
 	check(ship.state == Lander.State.LANDED, "the Mule should stay Landed on the pad, says %s" % message())
 	check(not message().begins_with("Crashed"), "the Mule should not crash after the teleport")
+	await decline_workshop()
 	var rest_y := ship.position.y
 	hold(&"ui_up")
 	await seconds(0.5)

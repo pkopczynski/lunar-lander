@@ -38,7 +38,7 @@ Main (Node2D)                  world.gd; draws the surface gradient behind every
 │   ├── Message (Label)        shows Docked!/Landed!/Crashed!/Stranded!, hidden in flight
 │   └── Hud (Control)          hud.gd; full-rect, draws itself on the right edge
 ├── Economy (Node)             economy.gd; process mode Always, so it keeps running while the Office pauses the tree
-├── Office (CanvasLayer)       office.gd; layer 10, process mode Always; pauses the tree while showing
+├── Office (CanvasLayer)       office.gd; layer 10, process mode Always; pauses the tree while showing (not as a pad's Workshop)
 │   └── Terminal (Control)     full-rect; office.gd draws the Terminal and popups on it
 └── (Foreground)               foreground.gd; world.gd adds it at runtime, last, so it's drawn over the ship; an AnchoredParallax holding a Polygon2D per silhouette
 ```
@@ -53,7 +53,7 @@ Main (Node2D)                  world.gd; draws the surface gradient behind every
 | **Planet clock and sky** | `planet_clock.gd`, `sky_look.gd` | Local time, the current location and the drift count (`PlanetClock`); time → sky look, a pure step (`SkyLook`). |
 | **Decor** | `backdrop.gd`, `skyline.gd`, `moons.gd`, `clouds.gd`, `foreground.gd`, `beacon.gd`, `city_lights.gd`, `activity.gd`, `vehicles.gd`, `anchored_parallax.gd`, `decor_kit.gd` | Collider-free scenery, built per location and tinted by the sky. |
 | **Economy** | `economy.gd`, `transport_offer.gd`, `transaction.gd` | Balance, transactions, offer pool, Contracts and the delivery phase. `TransportOffer` is pure data plus the offer generator; `Transaction` is one balance change and how it reads. |
-| **Office** | `office.gd`, `shipyard_screen.gd`, `hangar_screen.gd`, `fuel_screen.gd`, `transport_offers_screen.gd`, `bank_account_screen.gd`, `expandable_list.gd`, `version.gd` | The Terminal UI: screens, popups, input while paused. Screens are `RefCounted` helpers the Office creates and draws on its one `Terminal` control. |
+| **Office** | `office.gd`, `terminal_palette.gd`, `shipyard_screen.gd`, `hangar_screen.gd`, `fuel_screen.gd`, `transport_offers_screen.gd`, `bank_account_screen.gd`, `expandable_list.gd`, `version.gd` | The Terminal UI: screens, popups, input while paused. Screens are `RefCounted` helpers the Office creates and draws on its one `Terminal` control. The same Office is every pad's **Workshop**: its `place` (the Landed pad's `Location`, null at the station) picks the `TerminalPalette` (green or orange), the header, the Ship page's actions (only FUEL and REPAIR) and the prices (the pad's place markup); there's no second Terminal. |
 | **HUD** | `hud.gd` | Fuel bar, mass, clock line, deadline and payout float. Read-only. |
 
 ## Dependencies
@@ -82,7 +82,7 @@ Camera ──► Lander (its parent), World and Station constants
 | Signal | Emitted when | Handled by |
 |---|---|---|
 | `PlanetClock.location_changed` | `move_to()`: a mission starts, or drift moves on | `World.show_location()` rebuilds the surface |
-| `Lander.landed_on_pad` | Landed on the current pad (real landing or debug shortcut) | `Economy.start_unloading()` (ignored unless delivering) |
+| `Lander.landed_on_pad` | Landed on the current pad (real landing or debug shortcut) | `Economy.start_unloading()` (ignored unless delivering), then `Office.ask_to_enter_workshop()` (holds the ship, asks "ENTER THE WORKSHOP?") |
 | `Lander.docked_at_station` | Docked and finished easing upright | `Office.ask_to_enter()` |
 | `Lander.crashed` | Entered Crashed | `Hangar.wreck()` (the ship in service becomes a Wreck), then `Economy.settle_crash()` (Failed contracts, recovery fee) |
 | `Lander.stranded` | Entered Stranded | `Economy.settle_crash()` (Failed contracts, recovery fee); no Wreck |
@@ -100,13 +100,14 @@ Camera ──► Lander (its parent), World and Station constants
 | Ship state | `Lander.state` | `Lander.enter()`. Held, loading, lift-off-blocked and the pump's time left are flags beside the state, set by the Office, the Economy or the Hangar. |
 | Delivery phase | `Economy.phase` | One function per transition, each checking the phase it leaves (see [domain-model.md](domain-model.md#mission-and-delivery-phase)). |
 | Money, offers, Contracts | `Economy` | `accept()`, `remove_contract()`, `finish_unloading()`, `cancel_mission()`, `settle_crash()`, `pay_for_ship()`, `get_paid_for_ship()`, `pay_for_repair()`, `pay_for_fuel()` (also at `start_loading()`, selling back fuel above the cap); each balance change records exactly one Transaction per ship or Contract. |
-| Owned ships, the ship in service, name counters | `Hangar` | Its named operations: `buy()`, `sell()`, `put_in_service()` (the Ship swap), `add_ship()`, `wreck()` (on a crash), `recover()`, `repair()`, `refuel()` (fuel already paid for: at once into a berth, pumped into the ship in service). The Office's Shipyard, Hangar and fuel screens call them (and the Economy's for the money) and never edit an `OwnedShip`. The exceptions: the Lander burns the fuel in tank of the ship in service (and refuels it on the pad), and wears its Condition on hits and Hard landings. |
+| Owned ships, the ship in service, name counters | `Hangar` | Its named operations: `buy()`, `sell()`, `put_in_service()` (the Ship swap), `add_ship()`, `wreck()` (on a crash), `recover()`, `repair()`, `refuel()` (fuel already paid for: at once into a berth, pumped into the ship in service). The Office's Shipyard, Hangar and fuel screens call them (and the Economy's for the money) and never edit an `OwnedShip`. The Workshop calls the same operations for the Landed ship, passing its place to the Economy. The exceptions: the Lander burns the fuel in tank of the ship in service (it never adds any), and wears its Condition on hits and Hard landings. |
 | Sky | none (derived) | The World pulls `SkyLook.at(minutes)` once per in-game minute and pushes it to every decor script's `show_sky()`. |
 
 ## Frame and pause model
 
 - **Gameplay ticks in `_physics_process`** (Lander, PlanetClock, Economy, World's sky check and drift feed), so `--fixed-fps 60` tests are deterministic. Decor movement (clouds, vehicles, Activity) and the Office's animations use `_process`.
 - **The Office pauses the whole tree** while showing. The Economy runs with process mode Always (offer timers keep running), and so does the Hangar (fuel keeps pumping); the planet clock stays pausable (time stops). See [ADR 0003](../adr/0003-run-state-in-scene-nodes.md).
+- **A pad's Workshop doesn't pause anything:** the planet clock, the Economy (offers, unloading) and the pump run on. Instead the Office holds the Lander (`hold()`) from the "ENTER THE WORKSHOP?" question until No or leaving, and marks every input event handled while the Workshop shows, so no key (R, the debug pad shortcut) reaches the flight behind it. It drops the question if the ship stops being Landed.
 - **Only a fresh start reloads the scene;** a crash never does. Recovery resets only the ship's place and the view in place; see [ADR 0008](../adr/0008-career-replaces-the-run.md) (and ADR 0003 for why Career state lives in scene nodes).
 - **Ready order matters:** `Station` must stay above `Lander`, and `Hangar` below `Lander` and above `UI`, `Economy` and `Office`, in `main.tscn` (see the README's Gotchas).
 

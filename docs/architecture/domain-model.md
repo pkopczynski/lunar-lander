@@ -40,7 +40,8 @@ Location table: Valley → Mine → Metropolis (also the drift order)
 | Transport offer, Contract | `TransportOffer` |
 | Transaction | `Transaction` (a settled, cancelled or Failed contract, a ship purchase or sale, a recovery fee, a repair) |
 | Ship price, value, sale price | `ShipType.price`, `OwnedShip.value()`, `OwnedShip.sale_price()` |
-| Wreck, recovery fee, repair cost | `OwnedShip.is_wreck()`, `recovery_fee()`, `repair_cost()` |
+| Wreck, recovery fee, repair cost | `OwnedShip.is_wreck()`, `recovery_fee()`, `repair_cost(place)` |
+| Workshop, place markup | `Office` with its `place` (a pad's `Location`) and `TerminalPalette.WORKSHOP`; `Location.markup` |
 | Crash settlement, Recovery, Repair | `Economy.settle_crash()`, `Hangar.wreck()` / `recover()` / `repair()`, `Office.recover()` |
 | Bank account, offer pool, Contracts, delivery phase | `Economy` |
 | Load | `Lander.load_mass` (once loading finishes); `Economy.contract_load_mass()` before that |
@@ -78,7 +79,7 @@ Exactly one of Flying, Landed, Docked, Crashed, Stranded, changed only by `Lande
 
 | Flag | Set by | Effect |
 |---|---|---|
-| `held` | Office (`hold()` / `release()`) | Frozen: no input, no refuel timer (the pad's). Cleared by `enter()`. |
+| `held` | Office (`hold()` / `release()`) | Frozen: no input. Set while "ENTER THE OFFICE?" or "ENTER THE WORKSHOP?" asks and while a pad's Workshop shows. Cleared by `enter()`. |
 | `loading` | Economy via `start_loading()` / `finish_loading()` | Docked ship can't turn or undock. Adds no fuel. |
 | `pump_time_left` | Hangar's pump (`refuel()`, ticked even behind the Office) | While above 0 the ship can't undock or lift off; the message shows `Pumping fuel… 6s`. Not cleared by `enter()`. |
 | `lift_off_blocked` | Economy (unloading) | Landed ship can't lift off. Not cleared by `enter()`, so a ship settling back stays grounded. |
@@ -97,7 +98,9 @@ Each rule below holds in the code today; the parenthesis says where it's enforce
 - **No flight in a Wreck:** a Wreck can't be put in service, and the Office can't be left (Escape, START, START LOADING) while the ship in service is one (`HangarScreen.action_reason()`, `Office.leave_reason()`).
 - **Every change of the balance is one Transaction** (`Economy.record()`), and names are never reused: each Ship type counts its owned ships' numbers up, past sold ones (`Hangar.last_numbers`).
 - **Mass:** total = dry mass + fuel + Load, and fuel ≤ fuel cap = min(Tank, Maximum weight − dry mass − Load) (`Lander.total_mass()`, `OwnedShip.fuel_cap()`). Fuel is kept in kg and shown in litres at 0.8 kg/l (`OwnedShip.KG_PER_LITRE`), so the cap in litres is the same rule. Buying never goes past the cap (`FuelScreen.highest()`, counting fuel still being pumped); START LOADING sells back and pumps out the fuel above the cap for the Load (`Economy.start_loading()`), so it can sit above the new cap only until pumping ends, with the ship held docked meanwhile. The Load joins the mass only when loading finishes.
-- **Fuel is never free at the station:** only the Hangar adds fuel there, paid first, one Transaction per purchase or sell-back (`FuelScreen.confirm()`, `Economy.pay_for_fuel()`, `Hangar.refuel()`). Docking, loading, Recovery and a Ship swap add none. (Pads still refuel for free until the Workshop.)
+- **Fuel is never free:** only the Hangar adds fuel, paid first, one Transaction per purchase or sell-back (`FuelScreen.confirm()`, `Economy.pay_for_fuel()`, `Hangar.refuel()`), bought at the station or in a pad's Workshop for the Landed ship. Docking, landing, loading, Recovery and a Ship swap add none. Only the station buys fuel back (`FuelScreen.lowest()` is 0 in a Workshop).
+- **Prices are base × Ship type × place:** fuel per litre is `FUEL_PRICE_CENTS` × the place markup × the type's fuel multiplier, rounded to the cent; a repair is missing Condition × repair rate × value × the place markup (`OwnedShip.fuel_price(place)`, `repair_cost(place)`). The place is a pad's `Location` (`Location.markup`: Valley 1.5, Metropolis 1.75, Mine 2) or null for the station (1). Transactions record the place and its markup.
+- **A ship Landed on a pad is never Stranded,** even with an empty tank: Stranded needs resting off the pad (`Lander.rest_on_ground()`), and the pad's Workshop sells it fuel.
 - **The current location changes only through `PlanetClock.move_to()`**, and a location change never changes the local time. Only starting a mission re-rolls the time ([ADR 0002](../adr/0002-one-planet-clock.md)).
 - **Drift never swaps a visible surface** (`PlanetClock.count_drift()` waits for `World.surface_in_view()` to be false).
 - **Time is presentation only.** It sets the sky and how deadlines are shown; deadlines and penalties count real seconds from the end of loading (`Economy.delivery_time`).

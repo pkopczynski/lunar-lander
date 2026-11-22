@@ -1,15 +1,16 @@
 extends "res://tests/scene_test.gd"
 
 
-func test_landing_on_the_pad_while_delivering_starts_unloading_which_blocks_lift_off_but_not_refuelling() -> void:
+func test_landing_on_the_pad_while_delivering_starts_unloading_which_blocks_lift_off() -> void:
 	# A full Sparrow's Load: 4 × 80 kg + 8 000 kg leaves room for 3 680 kg of fuel.
 	await start_loading([known_offer(4, 8000.0)])
 	# 3 s + 4 passengers + 8 tonnes.
 	await seconds(15.5)
-	await land_on_the_pad()
+	await land_on_pad()
 	check(economy().phase == Economy.Phase.UNLOADING, "landing on the pad while delivering should start unloading")
 	# 2 s + 0.5 s × 4 passengers + 0.5 s × 8 tonnes = 8 s.
 	check(message() == "Landed!\nUnloading… 8s", "the message should count down from 8 s, got %s" % message())
+	await decline_workshop()
 	lander().fuel = 3000.0
 	var landed_at := lander().position
 	hold(&"ui_up")
@@ -18,14 +19,11 @@ func test_landing_on_the_pad_while_delivering_starts_unloading_which_blocks_lift
 	check_near(lander().position.distance_to(landed_at), 0.0, 0.5, "how far the ship moved while unloading")
 	check(lander().fuel == 3000.0, "the engine should not burn fuel while unloading, has %s kg" % lander().fuel)
 	release(&"ui_up")
-	await seconds(1.5)
-	check(message() == "Landed!\nUnloading… 6s\nRefueling…", "refuelling should start after the usual delay, got %s" % message())
-	await seconds(3.0)
-	check(lander().fuel == 3680.0, "refuelling should stop at the cap while the Load is aboard, has %s kg" % lander().fuel)
+	await seconds(4.5)
 	check(message() == "Landed!\nUnloading… 3s", "the countdown should go on, got %s" % message())
+	check(lander().fuel == 3000.0, "the pad adds no fuel, has %s kg" % lander().fuel)
 	await seconds(3.0)
 	check(economy().phase == Economy.Phase.NONE, "unloading should be over")
-	check(lander().fuel > 3680.0, "with the Load off, refuelling should go past the old cap, has %s kg" % lander().fuel)
 
 
 func test_a_mixed_contract_delivered_late_loses_2_percent_of_passengers_and_1_percent_of_cargo_per_whole_second() -> void:
@@ -76,7 +74,7 @@ func test_several_contracts_each_get_a_transaction_newest_first_then_the_ship_is
 	await start_loading([crew, parts])
 	# 3 s + 1 passenger + 2 tonnes.
 	await seconds(6.5)
-	await land_on_the_pad()
+	await land_on_pad()
 	# 2 s + 0.5 s + 1 s.
 	await seconds(3.5)
 	check(economy().phase == Economy.Phase.NONE, "unloading should be over")
@@ -92,6 +90,7 @@ func test_several_contracts_each_get_a_transaction_newest_first_then_the_ship_is
 	check(message() == "Landed!", "the unloading line should go, got %s" % message())
 	await seconds(3.0)
 	check(hud().payout == "", "the payout should fade away, shows %s" % hud().payout)
+	await decline_workshop()
 	hold(&"ui_up")
 	await seconds(0.3)
 	release(&"ui_up")
@@ -118,9 +117,10 @@ func test_landing_again_neither_restarts_unloading_nor_pays_twice() -> void:
 
 func test_landing_on_the_pad_without_a_load_works_as_before() -> void:
 	await choose_ship()
-	await land_on_the_pad()
+	await land_on_pad()
 	check(economy().phase == Economy.Phase.NONE, "an empty landing should not unload")
 	check(message() == "Landed!", "the message should just say Landed!, got %s" % message())
+	await decline_workshop()
 	hold(&"ui_up")
 	await seconds(0.3)
 	release(&"ui_up")
@@ -139,13 +139,3 @@ func deliver_by_shortcut() -> void:
 	place(Vector2(300, 100))
 	await press(&"restart")
 	check(lander().state == Lander.State.LANDED, "R on the Surface should land the ship on the pad")
-
-
-# Flies the ship down onto the pad from just above it.
-func land_on_the_pad() -> void:
-	place(Vector2(pad_x(), 580.0), Vector2(0, 20))
-	for i in roundi(4.0 * PHYSICS_FPS):
-		if lander().state == Lander.State.LANDED:
-			break
-		await frames(1)
-	check(lander().state == Lander.State.LANDED, "the ship should land on the pad")

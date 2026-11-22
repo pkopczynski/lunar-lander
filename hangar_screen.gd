@@ -9,13 +9,16 @@ extends RefCounted
 # The Ship page shows the ship's name, IN SERVICE tag, wireframe and fitted upgrades on the left,
 # CONDITION, FUEL, DRY MASS, CARGO and VALUE in the middle, and its actions in a column on the
 # right: PUT IN SERVICE (the Ship swap: free and instant, each ship keeps its own fuel; blocked with
-# Contracts and for a Wreck), FUEL (opens its `FuelScreen`; blocked for a Wreck), REPAIR €x (instant and always full, at the ship's `repair_cost()`;
+# Contracts and for a Wreck), FUEL (opens its `FuelScreen`; blocked for a Wreck), REPAIR €x (instant and always full, at the ship's `repair_cost(place)`, the station's in the Office;
 # allowed with Contracts and on credit, its confirm warning in red when it ends below €0; blocked with
-# NO DAMAGE at 100%) and SELL €x (blocked for the ship in service; allowed in debt). A Wreck's
+# NO DAMAGE at 100%) and SELL €x (blocked for the ship in service; allowed in debt). In a pad's
+# Workshop the page is the Landed ship's and shows only FUEL and REPAIR, at that pad's place markup;
+# Escape there leaves the Workshop. A Wreck's
 # Condition reads WRECKED in red. Every action asks first;
 # a blocked one is dimmed with a red reason, and Return on it only shows that reason. Escape goes
 # back to the berths table. The Office creates it and calls it while either screen shows; it calls
-# the Hangar's and the Economy's named operations and never edits a ship.
+# the Hangar's and the Economy's named operations and never edits a ship. It draws in the Office's
+# palette (`Office.palette`), so a Workshop's page is orange.
 
 enum Action { PUT_IN_SERVICE, FUEL, REPAIR, SELL }
 
@@ -27,6 +30,8 @@ const COLUMN_SHARES := [0.0, 0.4, 0.55, 0.72, 0.87]
 const CONDITION_COLUMN := 1
 const NO_PARACHUTE := "–"
 const NO_UPGRADES := "NO UPGRADES"
+# The only actions a Workshop sells.
+const WORKSHOP_ACTIONS: Array[Action] = [Action.FUEL, Action.REPAIR]
 const ACTION_LABELS := {Action.PUT_IN_SERVICE: "PUT IN SERVICE", Action.FUEL: "FUEL", Action.REPAIR: "REPAIR ",
 	Action.SELL: "SELL "}
 const SERVICE_QUESTION := "PUT %s IN SERVICE?"
@@ -91,14 +96,19 @@ func handle_input(event: InputEvent) -> bool:
 
 
 func handle_page_input(event: InputEvent) -> bool:
+	var shown := shown_actions()
+	var index := shown.find(action)
 	if event.is_action_pressed("ui_up"):
-		action = maxi(action - 1, 0) as Action
+		action = shown[maxi(index - 1, 0)]
 	elif event.is_action_pressed("ui_down"):
-		action = mini(action + 1, Action.size() - 1) as Action
+		action = shown[mini(index + 1, shown.size() - 1)]
 	elif event.is_action_pressed("ui_accept"):
 		take_action()
 	elif event.is_action_pressed("ui_cancel"):
-		office.open_screen(Office.Screen.HANGAR)
+		if office.in_workshop():
+			office.leave_workshop()
+		else:
+			office.open_screen(Office.Screen.HANGAR)
 	else:
 		return false
 	return true
@@ -116,10 +126,11 @@ func take_action() -> void:
 		Action.FUEL:
 			office.open_fuel_screen(owned)
 		Action.REPAIR:
-			var cost := owned.repair_cost()
+			var place := office.place
+			var cost := owned.repair_cost(place)
 			var after := economy.balance - cost
 			office.ask(REPAIR_QUESTION % [owned.name, "%s"], Economy.eur(cost), func() -> void:
-				economy.pay_for_repair(owned)
+				economy.pay_for_repair(owned, place)
 				hangar.repair(owned)
 				office.show_notice(REPAIRED_NOTICE % owned.name),
 				DEBT_WARNING % Economy.eur(after) if after < 0 else "")
@@ -173,22 +184,32 @@ func status() -> Array[Array]:
 		["VALUE", Economy.eur(ship.value())]]
 
 
-# The action column's labels, top to bottom: PUT IN SERVICE, FUEL, REPAIR €62 500, SELL €125 000.
+# The actions the page shows: all four in the Office, FUEL and REPAIR in a Workshop.
+func shown_actions() -> Array[Action]:
+	if office.in_workshop():
+		return WORKSHOP_ACTIONS
+	var all: Array[Action] = []
+	all.assign(Action.values())
+	return all
+
+
+# The action column's labels, top to bottom: PUT IN SERVICE, FUEL, REPAIR €62 500, SELL €125 000
+# (FUEL and REPAIR €x in a Workshop).
 func actions() -> PackedStringArray:
 	var texts := PackedStringArray()
-	for each: Action in Action.values():
+	for each: Action in shown_actions():
 		texts.append(ACTION_LABELS[each] + action_price(each))
 	return texts
 
 
 func selected_action() -> String:
-	return actions()[action]
+	return ACTION_LABELS[action] + action_price(action)
 
 
 # Each action's red reason, "" for one the player can take.
 func reasons() -> PackedStringArray:
 	var texts := PackedStringArray()
-	for each: Action in Action.values():
+	for each: Action in shown_actions():
 		texts.append(action_reason(each))
 	return texts
 
@@ -217,7 +238,7 @@ func action_reason(which: Action) -> String:
 func action_price(which: Action) -> String:
 	match which:
 		Action.REPAIR:
-			return Economy.eur(ship.repair_cost())
+			return Economy.eur(ship.repair_cost(office.place))
 		Action.SELL:
 			return Economy.eur(ship.sale_price())
 	return ""
@@ -244,26 +265,26 @@ func draw(area: Rect2) -> void:
 func draw_table(area: Rect2) -> void:
 	var y := area.position.y + Office.TEXT_SIZE
 	office.draw_text(berths_text(), Vector2(area.position.x, y), Office.TEXT_SIZE, -1.0,
-		HORIZONTAL_ALIGNMENT_LEFT, Office.WHITE)
+		HORIZONTAL_ALIGNMENT_LEFT, office.palette.value)
 	y += Office.LINE_GAP
 	var width := area.size.x - 2.0 * ROW_PADDING
 	var heading := Rect2(area.position.x, y, area.size.x, ROW_HEIGHT)
-	draw_cells(PackedStringArray(COLUMNS), heading, width, Office.GREEN, Office.GREEN)
+	draw_cells(PackedStringArray(COLUMNS), heading, width, office.palette.ink, office.palette.ink)
 	y += ROW_HEIGHT + HEADING_RULE_GAP
-	office.terminal.draw_line(Vector2(area.position.x, y), Vector2(area.end.x, y), Office.GREEN, Office.LINE_WIDTH)
+	office.terminal.draw_line(Vector2(area.position.x, y), Vector2(area.end.x, y), office.palette.ink, Office.LINE_WIDTH)
 	y += Office.LINE_WIDTH + HEADING_RULE_GAP
 	for i in Hangar.BERTHS:
 		var rect := Rect2(area.position.x, y, area.size.x, ROW_HEIGHT)
 		var selected := i == row
 		var owned: OwnedShip = hangar.ships[i] if i < hangar.ships.size() else null
-		var lit := Office.GREEN if owned != null else Office.DIM_GREEN
-		office.terminal.draw_rect(rect, lit if selected else Office.row_tint(i))
+		var lit := office.palette.ink if owned != null else office.palette.dim_ink
+		office.terminal.draw_rect(rect, lit if selected else office.palette.row_tint(i))
 		if owned != null:
-			draw_cells(row_cells(owned), rect, width, Office.BLACK if selected else Office.GREEN,
-				Office.BLACK if selected else Office.WHITE, owned.is_wreck() and not selected)
+			draw_cells(row_cells(owned), rect, width, Office.BLACK if selected else office.palette.ink,
+				Office.BLACK if selected else office.palette.value, owned.is_wreck() and not selected)
 		else:
 			office.draw_text(EMPTY_BERTH_TEXT, cell_baseline(rect, 0.0), Office.TEXT_SIZE, width,
-				HORIZONTAL_ALIGNMENT_LEFT, Office.BLACK if selected else Office.DIM_GREEN)
+				HORIZONTAL_ALIGNMENT_LEFT, Office.BLACK if selected else office.palette.dim_ink)
 		y += ROW_HEIGHT
 
 
@@ -273,7 +294,7 @@ func draw_cells(cells: PackedStringArray, rect: Rect2, width: float, label_color
 		wrecked := false) -> void:
 	for i in cells.size():
 		var x: float = COLUMN_SHARES[i] * width
-		var color := label_color if i == 0 else Office.RED if wrecked and i == CONDITION_COLUMN else value_color
+		var color := label_color if i == 0 else office.palette.error if wrecked and i == CONDITION_COLUMN else value_color
 		office.draw_text(cells[i], cell_baseline(rect, x), Office.TEXT_SIZE, -1.0, HORIZONTAL_ALIGNMENT_LEFT, color)
 
 
@@ -291,18 +312,18 @@ func draw_page(area: Rect2) -> void:
 	var picture := Rect2(area.position.x, y + 2.0 * Office.LINE_GAP + Office.TEXT_SIZE, third, area.size.y * 0.55)
 	office.draw_wireframe(ship.ship_type.hull, picture)
 	office.draw_text(NO_UPGRADES, Vector2(area.position.x, picture.end.y + Office.LINE_GAP + Office.TEXT_SIZE),
-		Office.TEXT_SIZE, third, HORIZONTAL_ALIGNMENT_LEFT, Office.DIM_GREEN)
+		Office.TEXT_SIZE, third, HORIZONTAL_ALIGNMENT_LEFT, office.palette.dim_ink)
 
 	var x := area.position.x + third
 	y = area.position.y + Office.TEXT_SIZE
 	for pair: Array in status():
 		office.draw_text(pair[0], Vector2(x, y), Office.TEXT_SIZE, STATUS_LABEL_WIDTH)
 		office.draw_text(pair[1], Vector2(x + STATUS_LABEL_WIDTH, y), Office.TEXT_SIZE, third - STATUS_LABEL_WIDTH,
-			HORIZONTAL_ALIGNMENT_LEFT, Office.RED if pair[1] == Office.WRECKED_TEXT else Office.WHITE)
+			HORIZONTAL_ALIGNMENT_LEFT, office.palette.error if pair[1] == Office.WRECKED_TEXT else office.palette.value)
 		y += Office.TEXT_SIZE + Office.LINE_GAP
 
 	var button := Rect2(Vector2(area.position.x + 2.0 * third, area.position.y), Vector2(third, ACTION_SIZE.y))
-	for each: Action in Action.values():
+	for each: Action in shown_actions():
 		office.draw_action(button, ACTION_LABELS[each], action_price(each), each == action and office.popup == Office.PopupKind.NONE,
 			action_reason(each))
 		button.position.y += ACTION_STEP

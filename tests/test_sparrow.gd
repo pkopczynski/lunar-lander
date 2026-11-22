@@ -54,15 +54,22 @@ const LOAD_FOR_TESTS := 9000.0
 const FUEL_CAP_WITH_LOAD := 3000.0
 
 
-func test_a_load_stops_refuelling_on_the_pad_short_of_a_full_tank() -> void:
+func test_a_load_stops_filling_up_in_the_workshop_short_of_a_full_tank() -> void:
 	await choose_ship()
 	var ship := lander()
 	ship.load_mass = LOAD_FOR_TESTS
 	ship.fuel = 1000.0
 	ship.reset_to_pad()
-	await seconds(10.0)
-	check_near(ship.fuel, FUEL_CAP_WITH_LOAD, 0.01, "fuel after refuelling on the pad with a Load")
-	check(message() == "Landed!", "refuelling should be over, got %s" % message())
+	await enter_workshop()
+	await press(&"ui_accept")
+	await press(&"ui_down")
+	await press(&"ui_accept")
+	# FULL: up to the 3 000 kg cap, 2 000 kg (2 500 L) more.
+	check(fuel_screen().amount_text() == "< BUY +2 500 L >", "FULL should stop at the cap, got %s" % fuel_screen().amount_text())
+	await press(&"ui_accept")
+	await press(&"ui_accept")
+	await seconds(6.0)
+	check_near(ship.fuel, FUEL_CAP_WITH_LOAD, 0.01, "fuel after filling up on the pad with a Load")
 
 
 func test_without_a_load_the_fuel_cap_is_the_tank() -> void:

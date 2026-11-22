@@ -65,7 +65,7 @@ func test_a_hard_landing_shows_its_loss_in_the_landing_message_and_flashes_it() 
 	check(hud().condition_text() == "CONDITION 88%", "the HUD Condition line, shows %s" % hud().condition_text())
 	await seconds(2.5)
 	check(message().begins_with("HARD LANDING −12%"), "the message should stay while Landed, says %s" % message())
-	check(message().contains("Refueling…"), "a Hard landing still refuels, says %s" % message())
+	check(office().popup == Office.PopupKind.ENTER_WORKSHOP, "a Hard landing still asks to enter the Workshop")
 
 
 func test_a_hard_landing_delivers() -> void:
