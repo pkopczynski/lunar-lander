@@ -4,8 +4,8 @@ extends CharacterBody2D
 # crossing and its disturbance (with a seedable `rng`), steering, landing and docking judgement (the
 # "on the pad" check reads the current location's pad through `pad_center_x()`; `touch_down()` judges
 # the landing bands as the ship comes down onto the pad: safe, a Hard landing that wears Condition
-# and shows `HARD LANDING −12%` as the Landed title, or a crash), free refuelling on the pad only
-# (until the Workshop sells fuel there; the station sells it through the Hangar), result
+# and shows `HARD LANDING −12%` as the Landed title, or a crash), no refuelling of its own (fuel
+# is bought at the station or a pad's Workshop and pumped in by the Hangar), result
 # display (with a `status` line, set through `show_status()`, under Docked!/Landed!), ground
 # contact as a rigid body (`move()`: contact points from `find_contacts()`, the push and friction
 # at each from `push_off()`, the ship's `spin` about its `centre_of_mass`), touching a solid off
@@ -14,20 +14,20 @@ extends CharacterBody2D
 # once settled on the pad, tipped over, Stranded), the R key (`recovery_requested` after a crash or while
 # Stranded, else the debug pad shortcut on the Surface; it never restarts),
 # `landed_on_pad` (from a real landing and from the debug pad shortcut) and `lift_off_blocked`
-# (keeps the ship resting and refuelling but grounded, for unloading), `pump_time_left` (set by the
+# (keeps the ship resting but grounded, for unloading), `pump_time_left` (set by the
 # Hangar's pump: the ship can't lift off or undock while fuel is pumped, and says `Pumping fuel… 6s`),
 # and `start_loading(load)`/`finish_loading()` (keeps the ship Docked, unable to turn or undock, while
 # the incoming Load goes aboard; it joins the mass only when loading finishes).
 # Attached to `Lander`. It flies the ship in service, an `OwnedShip` handed over by the Hangar's
 # `fly(ship)` (hull, collision shape and flame from its Ship type), and reads only that ship's
 # effective numbers, never its Ship type's. Its fuel is the ship's fuel in tank: the Lander burns
-# it (and refuels it on the pad), wears the ship's Condition on hits and Hard landings, and changes nothing else on the ship. `start_docked()` puts it in the parking spot.
+# it, wears the ship's Condition on hits and Hard landings, and changes nothing else on the ship. `start_docked()` puts it in the parking spot.
 #
 # The Lander's `state` (Flying, Landed, Docked, Crashed, Stranded) changes only through `enter()`, which
 # starts every state fresh: not held, no lift-off burn, docking armed, leveling stopped, with the
 # state's colour and message. `start_docked()`, `reset_to_pad()` and `fly_from()` also move the ship
 # and clear any border bounce, steering or disturbance. `enter()` also clears the `status` line.
-# `rest()` rewrites the message every frame (title, `status`, then Refueling… and Pumping fuel…), so
+# `rest()` rewrites the message every frame (title, `status`, then Pumping fuel…), so
 # outside text such as the loading and unloading countdowns must go through `show_status()`, which also
 # shows it right away (keeping those lines) for a held ship (held ships don't rest). `lift_off_blocked`
 # and `pump_time_left` are set from outside like `held`, but `enter()` doesn't clear them: a ship that
@@ -72,9 +72,6 @@ const BRAKING_BURN_FACTOR := 1.0
 const BRAKING_FULL_SPEED := 150.0
 
 const LEVEL_TIME := 0.3
-# Free refuelling on the pad starts this long after resting, at half a tank per 6 s.
-const REFUEL_DELAY := 2.0
-const REFUEL_TANK_SHARE := 0.5 / 6.0
 
 # Landing bands, judged at touchdown on the pad: safe up to the MAX_LANDING_* limits, a crash
 # above the CRASH_LANDING_* ones, and a Hard landing in between, losing Condition in a straight
@@ -182,7 +179,7 @@ const STRANDED_TEXT := "Stranded!\nPress R for recovery"
 const PUMPING_TEXT := "Pumping fuel… %ds"
 
 # The ship in service it flies, set by fly(). Its numbers are the ship's effective numbers;
-# ship_type, dry_mass and fuel only read through to it (fuel also writes: burning and refuelling).
+# ship_type, dry_mass and fuel only read through to it (fuel also writes: burning).
 var ship: OwnedShip
 var ship_type: ShipType:
 	get:
@@ -201,18 +198,17 @@ var load_mass := 0.0
 var state := State.FLYING
 # Set from outside through hold() and release(): a held ship ignores the controls and stays put.
 var held := false
-# Set from outside: the ship rests where it is (refuelling included) but can't lift off.
+# Set from outside: the ship rests where it is but can't lift off.
 # Unlike held, entering a state doesn't clear it, so a ship that settles back keeps it.
 var lift_off_blocked := false
-# Set through start_loading() and finish_loading(): while a Load goes aboard the ship rests
-# and refuels up to the cap for it, but can't lift off or turn. It counts toward the mass
+# Set through start_loading() and finish_loading(): while a Load goes aboard the ship rests,
+# but can't lift off or turn. It counts toward the mass
 # only once loading finishes.
 var loading := false
 var incoming_load := 0.0
 # Set from outside (the Hangar's pump): seconds of pumping fuel left. While above 0 the ship can't
 # lift off or undock, and the resting message says Pumping fuel… Unlike held, enter() leaves it.
 var pump_time_left := 0.0
-var rest_time := 0.0
 var since_liftoff := INF
 var level_tween: Tween
 var in_deep_space := false
@@ -246,8 +242,6 @@ var touchdown_loss := 0.0
 # A line the resting message adds under Docked!/Landed!, such as the loading countdown.
 # Set it through show_status(): the message is rewritten every frame while resting.
 var status := ""
-# Whether the last rest refuelled, so a new status keeps the Refueling… line.
-var refueling := false
 # The Condition the last touchdown on the pad took, 0.0 for a safe one; the Landed title shows it.
 var hard_landing_loss := 0.0
 
@@ -334,11 +328,9 @@ func fly_from(at: Vector2, at_velocity := Vector2.ZERO) -> void:
 func enter(new_state: State) -> void:
 	state = new_state
 	held = false
-	rest_time = 0.0
 	since_liftoff = INF
 	can_dock = true
 	status = ""
-	refueling = false
 	tipped_time = 0.0
 	settle_time = 0.0
 	spin = 0.0
@@ -435,7 +427,7 @@ func total_mass() -> float:
 	return dry_mass + fuel + load_mass
 
 
-# The most fuel refuelling may fill: a full Tank, or less if the Load would push
+# The most fuel the ship may hold: a full Tank, or less if the Load would push
 # the ship past its Maximum weight.
 func fuel_cap() -> float:
 	return fuel_cap_for(load_mass + incoming_load)
@@ -830,10 +822,8 @@ func hold() -> void:
 	held = true
 
 
-# A released ship rests afresh, so refuelling on the pad waits the usual delay again.
 func release() -> void:
 	held = false
-	rest_time = 0.0
 
 
 # The Economy has the fuel above the cap for the incoming Load pumped out meanwhile.
@@ -863,11 +853,6 @@ func rest(delta: float) -> void:
 	# A docked ship may turn in place to face the way out.
 	if state == State.DOCKED and not loading and not (level_tween and level_tween.is_running()):
 		rotation += Input.get_axis("ui_left", "ui_right") * ship.turn_rate() * delta
-	rest_time += delta
-	# Only a pad refuels, and for free, until the Workshop sells fuel there.
-	refueling = state == State.LANDED and rest_time >= REFUEL_DELAY and fuel < fuel_cap()
-	if refueling:
-		fuel = minf(fuel + ship.tank() * REFUEL_TANK_SHARE * delta, fuel_cap())
 	show_rest_message()
 
 
@@ -883,8 +868,6 @@ func show_rest_message() -> void:
 	var lines := PackedStringArray(["Docked!" if state == State.DOCKED else landed_title()])
 	if status != "":
 		lines.append(status)
-	if refueling:
-		lines.append("Refueling…")
 	if pump_time_left > 0.0:
 		lines.append(PUMPING_TEXT % ceili(pump_time_left))
 	message.text = "\n".join(lines)

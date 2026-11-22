@@ -74,7 +74,7 @@ func test_ship_is_frozen_while_the_office_popup_is_open() -> void:
 	release(&"ui_right")
 	check_near(ship.rotation, 0.0, 0.0001, "rotation while the Enter-the-Office popup is open")
 	ship.fuel = 1000.0
-	await seconds(Lander.REFUEL_DELAY + 1.0)
+	await seconds(3.0)
 	check_near(ship.fuel, 1000.0, 0.0001, "fuel while the Enter-the-Office popup is open")
 	check(not message().contains("Refueling"), "should not refuel while the Enter-the-Office popup is open, got %s" % message())
 	check(office().popup == Office.PopupKind.ENTER_OFFICE, "the Enter-the-Office popup should still be open")
@@ -108,7 +108,7 @@ func declining_leaves_the_ship_free_to_undock(action: StringName) -> void:
 	check(office().popup == Office.PopupKind.NONE, "%s should close the Enter-the-Office popup" % action)
 	check(not office().showing, "%s should not open the Office" % action)
 	check(ship.state == Lander.State.DOCKED, "the ship should stay Docked")
-	await seconds(Lander.REFUEL_DELAY + 1.0)
+	await seconds(3.0)
 	check_near(ship.fuel, 1000.0, 0.0001, "docking at the station adds no fuel")
 	check(message() == "Docked!", "no Refueling… at the station, got %s" % message())
 	hold(&"ui_up")
@@ -117,12 +117,12 @@ func declining_leaves_the_ship_free_to_undock(action: StringName) -> void:
 	check(ship.state != Lander.State.DOCKED, "Up should undock once the Enter-the-Office popup is closed")
 
 
-func test_landing_on_the_pad_shows_no_office_popup() -> void:
+func test_landing_on_the_pad_asks_for_the_workshop_not_the_office() -> void:
 	await choose_ship()
 	place(Vector2(pad_x(), 580), Vector2(0, 20))
 	await seconds(4.0)
 	check(lander().state == Lander.State.LANDED, "the ship should be Landed on the pad")
-	check(office().popup == Office.PopupKind.NONE, "landing on the pad should not open the Enter-the-Office popup")
+	check(office().popup == Office.PopupKind.ENTER_WORKSHOP, "landing on the pad should ask for the Workshop, not the Office")
 	check(not office().showing, "landing on the pad should not open the Office")
 
 
@@ -204,5 +204,5 @@ func leaving_the_office_returns_to_the_dock(choose_in_service: bool) -> void:
 	check(ship.ship_type == ShipType.HALO, "the ship should still be the Halo, got %s" % ship.ship_type.name)
 	check(ship.state == Lander.State.DOCKED and ship.position == spot, "the ship should stay Docked where it was")
 	check_near(dry_mass(), ShipType.HALO.default_dry_mass, 0.01, "the Halo's dry mass should be kept")
-	await seconds(Lander.REFUEL_DELAY + 1.0)
+	await seconds(3.0)
 	check_near(ship.fuel, 1000.0, 0.0001, "docking at the station adds no fuel")

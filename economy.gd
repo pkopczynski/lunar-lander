@@ -163,7 +163,7 @@ func finish_loading() -> void:
 
 
 # DELIVERING → UNLOADING: the ship is Landed on the pad. Lift-off is blocked until the Load
-# is off, but refuelling goes on. Any later landing (a ship settling back) is ignored.
+# is off; the pad's Workshop may sell fuel meanwhile. Any later landing (a ship settling back) is ignored.
 func start_unloading() -> void:
 	if phase != Phase.DELIVERING:
 		return
@@ -216,17 +216,17 @@ func pay_for_ship(ship: OwnedShip) -> void:
 	record(Transaction.ship_purchase(ship))
 
 
-# Charges a repair of this owned ship, before the Hangar repairs it: its repair cost, one
-# Transaction, which may take the balance below €0.
-func pay_for_repair(ship: OwnedShip) -> void:
-	record(Transaction.repair(ship))
+# Charges a repair of this owned ship at a place (a pad's Workshop, or the station: null), before the
+# Hangar repairs it: its repair cost there, one Transaction, which may take the balance below €0.
+func pay_for_repair(ship: OwnedShip, place: Location = null) -> void:
+	record(Transaction.repair(ship, place))
 
 
 # Charges fuel bought for this owned ship (kg above 0), or pays fuel sold back from it (kg below 0),
-# at the station's price, before the Hangar pumps it: one Transaction, which may take the balance
-# below €0.
-func pay_for_fuel(ship: OwnedShip, kg: float) -> void:
-	record(Transaction.fuel(ship, kg))
+# at a place's price (a pad's Workshop, or the station: null), before the Hangar pumps it: one
+# Transaction, which may take the balance below €0.
+func pay_for_fuel(ship: OwnedShip, kg: float, place: Location = null) -> void:
+	record(Transaction.fuel(ship, kg, place))
 
 
 # Pays out a ship sold from the Hangar: its sale price, one Transaction.

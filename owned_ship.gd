@@ -10,18 +10,21 @@ extends RefCounted
 # Seats and the maximum capacity are the type's alone.
 #
 # Its value (`value()`: its Ship type's price, upgrades will add theirs), the repair cost of its
-# missing Condition at the station (`repair_cost()`: missing share × its type's repair rate × value),
+# missing Condition at a place (`repair_cost(place)`: missing share × its type's repair rate × value
+# × the place markup; at the station when the place is null),
 # whether it's a Wreck (`is_wreck()`, Condition 0%), the fee for its Recovery after a crash
 # (`recovery_fee()`: `RECOVERY_FEE_SHARE` of its type's price) and what selling it pays (`sale_price()`:
 # `SALE_SHARE` of its value less the repair cost, never below €0; the fuel in its tank earns nothing).
 #
-# Fuel is kept in kg (it's mass) and shown in litres, `KG_PER_LITRE` to the litre. Its station price
-# per litre (`fuel_price()`, in cents) is `FUEL_PRICE_CENTS` × its type's fuel multiplier, rounded to
-# the cent; `fuel_cost(kg)` is that many litres at that price, in whole euros, for buying and selling
-# back alike. `fuel_cap(load)` is the most fuel it may hold with that Load aboard.
+# Fuel is kept in kg (it's mass) and shown in litres, `KG_PER_LITRE` to the litre. Its price per
+# litre at a place (`fuel_price(place)`, in cents) is `FUEL_PRICE_CENTS` × the place markup × its
+# type's fuel multiplier, rounded to the cent (the station when the place is null, a pad's Workshop
+# otherwise: `Location.markup`); `fuel_cost(kg, place)` is that many litres at that price, in whole
+# euros, for buying and selling back (only at the station) alike. A place is a `Location` (its pad)
+# or null (the station). `fuel_cap(load)` is the most fuel it may hold with that Load aboard.
 #
 # Owned ships belong to the Hangar: only its named operations create or change them. The
-# exceptions are the ship in service's fuel in tank, which the Lander burns (and refuels on the pad),
+# exceptions are the ship in service's fuel in tank, which the Lander burns,
 # and its Condition, which the Lander wears down on each hit (ADR 0009).
 
 # Selling a ship pays this share of its value, less its repair cost.
@@ -84,14 +87,14 @@ func fuel_cap(load_mass := 0.0) -> float:
 	return clampf(maximum_weight() - dry_mass() - load_mass, 0.0, tank())
 
 
-# Cents per litre of fuel at the station.
-func fuel_price() -> int:
-	return roundi(FUEL_PRICE_CENTS * ship_type.fuel_multiplier)
+# Cents per litre of fuel at a place: a pad's Workshop, or the station (null).
+func fuel_price(place: Location = null) -> int:
+	return roundi(FUEL_PRICE_CENTS * Location.markup_at(place) * ship_type.fuel_multiplier)
 
 
-# Euros this much fuel (kg) costs at the station, or pays when sold back.
-func fuel_cost(kg: float) -> int:
-	return roundi(kg / KG_PER_LITRE * fuel_price() / 100.0)
+# Euros this much fuel (kg) costs at a place, or pays when sold back (at the station).
+func fuel_cost(kg: float, place: Location = null) -> int:
+	return roundi(kg / KG_PER_LITRE * fuel_price(place) / 100.0)
 
 
 # Euros: its Ship type's price.
@@ -109,9 +112,9 @@ func recovery_fee() -> int:
 	return roundi(ship_type.price * RECOVERY_FEE_SHARE)
 
 
-# Euros to repair its missing Condition at the station.
-func repair_cost() -> int:
-	return roundi((1.0 - condition) * ship_type.repair_rate * value())
+# Euros to repair its missing Condition at a place: a pad's Workshop, or the station (null).
+func repair_cost(place: Location = null) -> int:
+	return roundi((1.0 - condition) * ship_type.repair_rate * value() * Location.markup_at(place))
 
 
 # Euros selling it pays: a share of its value less its repair cost, never below €0.

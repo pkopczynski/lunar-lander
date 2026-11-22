@@ -65,7 +65,7 @@ func test_after_start_the_ship_is_docked_and_up_undocks_it_at_once() -> void:
 	check(lander().state == Lander.State.DOCKED, "after START the ship should still be Docked")
 	check(not lander().held, "after START the ship should be released")
 	check(economy().phase == Economy.Phase.NONE, "a free flight shouldn't load anything")
-	check(message() == "Docked!" or message() == "Docked!\nRefueling…", "nothing should be loading, got %s" % message())
+	check(message() == "Docked!", "nothing should be loading, got %s" % message())
 	await hold(&"ui_up")
 	await seconds(0.3)
 	await release(&"ui_up")
@@ -80,7 +80,7 @@ func test_a_free_flight_has_no_deadline_and_lands_plainly_then_docks_as_usual() 
 	await seconds(4.0)
 	check(lander().state == Lander.State.LANDED, "the ship should land on the Mine's pad")
 	check(economy().phase == Economy.Phase.NONE, "landing on a free flight shouldn't unload")
-	check(message() == "Landed!" or message() == "Landed!\nRefueling…",
+	check(message() == "Landed!",
 		"landing should be a plain Landed, got %s" % message())
 	check(hud().delivery_text() == "", "no deadline should show after landing, got '%s'" % hud().delivery_text())
 	await dock_in_spot()

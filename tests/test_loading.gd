@@ -51,7 +51,7 @@ func test_a_ship_never_refuels_while_loading_or_after() -> void:
 	await seconds(8.5)
 	check(economy().phase == Economy.Phase.DELIVERING, "loading should have finished")
 	check(lander().total_mass() == 21160.0, "the Load should join the mass when loading ends, got %s" % lander().total_mass())
-	await seconds(Lander.REFUEL_DELAY + 1.0)
+	await seconds(3.0)
 	check(lander().fuel == 4000.0, "no fuel after loading either, has %s kg" % lander().fuel)
 
 

@@ -290,6 +290,32 @@ func dock_in_spot() -> void:
 	check(lander().state == Lander.State.DOCKED, "the ship should dock in the parking spot")
 
 
+# Flies the ship in service down onto the current location's pad from just above it and waits until
+# it's Landed (and the "ENTER THE WORKSHOP?" popup is open).
+func land_on_pad() -> void:
+	place(Vector2(pad_x(), world().location.ground_y - hull_bottom() - 8.0), Vector2(0, 20))
+	for i in roundi(4.0 * PHYSICS_FPS):
+		if lander().state == Lander.State.LANDED:
+			break
+		await frames(1)
+	check(lander().state == Lander.State.LANDED, "the ship should land on the pad")
+
+
+# From the "ENTER THE WORKSHOP?" popup: No (selected), leaving the ship Landed, free to lift off.
+func decline_workshop() -> void:
+	check(office().popup == Office.PopupKind.ENTER_WORKSHOP, "landing should ask ENTER THE WORKSHOP?")
+	await press(&"ui_accept")
+
+
+# From the "ENTER THE WORKSHOP?" popup: Yes, then waits for the Terminal to power on.
+func enter_workshop() -> void:
+	check(office().popup == Office.PopupKind.ENTER_WORKSHOP, "landing should ask ENTER THE WORKSHOP?")
+	await press(&"ui_left")
+	await press(&"ui_accept")
+	await wait_for_terminal()
+	check(office().showing and office().in_workshop(), "Yes should open the Workshop")
+
+
 func open_bank_account() -> void:
 	await open_tile(3)
 

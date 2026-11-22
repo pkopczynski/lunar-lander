@@ -3,8 +3,10 @@ extends RefCounted
 # A Transaction: one line in the Bank account, for anything that changed the balance, in euros.
 # A settled Contract (delivered, `cancelled` for its fee or `failed` in a crash for its failure fee;
 # made by `TransportOffer.settlement()`, `cancellation()` and `failure()`), a ship purchase or sale
-# (`ship_purchase()`, `ship_sale()`), a recovery fee (`recovery()`), a repair (`repair()`) or fuel
-# bought or sold back (`fuel()`, `FUEL  STATION  2 000 L`), each of the last five naming the owned ship. `label()`, `kind_label()` and `detail_pairs()` are how its row and open details read.
+# (`ship_purchase()`, `ship_sale()`), a recovery fee (`recovery()`), a repair (`repair()`, `REPAIR  MINE`)
+# or fuel bought or sold back (`fuel()`, `FUEL  STATION  2 000 L`), each of the last five naming the
+# owned ship in its details (the row of a repair or fuel names the place instead). A repair and fuel name their place: the station, or the pad whose Workshop sold them,
+# with its place markup in the details when it isn't 1. `label()`, `kind_label()` and `detail_pairs()` are how its row and open details read.
 
 enum Kind { CONTRACT, SHIP_PURCHASE, SHIP_SALE, RECOVERY, REPAIR, FUEL }
 
@@ -14,9 +16,9 @@ const FAILED_LABEL := "FAILED"
 const PURCHASE_LABEL := "SHIP PURCHASE — %s"
 const SALE_LABEL := "SHIP SALE — %s"
 const RECOVERY_LABEL := "RECOVERY — %s"
-const REPAIR_LABEL := "REPAIR — %s"
+const REPAIR_LABEL := "REPAIR  %s"
 const FUEL_LABEL := "FUEL  %s  %s"
-# Where fuel is sold: only the station, for now.
+# The place of fuel or a repair bought at the station rather than at a pad.
 const STATION := "STATION"
 
 var kind := Kind.CONTRACT
@@ -57,7 +59,10 @@ var fuel_mass: float
 var fuel_price: int
 # The Ship type's fuel multiplier the price carries, shown when it isn't 1.
 var fuel_multiplier: float
+# Repairs and fuel: where they were bought (STATION or a pad's location, as MINE) and its place
+# markup, shown when it isn't 1.
 var place: String
+var place_markup := 1.0
 
 
 static func ship_purchase(owned: OwnedShip) -> Transaction:
@@ -89,30 +94,50 @@ static func recovery(owned: OwnedShip) -> Transaction:
 	return transaction
 
 
-# A repair of the owned ship: its repair cost, restoring all its missing Condition.
-static func repair(owned: OwnedShip) -> Transaction:
+# A repair of the owned ship at a place (a pad's Workshop, or the station: null): its repair cost
+# there, restoring all its missing Condition.
+static func repair(owned: OwnedShip, at: Location = null) -> Transaction:
 	var transaction := Transaction.new()
 	transaction.kind = Kind.REPAIR
 	transaction.ship = owned.name
 	transaction.value = owned.value()
 	transaction.repaired = 1.0 - owned.condition
 	transaction.repair_rate = owned.ship_type.repair_rate
-	transaction.payout = -owned.repair_cost()
+	transaction.set_place(at)
+	transaction.payout = -owned.repair_cost(at)
 	return transaction
 
 
 # Fuel bought for the owned ship (kg above 0, a negative payout) or sold back from it (kg below 0,
-# a positive payout), at the station's price.
-static func fuel(owned: OwnedShip, kg: float) -> Transaction:
+# a positive payout), at a place's price: a pad's Workshop, or the station (null).
+static func fuel(owned: OwnedShip, kg: float, at: Location = null) -> Transaction:
 	var transaction := Transaction.new()
 	transaction.kind = Kind.FUEL
 	transaction.ship = owned.name
 	transaction.fuel_mass = absf(kg)
-	transaction.fuel_price = owned.fuel_price()
+	transaction.fuel_price = owned.fuel_price(at)
 	transaction.fuel_multiplier = owned.ship_type.fuel_multiplier
-	transaction.place = STATION
-	transaction.payout = owned.fuel_cost(absf(kg)) * (-1 if kg > 0.0 else 1)
+	transaction.set_place(at)
+	transaction.payout = owned.fuel_cost(absf(kg), at) * (-1 if kg > 0.0 else 1)
 	return transaction
+
+
+func set_place(at: Location) -> void:
+	place = at.name if at else STATION
+	place_markup = Location.markup_at(at)
+
+
+# PLACE MINE, then PLACE MARKUP ×2 when it isn't 1.
+func place_pairs() -> Array[Array]:
+	var pairs: Array[Array] = [["PLACE", place]]
+	if place_markup != 1.0:
+		pairs.append(["PLACE MARKUP", factor_text(place_markup)])
+	return pairs
+
+
+# A price factor, as ×0.6, ×1.75 or ×2.
+static func factor_text(factor: float) -> String:
+	return "×%s" % (str(roundi(factor)) if factor == roundf(factor) else str(factor))
 
 
 # Landed on another location's pad (drift took the destination away): it pays nothing.
@@ -140,7 +165,7 @@ func label() -> String:
 		Kind.RECOVERY:
 			return RECOVERY_LABEL % ship
 		Kind.REPAIR:
-			return REPAIR_LABEL % ship
+			return REPAIR_LABEL % place
 		Kind.FUEL:
 			return FUEL_LABEL % [place, Office.litres(fuel_mass)]
 	return contract.label()
@@ -158,8 +183,9 @@ func kind_label() -> String:
 # and names the destination after where it was delivered. A cancelled Contract shows its fee
 # and CANCELLED (a label without a value) in place of the delivery. A ship purchase shows its
 # price; a sale its value, the share paid for it and the repair cost taken off; a recovery fee the
-# Ship type's price and the fee's share; a repair the share restored, the repair rate and the value;
-# fuel its litres and kg, the price per litre, the Ship type's factor when it isn't 1, and the place.
+# Ship type's price and the fee's share; a repair the share restored, the repair rate, the value and
+# the place; fuel its litres and kg, the price per litre, the Ship type's factor when it isn't 1, and
+# the place. Both show the place markup after the place when it isn't 1.
 func detail_pairs() -> Array[Array]:
 	match kind:
 		Kind.SHIP_PURCHASE:
@@ -172,15 +198,18 @@ func detail_pairs() -> Array[Array]:
 			return [["SHIP", ship], ["SHIP TYPE PRICE", Economy.eur(value)],
 				["RECOVERY FEE", "%d%%" % roundi(OwnedShip.RECOVERY_FEE_SHARE * 100.0)], ["PAYOUT", Economy.eur(payout)]]
 		Kind.REPAIR:
-			return [["SHIP", ship], ["REPAIRED", "%d%%" % roundi(repaired * 100.0)],
-				["REPAIR RATE", "%d%%" % roundi(repair_rate * 100.0)], ["VALUE", Economy.eur(value)],
-				["PAYOUT", Economy.eur(payout)]]
+			var pairs: Array[Array] = [["SHIP", ship], ["REPAIRED", "%d%%" % roundi(repaired * 100.0)],
+				["REPAIR RATE", "%d%%" % roundi(repair_rate * 100.0)], ["VALUE", Economy.eur(value)]]
+			pairs.append_array(place_pairs())
+			pairs.append(["PAYOUT", Economy.eur(payout)])
+			return pairs
 		Kind.FUEL:
 			var pairs: Array[Array] = [["SHIP", ship], ["FUEL", Office.litres_and_kg(fuel_mass)],
 				["PRICE", Office.per_litre(fuel_price)]]
 			if fuel_multiplier != 1.0:
-				pairs.append(["SHIP TYPE FACTOR", "×%s" % fuel_multiplier])
-			pairs.append_array([["PLACE", place], ["PAYOUT", Economy.eur(payout)]])
+				pairs.append(["SHIP TYPE FACTOR", factor_text(fuel_multiplier)])
+			pairs.append_array(place_pairs())
+			pairs.append(["PAYOUT", Economy.eur(payout)])
 			return pairs
 	if cancelled:
 		return [["BASE VALUE", Economy.eur(reward)], ["CANCELLATION FEE", Economy.eur(-penalty)],

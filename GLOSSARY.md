@@ -121,8 +121,16 @@ The player's transport company office on the station, where every career begins 
 _Avoid_: Menu, shop
 
 **Terminal**:
-The retro green-on-black screen in the office that shows the shipyard, the hangar, transport offers and the bank account, with the balance always in its header.
+The retro green-on-black screen in the office that shows the shipyard, the hangar, transport offers and the bank account, with the balance always in its header. The same terminal in orange is a pad's workshop.
 _Avoid_: Monitor, display, console
+
+**Workshop**:
+The terminal in orange on black, with white values and red errors, on every location's pad, headed with the pad's location (`MINE PAD // WORKSHOP`). Landing asks whether to enter it, and the player may ask again while the ship stays landed. It sells the landed ship fuel (buy only) and a full repair at the pad's place markup, on credit if need be, without stopping the world. No repack and no fuel sold back there.
+_Avoid_: Garage, pad shop, service station
+
+**Place markup**:
+How many times the station's price a pad's workshop charges for fuel and repair: Valley ×1.5, Metropolis ×1.75, Mine ×2. The station's is 1.
+_Avoid_: Surcharge, pad price, tax
 
 **Main screen**:
 The terminal's home screen, with four tiles: shipyard, hangar, transport offers and bank account. Every visit to the office starts here, and the player leaves the office from here.
@@ -198,7 +206,7 @@ Putting the load aboard at the parking spot, after the player accepts their cont
 _Avoid_: Boarding, embarking
 
 **Unloading**:
-Taking the load off on the destination's pad, which starts by itself when the ship lands there with contracts aboard. Landing on any other location's pad unloads too, but the contracts pay nothing. The ship can refuel meanwhile but can't lift off until it finishes.
+Taking the load off on the destination's pad, which starts by itself when the ship lands there with contracts aboard. Landing on any other location's pad unloads too, but the contracts pay nothing. The ship can't lift off until it finishes; the pad adds no fuel, but the workshop sells it meanwhile.
 _Avoid_: Delivery (the whole flight), disembarking
 
 **Payout**:
@@ -206,7 +214,7 @@ What a contract pays into the bank account once unloaded: its reward less a pena
 _Avoid_: Reward (that's before the penalty), income, score
 
 **Transaction**:
-One line in the bank account for anything that changed the balance: fuel bought or sold back (`FUEL  STATION  2 000 L`, opening to show the owned ship, the litres and kg, the price per litre, the ship type's factor when it isn't 1, and the place), a ship purchase or sale (naming the owned ship, opening to show its price, or its value, the selling share and the repair cost), a recovery fee (naming the owned ship, opening to show its ship type's price and the fee's share), a repair (naming the owned ship, opening to show the condition restored, the repair rate and the value), or a delivered, cancelled or failed contract: its payout (negative for a cancellation fee), opening to show its reward, penalty (or, when unloaded away from its destination, the wrong destination taking the whole reward), the flight's deadline it was settled against and the landing, both as local times, and the location it was delivered to (and its destination, when they differ). A cancelled contract's shows its reward, the cancellation fee and that it was cancelled instead; a failed contract's its reward, the failure fee and that it failed.
+One line in the bank account for anything that changed the balance: fuel bought or sold back (`FUEL  STATION  2 000 L`, or `FUEL  MINE  2 000 L` from a pad's workshop, opening to show the owned ship, the litres and kg, the price per litre, the ship type's factor when it isn't 1, the place and its place markup when it isn't 1), a ship purchase or sale (naming the owned ship, opening to show its price, or its value, the selling share and the repair cost), a recovery fee (naming the owned ship, opening to show its ship type's price and the fee's share), a repair (naming its place, `REPAIR  STATION` or `REPAIR  MINE`, opening to show the owned ship, the condition restored, the repair rate, the value, the place and its place markup when it isn't 1), or a delivered, cancelled or failed contract: its payout (negative for a cancellation fee), opening to show its reward, penalty (or, when unloaded away from its destination, the wrong destination taking the whole reward), the flight's deadline it was settled against and the landing, both as local times, and the location it was delivered to (and its destination, when they differ). A cancelled contract's shows its reward, the cancellation fee and that it was cancelled instead; a failed contract's its reward, the failure fee and that it failed.
 _Avoid_: Receipt, entry, log
 
 **Load**:
@@ -254,7 +262,7 @@ A touchdown on the pad past a safe landing limit but inside every crash limit (f
 _Avoid_: Rough landing, bad landing
 
 **Repair**:
-Restoring an owned ship's condition, from its ship page: instant and always back to 100%, for the missing condition × its ship type's repair rate × its value. Allowed with contracts and in debt.
+Restoring an owned ship's condition, from its ship page in the hangar or, for the landed ship, in a pad's workshop: instant and always back to 100%, for the missing condition × its ship type's repair rate × its value × the place markup (1 at the station). Allowed with contracts and in debt.
 _Avoid_: Fix, service
 
 **Repair rate**:
@@ -290,7 +298,7 @@ How much fuel a ship type holds when full, in litres (Sparrow 6 000 l, Mule 15 0
 _Avoid_: Capacity (on its own), fuel max
 
 **Refuelling**:
-Buying fuel for an owned ship on its fuel screen in the hangar, paid at once, then pumped into the ship in service at 500 l/s (a ship in a berth is filled at once). While it pumps, the ship can't undock or lift off. The hangar also buys fuel back at the station price. Docking and loading never add fuel; for now a pad still refuels a landed ship for free.
+Buying fuel for an owned ship on its fuel screen, in the hangar at the station price or in a pad's workshop for the landed ship at the pad's price, paid at once, then pumped into the ship in service at 500 l/s (a ship in a berth is filled at once). While it pumps, the ship can't undock or lift off. Only the hangar buys fuel back, at the station price. Docking, landing and loading never add fuel.
 _Avoid_: Filling up, topping up
 
 **Maximum capacity**:
@@ -310,7 +318,7 @@ The ship is in free flight, under the player's control. It's the state between l
 _Avoid_: Airborne, in flight, free
 
 **Landed**:
-The ship is resting on the pad after a touchdown that went past no landing band (a safe one, or a hard landing), once it has settled onto its legs and come to rest.
+The ship is resting on the pad after a touchdown that went past no landing band (a safe one, or a hard landing), once it has settled onto its legs and come to rest. The pad adds no fuel; landing asks whether to enter the workshop. A landed ship is never stranded, even with an empty tank.
 _Avoid_: Touched down, parked
 
 **Docked**:

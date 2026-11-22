@@ -4,7 +4,8 @@ extends RefCounted
 # terrain, its ground's height and its Backdrop. The mountain side walls, deep space and station
 # are shared.
 #
-# Each location's display name, pad centre x, ground height (`ground_y`, the top of its ground,
+# Each location's display name, place markup (`markup`: its pad's Workshop charges this many times
+# the station's price for fuel and repair; see `OwnedShip`), pad centre x, ground height (`ground_y`, the top of its ground,
 # where the pad sits), landing surface width (`ground_width`, centred on the pad; `INF`, the
 # default, spans the whole world), lowest point (`lowest_y`, how far down its surface reaches; by
 # default the ground's bottom), the Mountains' look (`mountains`, a `MountainLook`; by default the
@@ -133,6 +134,8 @@ const METROPOLIS_TITLES: Dictionary[TransportOffer.Kind, Array] = {
 # Shown in the HUD.
 var name: String
 var pad_center_x: float
+# Its pad's place markup: its Workshop's fuel and repair cost this many times the station's.
+var markup := 1.0
 # The top of the ground here, where the pad sits and ships land, in world y.
 var ground_y := World.GROUND_TOP_Y
 # How wide the ground (the landing surface) is, centred on the pad; by default it spans the whole
@@ -197,6 +200,11 @@ class Profile:
 	var reward_factor := 1.0
 
 
+# The place markup at a place: a pad's, or 1 at the station (null).
+static func markup_at(place: Location) -> float:
+	return place.markup if place else 1.0
+
+
 # The top of its pad, in world coordinates: what its parallax layers are anchored on.
 func pad_top() -> Vector2:
 	return Vector2(pad_center_x, ground_y - Lander.PAD_HEIGHT)
@@ -210,6 +218,7 @@ func next() -> Location:
 static func valley() -> Location:
 	var location := Location.new()
 	location.name = "VALLEY"
+	location.markup = 1.5
 	location.moons = Moons.valley()
 	location.pad_center_x = World.WORLD_WIDTH / 2.0
 	location.clouds = Clouds.sky(Clouds.Kind.CUMULUS, location.pad_top(), VALLEY_CLOUDS)
@@ -227,6 +236,7 @@ static func valley() -> Location:
 static func mine() -> Location:
 	var location := Location.new()
 	location.name = "MINE"
+	location.markup = 2.0
 	location.moons = Moons.mine()
 	location.pad_center_x = 1300.0
 	location.ground_y = World.GROUND_TOP_Y + PIT_DEPTH
@@ -268,6 +278,7 @@ static func mine() -> Location:
 static func metropolis() -> Location:
 	var location := Location.new()
 	location.name = "METROPOLIS"
+	location.markup = 1.75
 	location.moons = Moons.metropolis()
 	location.pad_center_x = 1250.0
 	location.profile.pool_share = METROPOLIS_POOL_SHARE

@@ -27,7 +27,7 @@ func test_repairing_a_wreck_on_credit_warns_of_the_debt_and_lets_the_ship_fly_ag
 	await press(&"ui_cancel")
 	await press(&"ui_cancel")
 	await open_bank_account()
-	check(office().bank_account.rows()[0] == "REPAIR — SPARROW 1  SHIP  -€62 500",
+	check(office().bank_account.rows()[0] == "REPAIR  STATION  SHIP  -€62 500",
 		"the repair should be the newest Transaction, rows %s" % office().bank_account.rows())
 	while office().bank_account.list.selected_index() > 0:
 		await press(&"ui_up")
@@ -35,6 +35,8 @@ func test_repairing_a_wreck_on_credit_warns_of_the_debt_and_lets_the_ship_fly_ag
 	await seconds(0.5)
 	var details := office().bank_account.details(0)
 	check(details.has("REPAIRED 100%") and details.has("REPAIR RATE 25%"), "the repair should show what it restored and the rate, shows %s" % details)
+	check(details.has("PLACE STATION") and not "\n".join(details).contains("PLACE MARKUP"),
+		"a station repair names the station, without a markup, shows %s" % details)
 	await press(&"ui_cancel")
 	await press(&"ui_cancel")
 	await open_shipyard()

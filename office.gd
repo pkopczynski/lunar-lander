@@ -6,14 +6,23 @@ extends CanvasLayer
 # while the ship in service is a Wreck (`leave_reason()`); the main screen then tags it WRECKED. Buying, selling and the Ship swap go through the Hangar's and the
 # Economy's named operations; it never edits an owned ship itself.
 #
+# The same Terminal is every pad's Workshop (`place` is the pad's location, null in the Office):
+# landing on a pad (`landed_on_pad`) asks "ENTER THE WORKSHOP?" (No selected) over the flight view,
+# and Return asks again while the ship stays Landed. Yes opens it on the Landed ship's Ship page,
+# which sells only FUEL (buy only) and REPAIR at that pad's place markup, headed `MINE PAD //
+# WORKSHOP` (`header_text()`), drawn in `TerminalPalette.WORKSHOP` (orange) rather than `OFFICE`
+# (`palette`). It doesn't pause the world: the ship stays held instead, and the Workshop swallows
+# every key so none reaches the flight behind it. Escape on its page leaves it (`leave_workshop()`),
+# releasing the ship. The question goes if the ship stops being Landed.
+#
 # The Office: resetting the mission rows from the planet clock on every opening and starting the
 # mission at the chosen destination in the chosen start period at START LOADING (or START, a free
-# flight), the Terminal's colours (green, dim green and black, white and red for values, and faint
-# green list tints, alternating by row), the header with the balance top right (red below €0), the
+# flight), the Terminal's colours (the `palette`; green, dim green and black, white and red for
+# values, and faint green list tints, alternating by row, in the Office), the header with the balance top right (red below €0), the
 # Terminal's screens (the main screen's tiles; `ShipyardScreen`, `HangarScreen`, `FuelScreen`,
 # `TransportOffersScreen` and `BankAccountScreen` handle the others), the YES/NO popups ("ARE YOU
 # SURE?" for a Transport offer, "REMOVE CONTRACT?", "CANCEL MISSION?", "ENTER THE OFFICE?", also
-# while delivering, and `ask()`'s confirms naming a thing and its price in white, with an optional
+# while delivering, "ENTER THE WORKSHOP?", and `ask()`'s confirms naming a thing and its price in white, with an optional
 # red warning line, `popup_warning()`), a short notice
 # line (`show_notice()`: a purchase done, or a blocked item's red reason), the building blocks the
 # screens draw with (`draw_action()` for a button that may be blocked, the wireframe, rating
@@ -22,7 +31,7 @@ extends CanvasLayer
 
 enum Screen { MAIN, SHIPYARD, HANGAR, SHIP_PAGE, FUEL, TRANSPORT_OFFERS, BANK_ACCOUNT }
 # CONFIRM is `ask()`'s: its question and price, and what Yes does.
-enum PopupKind { NONE, CONFIRM, ENTER_OFFICE, ACCEPT_OFFER, REMOVE_CONTRACT, CANCEL_MISSION }
+enum PopupKind { NONE, CONFIRM, ENTER_OFFICE, ENTER_WORKSHOP, ACCEPT_OFFER, REMOVE_CONTRACT, CANCEL_MISSION }
 enum Choice { YES, NO }
 
 const HEADER := "ORBITAL FREIGHT CO. // "
@@ -36,9 +45,14 @@ const KEY_HINTS := {
 	Screen.TRANSPORT_OFFERS: "← → COLUMNS   UP DOWN MOVE   RETURN SELECT   ESC BACK",
 	Screen.BANK_ACCOUNT: "UP DOWN MOVE   RETURN OPEN   ESC BACK",
 }
+# The Workshop's home is the Landed ship's page, which Escape leaves.
+const WORKSHOP_PAGE_HINT := "UP DOWN MOVE   RETURN SELECT   ESC LEAVE"
+# The Workshop's header: the pad's location, as MINE PAD // WORKSHOP.
+const WORKSHOP_TITLE := "%s PAD // WORKSHOP"
 const ARROWS := "← →"
 const ARE_YOU_SURE_TEXT := "ARE YOU SURE?"
 const ENTER_OFFICE_TEXT := "ENTER THE OFFICE?"
+const ENTER_WORKSHOP_TEXT := "ENTER THE WORKSHOP?"
 const REMOVE_CONTRACT_TEXT := "REMOVE CONTRACT?"
 const CANCEL_MISSION_TEXT := "CANCEL MISSION?"
 const IN_SERVICE_TEXT := "IN SERVICE"
@@ -76,6 +90,8 @@ const DIM_RED := Color(1.0, 0.3, 0.25, 0.25)
 const ROW_TINT_LIGHT := Color(0.25, 1.0, 0.4, 0.08)
 const ROW_TINT_DARK := Color(0.25, 1.0, 0.4, 0.04)
 const DETAILS_TINT := Color(0.25, 1.0, 0.4, 0.14)
+# draw_text()'s default colour, standing for the palette's ink (never drawn as itself).
+const PALETTE_INK := Color(0.0, 0.0, 0.0, 0.0)
 const SCANLINE_COLOR := Color(0.0, 0.0, 0.0, 0.35)
 const SCANLINE_SPACING := 4.0
 
@@ -122,6 +138,12 @@ const POPUP_BUTTON_SIZE := Vector2(120, 44)
 const POPUP_BUTTON_GAP := 48.0
 
 var showing := false
+# The pad whose Workshop the Terminal is (or asks to be), or null for the Office at the station.
+var place: Location = null
+# The Terminal's colours: the Office's green, or a Workshop's orange, following `place`.
+var palette: TerminalPalette:
+	get:
+		return TerminalPalette.WORKSHOP if place else TerminalPalette.OFFICE
 var screen := Screen.MAIN
 var tile_index := 0
 var popup := PopupKind.NONE
@@ -160,12 +182,16 @@ func _ready() -> void:
 	bank_account = BankAccountScreen.new(self, economy)
 	terminal.draw.connect(draw_terminal)
 	lander.docked_at_station.connect(ask_to_enter)
+	lander.landed_on_pad.connect(ask_to_enter_workshop)
 	lander.recovery_requested.connect(recover)
 	open()
 
 
 # The Transport offers' countdowns tick every second; open details grow open.
 func _process(delta: float) -> void:
+	# The Workshop's question goes once the ship isn't Landed any more.
+	if popup == PopupKind.ENTER_WORKSHOP and lander.state != Lander.State.LANDED:
+		close()
 	transport_offers.tick(delta)
 	bank_account.tick(delta)
 	if notice_left > 0.0:
@@ -177,11 +203,18 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# The Workshop doesn't pause the world, so no key may reach the flight behind it (R).
+	if showing and in_workshop():
+		get_viewport().set_input_as_handled()
 	if powering:
 		return
 	if popup != PopupKind.NONE:
 		handle_popup_input(event)
 	elif not showing:
+		# Return asks again while the ship stays Landed.
+		if event.is_action_pressed("ui_accept") and lander.state == Lander.State.LANDED and not lander.held:
+			ask_to_enter_workshop()
+			handled()
 		return
 	elif screen == Screen.MAIN:
 		handle_main_input(event)
@@ -276,6 +309,7 @@ func handle_popup_input(event: InputEvent) -> void:
 
 
 func open() -> void:
+	place = null
 	showing = true
 	visible = true
 	screen = Screen.MAIN
@@ -349,10 +383,45 @@ func close() -> void:
 func ask_to_enter() -> void:
 	if economy.phase != Economy.Phase.NONE and not economy.mission_under_way():
 		return
+	place = null
 	lander.hold()
 	visible = true
 	show_popup(PopupKind.ENTER_OFFICE, Choice.NO)
 	terminal.queue_redraw()
+
+
+# Landing on a pad (and Return while Landed) asks whether to enter its Workshop, over the flight
+# view, in the Workshop's orange. The ship is held until No, or until the Workshop is left; while
+# delivering too, since the Workshop doesn't stop unloading.
+func ask_to_enter_workshop() -> void:
+	if showing:
+		return
+	place = clock.location
+	lander.hold()
+	visible = true
+	show_popup(PopupKind.ENTER_WORKSHOP, Choice.NO)
+	terminal.queue_redraw()
+
+
+# The pad's Workshop: the Terminal on the Landed ship's page, which sells fuel and repair. Unlike
+# the Office it doesn't pause the world: the planet clock, offers, unloading and the pump go on,
+# and the ship stays held, so it can't lift off.
+func open_workshop() -> void:
+	showing = true
+	visible = true
+	popup = PopupKind.NONE
+	notice_left = 0.0
+	open_ship_page(hangar.in_service, HangarScreen.Action.FUEL)
+	power_to(1.0)
+
+
+# Escape on the Workshop's page: the ship is released, Landed as before, free to lift off.
+func leave_workshop() -> void:
+	power_off(lander.release)
+
+
+func in_workshop() -> bool:
+	return place != null
 
 
 func show_popup(kind: PopupKind, default_button: Choice) -> void:
@@ -364,8 +433,10 @@ func answer(choice: Choice) -> void:
 	match [popup, choice]:
 		[PopupKind.ENTER_OFFICE, Choice.YES]:
 			open()
-		[PopupKind.ENTER_OFFICE, Choice.NO]:
-			# Docked as before, free to undock.
+		[PopupKind.ENTER_WORKSHOP, Choice.YES]:
+			open_workshop()
+		[PopupKind.ENTER_OFFICE, Choice.NO], [PopupKind.ENTER_WORKSHOP, Choice.NO]:
+			# Docked (or Landed) as before, free to leave.
 			close()
 			lander.release()
 		[PopupKind.CONFIRM, Choice.YES]:
@@ -413,11 +484,19 @@ func selected_tile() -> String:
 
 
 func screen_title() -> String:
+	if in_workshop():
+		var title := WORKSHOP_TITLE % place.name
+		return title + " // FUEL" if screen == Screen.FUEL else title
 	if screen == Screen.SHIP_PAGE:
 		return "%s // %s" % [SCREEN_TITLES[Screen.HANGAR], hangar_screen.ship.name]
 	if screen == Screen.FUEL:
 		return "%s // %s // FUEL" % [SCREEN_TITLES[Screen.HANGAR], fuel_screen.ship.name]
 	return SCREEN_TITLES[screen]
+
+
+# The header's left part: ORBITAL FREIGHT CO. // HANGAR in the Office, MINE PAD // WORKSHOP in a Workshop.
+func header_text() -> String:
+	return screen_title() if in_workshop() else HEADER + screen_title()
 
 
 func balance_text() -> String:
@@ -481,7 +560,7 @@ func draw_terminal() -> void:
 	terminal.draw_set_transform(centre - centre * scale, 0.0, scale)
 	draw_screen(view)
 	if picture_scale < 1.0:
-		terminal.draw_rect(view, Color(GLOW, GLOW_ALPHA * (1.0 - picture_scale)))
+		terminal.draw_rect(view, Color(palette.glow, GLOW_ALPHA * (1.0 - picture_scale)))
 	terminal.draw_set_transform(Vector2.ZERO)
 	draw_scanlines(view)
 
@@ -492,30 +571,30 @@ func draw_power_line(view: Rect2, stretch: float) -> void:
 	var centre := view.get_center()
 	var half_width := view.size.x / 2.0 * ease(stretch, POWER_EASE)
 	if half_width < DOT_RADIUS:
-		terminal.draw_circle(centre, DOT_RADIUS, GLOW)
+		terminal.draw_circle(centre, DOT_RADIUS, palette.glow)
 	else:
-		terminal.draw_line(centre - Vector2(half_width, 0.0), centre + Vector2(half_width, 0.0), GLOW, GLOW_WIDTH)
+		terminal.draw_line(centre - Vector2(half_width, 0.0), centre + Vector2(half_width, 0.0), palette.glow, GLOW_WIDTH)
 
 
 # The Terminal's picture: frame, header, the current screen, key hint and any popup.
 func draw_screen(view: Rect2) -> void:
 	var frame := view.grow(-MARGIN)
-	terminal.draw_rect(frame, GREEN, false, BORDER_WIDTH)
+	terminal.draw_rect(frame, palette.ink, false, BORDER_WIDTH)
 	var inner := frame.grow(-PADDING)
 
 	var header_baseline := Vector2(inner.position.x, inner.position.y + HEADER_SIZE)
-	draw_text(HEADER + screen_title(), header_baseline, HEADER_SIZE)
+	draw_text(header_text(), header_baseline, HEADER_SIZE)
 	draw_text(balance_text(), header_baseline, HEADER_SIZE, inner.size.x, HORIZONTAL_ALIGNMENT_RIGHT,
-		RED if balance_red() else WHITE)
+		palette.error if balance_red() else palette.value)
 	var rule_y := inner.position.y + HEADER_SIZE + LINE_GAP
-	terminal.draw_line(Vector2(frame.position.x, rule_y), Vector2(frame.end.x, rule_y), GREEN, LINE_WIDTH)
+	terminal.draw_line(Vector2(frame.position.x, rule_y), Vector2(frame.end.x, rule_y), palette.ink, LINE_WIDTH)
 
 	var hint_y := inner.end.y
 	var hint_rule_y := hint_y - HINT_SIZE - LINE_GAP
-	terminal.draw_line(Vector2(frame.position.x, hint_rule_y), Vector2(frame.end.x, hint_rule_y), GREEN, LINE_WIDTH)
+	terminal.draw_line(Vector2(frame.position.x, hint_rule_y), Vector2(frame.end.x, hint_rule_y), palette.ink, LINE_WIDTH)
 	draw_key_hint(Vector2(inner.position.x, hint_y))
 	draw_text(version_text(), Vector2(inner.position.x, hint_y), HINT_SIZE, inner.size.x,
-		HORIZONTAL_ALIGNMENT_RIGHT, DIM_GREEN)
+		HORIZONTAL_ALIGNMENT_RIGHT, palette.dim_ink)
 
 	var body := body_area(view)
 	match screen:
@@ -534,7 +613,7 @@ func draw_screen(view: Rect2) -> void:
 			bank_account.draw(body)
 	if notice() != "":
 		draw_text(notice(), Vector2(body.position.x, body.end.y), TEXT_SIZE, body.size.x, HORIZONTAL_ALIGNMENT_LEFT,
-			RED if notice_red else WHITE)
+			palette.error if notice_red else palette.value)
 	if popup != PopupKind.NONE:
 		draw_popup(view)
 
@@ -557,16 +636,16 @@ func draw_tiles(area: Rect2) -> void:
 		var tile := Rect2(Vector2(x, area.get_center().y - TILE_SIZE.y / 2.0), Vector2(tile_width, TILE_SIZE.y))
 		var selected := i == tile_index
 		if selected:
-			terminal.draw_rect(tile, GREEN)
+			terminal.draw_rect(tile, palette.ink)
 		else:
-			terminal.draw_rect(tile, GREEN, false, BORDER_WIDTH)
+			terminal.draw_rect(tile, palette.ink, false, BORDER_WIDTH)
 		var lines := PackedStringArray([labels[i]])
 		if text_width(labels[i], STAT_SIZE) > tile_width - 2.0 * TILE_TEXT_INSET:
 			lines = labels[i].split(" ", false, 1)
 		var y := tile.get_center().y + STAT_SIZE / 2.0 - (lines.size() - 1) * (STAT_SIZE + LINE_GAP) / 2.0
 		for line in lines:
 			draw_text(line, Vector2(tile.position.x, y), STAT_SIZE, tile.size.x, HORIZONTAL_ALIGNMENT_CENTER,
-				BLACK if selected else GREEN)
+				BLACK if selected else palette.ink)
 			y += STAT_SIZE + LINE_GAP
 		x += tile_width + TILE_GAP
 
@@ -581,22 +660,22 @@ func draw_main_lines(area: Rect2) -> void:
 	var width := text_width(name_text, STAT_SIZE) + tag_size.x
 	var baseline := Vector2(area.get_center().x - width / 2.0,
 		area.get_center().y + TILE_SIZE.y / 2.0 + TILE_GAP + STAT_SIZE)
-	draw_text(name_text, baseline, STAT_SIZE, -1.0, HORIZONTAL_ALIGNMENT_LEFT, WHITE)
-	draw_tag(lines[1], baseline + Vector2(text_width(name_text, STAT_SIZE), -STAT_SIZE / 2.0 - tag_size.y / 2.0), RED)
+	draw_text(name_text, baseline, STAT_SIZE, -1.0, HORIZONTAL_ALIGNMENT_LEFT, palette.value)
+	draw_tag(lines[1], baseline + Vector2(text_width(name_text, STAT_SIZE), -STAT_SIZE / 2.0 - tag_size.y / 2.0), palette.error)
 
 
 # A button the player may not be able to take: its label and a price, inverted while selected.
 # A blocked one is dimmed, with its red reason under it; an unaffordable price is red.
 func draw_action(button: Rect2, label: String, price: String, selected: bool, reason := "", price_red := false) -> void:
 	var blocked := reason != ""
-	var lit := DIM_GREEN if blocked else GREEN
+	var lit := palette.dim_ink if blocked else palette.ink
 	if selected:
 		terminal.draw_rect(button, lit)
 	else:
 		terminal.draw_rect(button, lit, false, LINE_WIDTH)
 	var label_color := BLACK if selected else lit
-	var price_color := (DIM_RED if blocked else RED) if price_red \
-		else BLACK if selected else DIM_WHITE if blocked else WHITE
+	var price_color := (palette.dim_error if blocked else palette.error) if price_red \
+		else BLACK if selected else palette.dim_value if blocked else palette.value
 	var width := text_width(label, TEXT_SIZE) + text_width(price, TEXT_SIZE)
 	var baseline := Vector2(button.get_center().x - width / 2.0, button.get_center().y + TEXT_SIZE / 2.0)
 	draw_text(label, baseline, TEXT_SIZE, -1.0, HORIZONTAL_ALIGNMENT_LEFT, label_color)
@@ -604,7 +683,7 @@ func draw_action(button: Rect2, label: String, price: String, selected: bool, re
 		HORIZONTAL_ALIGNMENT_LEFT, price_color)
 	if blocked:
 		draw_text(reason, Vector2(button.position.x, button.end.y + LINE_GAP + TEXT_SIZE), TEXT_SIZE, -1.0,
-			HORIZONTAL_ALIGNMENT_LEFT, RED)
+			HORIZONTAL_ALIGNMENT_LEFT, palette.error)
 
 
 func draw_wireframe(outline: PackedVector2Array, box: Rect2) -> void:
@@ -615,7 +694,7 @@ func draw_wireframe(outline: PackedVector2Array, box: Rect2) -> void:
 	for point: Vector2 in outline:
 		points.append(box.get_center() + (point - bounds.get_center()) * scale)
 	points.append(points[0])
-	terminal.draw_polyline(points, GREEN, BORDER_WIDTH)
+	terminal.draw_polyline(points, palette.ink, BORDER_WIDTH)
 
 
 # The smallest box around an outline (a hull or flame).
@@ -630,13 +709,13 @@ func draw_rating(rating: int, top_left: Vector2) -> void:
 	for i in RATING_BLOCKS:
 		var block := Rect2(top_left + Vector2(i * (BLOCK_SIZE.x + BLOCK_GAP), 0.0), BLOCK_SIZE)
 		if i < rating:
-			terminal.draw_rect(block, GREEN)
+			terminal.draw_rect(block, palette.ink)
 		else:
-			terminal.draw_rect(block, DIM_GREEN, false, LINE_WIDTH)
+			terminal.draw_rect(block, palette.dim_ink, false, LINE_WIDTH)
 
 
 func draw_in_service_tag(top_left: Vector2) -> void:
-	draw_tag(IN_SERVICE_TEXT, top_left, GREEN)
+	draw_tag(IN_SERVICE_TEXT, top_left, palette.ink)
 
 
 # A filled tag with black text, such as IN SERVICE (green) or WRECKED (red).
@@ -648,7 +727,7 @@ func draw_tag(text: String, top_left: Vector2, color: Color) -> void:
 
 # Silkscreen has no arrow glyphs, so the hint's arrows are drawn as triangles.
 func draw_key_hint(baseline_left: Vector2) -> void:
-	var hint: String = KEY_HINTS[screen]
+	var hint: String = WORKSHOP_PAGE_HINT if in_workshop() and screen == Screen.SHIP_PAGE else KEY_HINTS[screen]
 	var words := hint.trim_prefix(ARROWS).strip_edges()
 	var has_arrows := hint.begins_with(ARROWS)
 	var arrows_width := HINT_ARROW_SIZE * 3.0 + LINE_GAP if has_arrows else 0.0
@@ -660,10 +739,10 @@ func draw_key_hint(baseline_left: Vector2) -> void:
 	var mid_y := baseline_left.y - HINT_SIZE / 2.0
 	var h := HINT_ARROW_SIZE / 2.0
 	terminal.draw_colored_polygon(PackedVector2Array([
-		Vector2(x, mid_y), Vector2(x + HINT_ARROW_SIZE, mid_y - h), Vector2(x + HINT_ARROW_SIZE, mid_y + h)]), GREEN)
+		Vector2(x, mid_y), Vector2(x + HINT_ARROW_SIZE, mid_y - h), Vector2(x + HINT_ARROW_SIZE, mid_y + h)]), palette.ink)
 	x += HINT_ARROW_SIZE * 1.5
 	terminal.draw_colored_polygon(PackedVector2Array([
-		Vector2(x + HINT_ARROW_SIZE, mid_y), Vector2(x, mid_y - h), Vector2(x, mid_y + h)]), GREEN)
+		Vector2(x + HINT_ARROW_SIZE, mid_y), Vector2(x, mid_y - h), Vector2(x, mid_y + h)]), palette.ink)
 	x += HINT_ARROW_SIZE * 1.5 + LINE_GAP
 	draw_text(words, Vector2(x, baseline_left.y), HINT_SIZE)
 
@@ -678,6 +757,8 @@ func popup_text() -> String:
 			return question % question_price if question_price != "" else question
 		PopupKind.ENTER_OFFICE:
 			return ENTER_OFFICE_TEXT
+		PopupKind.ENTER_WORKSHOP:
+			return ENTER_WORKSHOP_TEXT
 		PopupKind.REMOVE_CONTRACT:
 			return REMOVE_CONTRACT_TEXT
 		PopupKind.CANCEL_MISSION:
@@ -697,7 +778,7 @@ func draw_popup(view: Rect2) -> void:
 		+ 2.0 * PADDING), POPUP_SIZE.y)
 	var box := Rect2(view.get_center() - size / 2.0, size)
 	terminal.draw_rect(box, BLACK)
-	terminal.draw_rect(box, GREEN, false, BORDER_WIDTH)
+	terminal.draw_rect(box, palette.ink, false, BORDER_WIDTH)
 	# The question green and its price white, centred together.
 	var parts := PackedStringArray([text])
 	if popup == PopupKind.CONFIRM and question_price != "":
@@ -706,11 +787,11 @@ func draw_popup(view: Rect2) -> void:
 	var text_x := box.get_center().x - text_width(text, STAT_SIZE) / 2.0
 	for i in parts.size():
 		draw_text(parts[i], Vector2(text_x, box.position.y + PADDING + STAT_SIZE), STAT_SIZE, -1.0,
-			HORIZONTAL_ALIGNMENT_LEFT, WHITE if parts.size() > 1 and i == 1 else GREEN)
+			HORIZONTAL_ALIGNMENT_LEFT, palette.value if parts.size() > 1 and i == 1 else palette.ink)
 		text_x += text_width(parts[i], STAT_SIZE)
 	if warning != "":
 		draw_text(warning, Vector2(box.position.x, box.position.y + PADDING + STAT_SIZE + LINE_GAP + TEXT_SIZE),
-			TEXT_SIZE, box.size.x, HORIZONTAL_ALIGNMENT_CENTER, RED)
+			TEXT_SIZE, box.size.x, HORIZONTAL_ALIGNMENT_CENTER, palette.error)
 	var buttons_width := POPUP_BUTTON_SIZE.x * 2.0 + POPUP_BUTTON_GAP
 	var button_y := box.end.y - PADDING - POPUP_BUTTON_SIZE.y
 	var x := box.get_center().x - buttons_width / 2.0
@@ -718,12 +799,12 @@ func draw_popup(view: Rect2) -> void:
 		var button := Rect2(Vector2(x, button_y), POPUP_BUTTON_SIZE)
 		var selected := choice == selected_button
 		if selected:
-			terminal.draw_rect(button, GREEN)
+			terminal.draw_rect(button, palette.ink)
 		else:
-			terminal.draw_rect(button, GREEN, false, LINE_WIDTH)
+			terminal.draw_rect(button, palette.ink, false, LINE_WIDTH)
 		var label := "YES" if choice == Choice.YES else "NO"
 		draw_text(label, Vector2(button.position.x, button.get_center().y + TEXT_SIZE / 2.0), TEXT_SIZE,
-			button.size.x, HORIZONTAL_ALIGNMENT_CENTER, BLACK if selected else GREEN)
+			button.size.x, HORIZONTAL_ALIGNMENT_CENTER, BLACK if selected else palette.ink)
 		x += POPUP_BUTTON_SIZE.x + POPUP_BUTTON_GAP
 
 
@@ -735,11 +816,11 @@ func draw_scanlines(view: Rect2) -> void:
 
 
 func draw_text(text: String, baseline: Vector2, font_size: int, width := -1.0,
-		alignment := HORIZONTAL_ALIGNMENT_LEFT, color := GREEN) -> void:
-	terminal.draw_string(FONT, baseline, text, alignment, width, font_size, color)
+		alignment := HORIZONTAL_ALIGNMENT_LEFT, color := PALETTE_INK) -> void:
+	terminal.draw_string(FONT, baseline, text, alignment, width, font_size, palette.ink if color == PALETTE_INK else color)
 
 
-# A label and its value after it on one line, green and white unless given.
+# A label and its value after it on one line, green and white unless given (Office-only screens).
 func draw_label_value(label: String, value: String, baseline: Vector2, font_size: int, width := -1.0,
 		label_color := GREEN, value_color := WHITE) -> void:
 	var spaced := label + " "

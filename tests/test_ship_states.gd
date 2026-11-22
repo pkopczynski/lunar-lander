@@ -8,6 +8,7 @@ func test_docking_mid_lift_off_burn_undocks_at_the_default_burn() -> void:
 	var default_burn := await fuel_burned_undocking(0.5)
 
 	ship.reset_to_pad()
+	await decline_workshop()
 	hold(&"ui_up")
 	await seconds(0.2)
 	release(&"ui_up")

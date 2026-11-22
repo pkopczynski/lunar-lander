@@ -1,10 +1,12 @@
 class_name FuelScreen
 extends RefCounted
-# The Office's FUEL screen for one owned ship (`HANGAR // SPARROW 1 // FUEL`), opened by FUEL on its
-# Ship page: buying fuel, or selling it back, at the station's price.
+# The Terminal's FUEL screen for one owned ship, opened by FUEL on its Ship page: in the Office
+# (`HANGAR // SPARROW 1 // FUEL`), buying fuel or selling it back at the station's price; in a pad's
+# Workshop (`MINE PAD // WORKSHOP // FUEL`), buying only, at that pad's price (`Office.place`).
 #
 # One control runs from SELL BACK to BUY: `< BUY +1 000 L >`, stepped with Left/Right to the next
-# round `STEP_LITRES` (so after FULL the steps are round again), never past selling the whole tank or buying up to the fuel cap; FULL sets it to fill up to the cap.
+# round `STEP_LITRES` (so after FULL the steps are round again), never past selling the whole tank (0
+# in a Workshop) or buying up to the fuel cap; FULL sets it to fill up to the cap.
 # On the left: IN TANK (litres, then kg, as it is now, so it grows or shrinks while pumping), FUEL CAP,
 # PRICE per litre and TOTAL (or YOU GET for a sell-back). Between them and the control, a vertical
 # bar of the Tank: green up to the fuel in it, a dim pulsing green part for the fuel still to pump
@@ -12,7 +14,8 @@ extends RefCounted
 # white line at the fuel cap when it's below the Tank. The button under the control reads BUY FUEL or SELL FUEL and asks first; buying may
 # take the balance below €0, with the confirm's red debt warning. Yes pays (one Transaction) and the
 # Hangar pumps the fuel (`Hangar.refuel()`). Fuel still to be pumped already counts toward the cap.
-# Escape goes back to the Ship page. The Office creates it and calls it while the screen shows.
+# Escape goes back to the Ship page. The Office creates it and calls it while the screen shows. It
+# draws in the Office's palette, so a Workshop's is orange.
 
 enum Row { AMOUNT, FULL, CONFIRM }
 
@@ -44,6 +47,8 @@ var office: Office
 var hangar: Hangar
 var economy: Economy
 var ship: OwnedShip
+# Where the fuel is bought: a pad's Workshop, or the station (null).
+var place: Location = null
 var row := Row.AMOUNT
 # Litres to buy (above 0) or sell back (below 0).
 var amount := 0.0
@@ -57,6 +62,7 @@ func _init(owner: Office, owner_hangar: Hangar, owner_economy: Economy) -> void:
 
 func open(owned: OwnedShip) -> void:
 	ship = owned
+	place = office.place
 	row = Row.AMOUNT
 	amount = clampf(STEP_LITRES, lowest(), highest())
 
@@ -89,11 +95,12 @@ func confirm() -> void:
 		office.show_notice(reason(), true)
 		return
 	var owned := ship
+	var at := place
 	var kg := amount * OwnedShip.KG_PER_LITRE
 	var litres := Office.litres(absf(kg))
-	var cost := owned.fuel_cost(absf(kg))
+	var cost := owned.fuel_cost(absf(kg), at)
 	var on_yes := func() -> void:
-		economy.pay_for_fuel(owned, kg)
+		economy.pay_for_fuel(owned, kg, at)
 		hangar.refuel(owned, kg)
 		office.show_notice((BOUGHT_NOTICE if kg > 0.0 else SOLD_NOTICE) % [litres, owned.name])
 		open(owned)
@@ -114,9 +121,9 @@ func cap() -> float:
 	return Office.to_litres(hangar.fuel_cap(ship))
 
 
-# The control's ends: selling the whole tank back, and buying up to the fuel cap.
+# The control's ends: selling the whole tank back (nothing in a Workshop), and buying up to the fuel cap.
 func lowest() -> float:
-	return -in_tank()
+	return 0.0 if place else -in_tank()
 
 
 func highest() -> float:
@@ -140,8 +147,8 @@ func lines() -> PackedStringArray:
 func status() -> Array[Array]:
 	var kg := OwnedShip.KG_PER_LITRE
 	return [["IN TANK", Office.litres_and_kg(ship.fuel)], ["FUEL CAP", Office.litres_and_kg(cap() * kg)],
-		["PRICE", Office.per_litre(ship.fuel_price())],
-		["TOTAL" if buying() else "YOU GET", Economy.eur(ship.fuel_cost(absf(amount) * kg))]]
+		["PRICE", Office.per_litre(ship.fuel_price(place))],
+		["TOTAL" if buying() else "YOU GET", Economy.eur(ship.fuel_cost(absf(amount) * kg, place))]]
 
 
 # The bar's levels as shares of the Tank: x the top of the green fill, y the top of the pulsing part
@@ -180,7 +187,7 @@ func draw(area: Rect2) -> void:
 		y += Office.TEXT_SIZE + Office.LINE_GAP
 		office.draw_text(pair[0], Vector2(area.position.x, y), Office.TEXT_SIZE, STATUS_LABEL_WIDTH)
 		office.draw_text(pair[1], Vector2(area.position.x + STATUS_LABEL_WIDTH, y), Office.TEXT_SIZE,
-			half - STATUS_LABEL_WIDTH, HORIZONTAL_ALIGNMENT_LEFT, Office.WHITE)
+			half - STATUS_LABEL_WIDTH, HORIZONTAL_ALIGNMENT_LEFT, office.palette.value)
 
 	var buttons_x := area.position.x + half + BAR_WIDTH + BAR_GAP
 	draw_bar(Rect2(area.position.x + half, area.position.y, BAR_WIDTH, 2.0 * ACTION_STEP + ACTION_SIZE.y))
@@ -201,10 +208,10 @@ func draw_bar(frame: Rect2) -> void:
 	var pulse_top: float = level_y.call(levels.y)
 	var pulse := lerpf(PULSE_LOW, PULSE_HIGH, 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * TAU * PULSE_HZ))
 	office.terminal.draw_rect(Rect2(inner.position.x, pulse_top, inner.size.x, fill_top - pulse_top),
-		Color(Office.GREEN, pulse))
-	office.terminal.draw_rect(Rect2(inner.position.x, fill_top, inner.size.x, inner.end.y - fill_top), Office.GREEN)
-	office.terminal.draw_rect(frame, Office.GREEN, false, Office.LINE_WIDTH)
+		Color(office.palette.ink, pulse))
+	office.terminal.draw_rect(Rect2(inner.position.x, fill_top, inner.size.x, inner.end.y - fill_top), office.palette.ink)
+	office.terminal.draw_rect(frame, office.palette.ink, false, Office.LINE_WIDTH)
 	if levels.z < 1.0:
 		var cap_y: float = level_y.call(levels.z)
-		office.terminal.draw_line(Vector2(frame.position.x, cap_y), Vector2(frame.end.x, cap_y), Office.WHITE,
+		office.terminal.draw_line(Vector2(frame.position.x, cap_y), Vector2(frame.end.x, cap_y), office.palette.value,
 			Office.LINE_WIDTH)
