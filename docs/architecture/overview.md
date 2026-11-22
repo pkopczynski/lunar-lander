@@ -36,7 +36,7 @@ Main (Node2D)                  world.gd; draws the surface gradient behind every
 ├── Hangar (Node)              hangar.gd; process mode Always (its fuel pump runs behind the Office); the owned ships in their berths and the ship in service; its _ready() puts SPARROW 1 in service
 ├── UI (CanvasLayer)
 │   ├── Message (Label)        shows Docked!/Landed!/Crashed!/Stranded!, hidden in flight
-│   └── Hud (Control)          hud.gd; full-rect, draws itself on the right edge
+│   └── Hud (Control)          hud.gd; full-rect, draws itself on the right edge, the clock top right, the O hint bottom left
 ├── Economy (Node)             economy.gd; process mode Always, so it keeps running while the Office pauses the tree
 ├── Office (CanvasLayer)       office.gd; layer 10, process mode Always; pauses the tree while showing (not as a pad's Workshop)
 │   └── Terminal (Control)     full-rect; office.gd draws the Terminal and popups on it
@@ -64,7 +64,7 @@ Nodes find each other by fixed `NodePath`s (`$"../Lander"`); there is no autoloa
 Office ──► Lander, Hangar, Economy, PlanetClock
 Hangar ──► Lander
 Economy ─► Lander, Hangar, PlanetClock
-Hud ─────► Lander, Economy, PlanetClock          (read only)
+Hud ─────► Lander, Economy, PlanetClock, Office  (read only)
 World ───► PlanetClock, Lander, every decor script
 Lander ──► World (current pad, World constants), Station, Ground
 Camera ──► Lander (its parent), World and Station constants

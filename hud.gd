@@ -2,7 +2,7 @@ extends Control
 # Draws the fuel bar and weight readout from the lander's state, the clock line (`VALLEY  14:07`)
 # from the planet clock's, the destination and flight deadline under it (`MINE BY 14:30`) from the
 # Economy's, the green `+€X` payout that rises above the ship and fades, and the ship in service's
-# Condition under the weight (`CONDITION 87%`) with a brief red flash of each loss under it (`−6%`). Attached to `UI/Hud`.
+# Condition under the weight (`CONDITION 87%`) with a brief red flash of each loss under it (`−6%`), and the bottom-left `O  ENTER THE OFFICE` (or `O  ENTER THE WORKSHOP` when Landed) hint while the Office's `can_open_by_key()` holds. Attached to `UI/Hud`.
 # Its static `format_kg()`, `format_litres()` (fuel, `2 000 l (1 600 kg)`) and `group_thousands()` (`1 234 567`) also write the Office's masses and
 # `Economy.eur()`'s euros.
 
@@ -27,6 +27,11 @@ const OVERDUE_COLOR := Color(1.0, 0.3, 0.3)
 const TIMER_FONT_SIZE := 24
 const TIMER_MARGIN := Vector2(24, 40)
 const TIMER_LINE_HEIGHT := 32.0
+# The O key's hint in the bottom-left corner, shown exactly while O would open the Office (Docked)
+# or the pad's Workshop (Landed).
+const OFFICE_HINT_TEXT := "O  ENTER THE OFFICE"
+const WORKSHOP_HINT_TEXT := "O  ENTER THE WORKSHOP"
+const OFFICE_HINT_MARGIN := Vector2(24, 24)
 const DELIVERY_TEXT := "%s BY %s"
 const OVERDUE_TEXT := "%s OVERDUE SINCE %s"
 
@@ -62,6 +67,7 @@ var loss_left := 0.0
 @onready var lander: Lander = $"../../Lander"
 @onready var economy: Economy = $"../../Economy"
 @onready var clock: PlanetClock = $"../../PlanetClock"
+@onready var office: Office = $"../../Office"
 
 
 func _ready() -> void:
@@ -110,6 +116,11 @@ func _draw() -> void:
 		draw_string(font, Vector2(0.0, TIMER_MARGIN.y + TIMER_LINE_HEIGHT), timer, HORIZONTAL_ALIGNMENT_RIGHT,
 			size.x - TIMER_MARGIN.x, TIMER_FONT_SIZE, OVERDUE_COLOR if delivery_overdue() else TEXT_COLOR)
 
+	var hint := office_hint_text()
+	if hint != "":
+		draw_string(font, Vector2(OFFICE_HINT_MARGIN.x, size.y - OFFICE_HINT_MARGIN.y), hint,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, TEXT_COLOR)
+
 	if payout != "":
 		var above := lander.get_global_transform_with_canvas().origin \
 			- Vector2(PAYOUT_WIDTH / 2.0, PAYOUT_START_HEIGHT + PAYOUT_RISE * payout_progress)
@@ -140,6 +151,14 @@ func condition_text() -> String:
 # The flash of the last Condition loss while it shows (−6%), else "".
 func loss_text() -> String:
 	return loss
+
+
+# O  ENTER THE OFFICE (Docked) or O  ENTER THE WORKSHOP (Landed) while O would open it
+# (`Office.can_open_by_key()`), else "".
+func office_hint_text() -> String:
+	if not office.can_open_by_key():
+		return ""
+	return WORKSHOP_HINT_TEXT if lander.state == Lander.State.LANDED else OFFICE_HINT_TEXT
 
 
 # The current location's name and the local time: VALLEY  14:07.

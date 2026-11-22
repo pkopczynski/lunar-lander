@@ -50,7 +50,9 @@ extends CharacterBody2D
 # cancels it. The Office answers
 # with the "ENTER THE OFFICE?" popup and calls `hold()`, which freezes `_physics_process`; the
 # Lander doesn't know why it's held. No, and leaving the Office from the main screen, call
-# `release()`. A Ship swap calls `start_docked()`, and entering Docked releases the hold.
+# `release()`; O then opens the Office again while the ship `is_free_in_dock()` (Docked, not held, not
+# loading, not easing upright), which the Office reads, and the pad's Workshop while it
+# `is_free_on_pad()`. A Ship swap calls `start_docked()`, and entering Docked releases the hold.
 # `start_loading()` releases it too: a loading ship isn't held but rests, with `loading` blocking
 # lift-off and turning.
 
@@ -826,6 +828,21 @@ func release() -> void:
 	held = false
 
 
+# Docked and free: not held, not loading and not easing upright after docking. Only such a ship may
+# turn in place, and the Office's O key opens the Office only then.
+func is_free_in_dock() -> bool:
+	return state == State.DOCKED and not held and not loading and not is_leveling()
+
+
+# Landed on a pad and not held: the Office's O key opens the pad's Workshop only then.
+func is_free_on_pad() -> bool:
+	return state == State.LANDED and not held
+
+
+func is_leveling() -> bool:
+	return level_tween != null and level_tween.is_running()
+
+
 # The Economy has the fuel above the cap for the incoming Load pumped out meanwhile.
 func start_loading(with_load: float) -> void:
 	held = false
@@ -851,7 +868,7 @@ func settle() -> void:
 
 func rest(delta: float) -> void:
 	# A docked ship may turn in place to face the way out.
-	if state == State.DOCKED and not loading and not (level_tween and level_tween.is_running()):
+	if is_free_in_dock():
 		rotation += Input.get_axis("ui_left", "ui_right") * ship.turn_rate() * delta
 	show_rest_message()
 
