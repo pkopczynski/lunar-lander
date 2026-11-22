@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/pkopczynski/lunar-lander/compare/v0.10.0...v0.11.0) (2026-11-22)
+
+
+### Features
+
+* every pad has a Workshop selling fuel and repair at the pad's price, and pads no longer refuel for free ([#144](https://github.com/pkopczynski/lunar-lander/issues/144)) ([f6ef371](https://github.com/pkopczynski/lunar-lander/commit/f6ef371d3e55ad18813f2a3c15334af6866113cb))
+
 ## [0.10.0](https://github.com/pkopczynski/lunar-lander/compare/v0.9.0...v0.10.0) (2026-11-21)
 
 
