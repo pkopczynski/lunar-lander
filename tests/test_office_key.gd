@@ -1,4 +1,6 @@
 extends "res://tests/scene_test.gd"
+
+const Hud := preload("res://hud.gd")
 # O opens the Office again while the ship is Docked and free, and the HUD's hint shows the key
 # exactly while it would work.
 
@@ -12,7 +14,7 @@ func dock_and_decline() -> void:
 
 
 # Presses O and waits for the Terminal to power on.
-func press_o() -> void:
+func open_office_by_key() -> void:
 	await press(&"office")
 	await wait_for_terminal()
 
@@ -25,6 +27,10 @@ func check_opens_on_the_main_screen(why: String) -> void:
 	check(hud().office_hint_text() == "", "no hint while the Office shows " + why)
 
 
+func check_hint_shows(why: String) -> void:
+	check(hud().office_hint_text() == Hud.OFFICE_HINT_TEXT, "the hint shows " + why + ", got %s" % hud().office_hint_text())
+
+
 func check_o_does_nothing(why: String) -> void:
 	check(hud().office_hint_text() == "", "no hint " + why + ", got %s" % hud().office_hint_text())
 	await press(&"office")
@@ -35,21 +41,21 @@ func check_o_does_nothing(why: String) -> void:
 func test_after_no_o_opens_the_office_with_the_ship_held() -> void:
 	await choose_ship()
 	await dock_and_decline()
-	check(hud().office_hint_text() == "O  ENTER THE OFFICE", "the hint shows while Docked and free, got %s" % hud().office_hint_text())
-	await press_o()
+	check_hint_shows("while Docked and free")
+	await open_office_by_key()
 	check_opens_on_the_main_screen("after No")
 
 
 func test_after_leaving_the_office_o_opens_it_again_and_escape_releases_the_ship() -> void:
 	await choose_ship()
-	check(hud().office_hint_text() == "O  ENTER THE OFFICE", "the hint shows after a fresh start's Escape, got %s" % hud().office_hint_text())
-	await press_o()
+	check_hint_shows("after a fresh start's Escape")
+	await open_office_by_key()
 	check_opens_on_the_main_screen("after a fresh start's Escape")
 	await press(&"ui_cancel")
 	await wait_for_terminal()
 	check(not office().showing and not lander().held, "Escape on the main screen should release the ship")
-	check(hud().office_hint_text() == "O  ENTER THE OFFICE", "the hint shows again, got %s" % hud().office_hint_text())
-	await press_o()
+	check_hint_shows("again")
+	await open_office_by_key()
 	check_opens_on_the_main_screen("after leaving it with Escape")
 	await press(&"ui_cancel")
 	await wait_for_terminal()
@@ -66,8 +72,8 @@ func test_after_start_o_opens_the_office() -> void:
 	await press(&"ui_accept")
 	await wait_for_terminal()
 	check(not office().showing, "START should close the Office")
-	check(hud().office_hint_text() == "O  ENTER THE OFFICE", "the hint shows after START, got %s" % hud().office_hint_text())
-	await press_o()
+	check_hint_shows("after START")
+	await open_office_by_key()
 	check_opens_on_the_main_screen("after START")
 
 
@@ -76,8 +82,8 @@ func test_once_loaded_o_opens_the_office_and_cancel_mission_is_reachable() -> vo
 	while economy().phase == Economy.Phase.LOADING:
 		await frames(1)
 	check(economy().phase == Economy.Phase.DELIVERING, "loading should finish into the delivery")
-	check(hud().office_hint_text() == "O  ENTER THE OFFICE", "the hint shows once loaded, got %s" % hud().office_hint_text())
-	await press_o()
+	check_hint_shows("once loaded")
+	await open_office_by_key()
 	check_opens_on_the_main_screen("once loaded")
 	await open_transport_offers()
 	await press(&"ui_right")
@@ -96,8 +102,8 @@ func test_while_fuel_is_pumped_o_opens_the_office_and_the_pump_goes_on() -> void
 	await press(&"ui_accept")
 	await leave_office()
 	check(hangar().pumping, "fuel should be pumping")
-	check(hud().office_hint_text() == "O  ENTER THE OFFICE", "the hint shows while pumping, got %s" % hud().office_hint_text())
-	await press_o()
+	check_hint_shows("while pumping")
+	await open_office_by_key()
 	check_opens_on_the_main_screen("while pumping")
 	var fuel := ship.fuel
 	await seconds(1.0)
@@ -116,9 +122,10 @@ func test_o_does_nothing_while_easing_upright_after_docking() -> void:
 	place(station().parking_spot.get_center())
 	lander().rotation = 0.3
 	await frames(2)
-	check(lander().state == Lander.State.DOCKED and lander().is_leveling(), "the ship should be easing upright")
+	check(lander().state == Lander.State.DOCKED and absf(lander().rotation) > 0.01, "the ship should be easing upright")
 	check(hud().office_hint_text() == "", "no hint while easing upright, got %s" % hud().office_hint_text())
 	await press(&"office")
+	await wait_for_terminal()
 	check(not office().showing, "O should not open the Office while easing upright")
 	await seconds(Lander.LEVEL_TIME)
 	check(office().popup == Office.PopupKind.ENTER_OFFICE, "the popup still shows once upright")

@@ -862,7 +862,7 @@ func settle() -> void:
 
 func rest(delta: float) -> void:
 	# A docked ship may turn in place to face the way out.
-	if state == State.DOCKED and not loading and not is_leveling():
+	if is_free_in_dock():
 		rotation += Input.get_axis("ui_left", "ui_right") * ship.turn_rate() * delta
 	show_rest_message()
 
