@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/pkopczynski/lunar-lander/compare/v0.11.0...v0.12.0) (2026-11-22)
+
+
+### Features
+
+* O opens the Office when Docked and a pad's Workshop when Landed, with a HUD hint ([#146](https://github.com/pkopczynski/lunar-lander/issues/146)) ([ac7d573](https://github.com/pkopczynski/lunar-lander/commit/ac7d573a2b45670ab175f9e952050ab74ec10f89))
+
 ## [0.11.0](https://github.com/pkopczynski/lunar-lander/compare/v0.10.0...v0.11.0) (2026-11-22)
 
 
