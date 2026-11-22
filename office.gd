@@ -2,14 +2,14 @@ class_name Office
 extends CanvasLayer
 # The player's Office: a full-window Terminal with a main screen of tiles opening the Shipyard,
 # the Hangar (and each owned ship's Ship page and its FUEL screen), Transport offers and the Bank account. It pauses
-# the world while showing. O while the ship is Docked and free opens it (`can_open_by_key()`, which the HUD's
-# hint reads too), holding the ship as Yes on "ENTER THE OFFICE?" does. R after a crash or while Stranded opens it by Recovery (`recover()`), and it can't be left
+# the world while showing. O while the ship is Docked and free opens it, and while it's Landed and free the pad's
+# Workshop (`can_open_by_key()`, which the HUD's hint reads too), holding the ship as Yes on "ENTER THE OFFICE?" does. R after a crash or while Stranded opens it by Recovery (`recover()`), and it can't be left
 # while the ship in service is a Wreck (`leave_reason()`); the main screen then tags it WRECKED. Buying, selling and the Ship swap go through the Hangar's and the
 # Economy's named operations; it never edits an owned ship itself.
 #
 # The same Terminal is every pad's Workshop (`place` is the pad's location, null in the Office):
 # landing on a pad (`landed_on_pad`) asks "ENTER THE WORKSHOP?" (No selected) over the flight view,
-# and Return asks again while the ship stays Landed. Yes opens it on the Landed ship's Ship page,
+# and Return asks again while the ship stays Landed; O opens it at once while the ship is free. Yes opens it on the Landed ship's Ship page,
 # which sells only FUEL (buy only) and REPAIR at that pad's place markup, headed `MINE PAD //
 # WORKSHOP` (`header_text()`), drawn in `TerminalPalette.WORKSHOP` (orange) rather than `OFFICE`
 # (`palette`). It doesn't pause the world: the ship stays held instead, and the Workshop swallows
@@ -394,17 +394,23 @@ func ask_to_enter() -> void:
 	terminal.queue_redraw()
 
 
-# Whether O would open the Office now: the ship is Docked and free (not held, not loading, not
-# easing upright) and the Terminal shows nothing. The O key and the HUD's hint both read this.
+# Whether O would open the Terminal now: the Office while the ship is Docked and free (not held, not
+# loading, not easing upright), the pad's Workshop while it's Landed and free, and only while the
+# Terminal shows nothing. The O key and the HUD's hint both read this.
 func can_open_by_key() -> bool:
-	return not showing and popup == PopupKind.NONE and lander.is_free_in_dock()
+	return not showing and popup == PopupKind.NONE \
+		and (lander.is_free_in_dock() or lander.is_free_on_pad())
 
 
-# O while Docked and free: the Office opens as Yes on "ENTER THE OFFICE?" opens it, holding the ship
-# until it's left from the main screen.
+# O when it can open: the Office (Docked) or the pad's Workshop (Landed), as Yes on their
+# questions opens them, holding the ship until it's left.
 func enter_by_key() -> void:
 	lander.hold()
-	open()
+	if lander.state == Lander.State.LANDED:
+		place = clock.location
+		open_workshop()
+	else:
+		open()
 
 
 # Landing on a pad (and Return while Landed) asks whether to enter its Workshop, over the flight

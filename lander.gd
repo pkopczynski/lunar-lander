@@ -51,7 +51,8 @@ extends CharacterBody2D
 # with the "ENTER THE OFFICE?" popup and calls `hold()`, which freezes `_physics_process`; the
 # Lander doesn't know why it's held. No, and leaving the Office from the main screen, call
 # `release()`; O then opens the Office again while the ship `is_free_in_dock()` (Docked, not held, not
-# loading, not easing upright), which the Office reads. A Ship swap calls `start_docked()`, and entering Docked releases the hold.
+# loading, not easing upright), which the Office reads, and the pad's Workshop while it
+# `is_free_on_pad()`. A Ship swap calls `start_docked()`, and entering Docked releases the hold.
 # `start_loading()` releases it too: a loading ship isn't held but rests, with `loading` blocking
 # lift-off and turning.
 
@@ -831,6 +832,11 @@ func release() -> void:
 # turn in place, and the Office's O key opens the Office only then.
 func is_free_in_dock() -> bool:
 	return state == State.DOCKED and not held and not loading and not is_leveling()
+
+
+# Landed on a pad and not held: the Office's O key opens the pad's Workshop only then.
+func is_free_on_pad() -> bool:
+	return state == State.LANDED and not held
 
 
 func is_leveling() -> bool:

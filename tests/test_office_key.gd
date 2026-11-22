@@ -1,8 +1,8 @@
 extends "res://tests/scene_test.gd"
+# O opens the Office again while the ship is Docked and free, and a pad's Workshop while it's Landed
+# and free; the HUD's hint shows the key exactly while it would work.
 
 const Hud := preload("res://hud.gd")
-# O opens the Office again while the ship is Docked and free, and the HUD's hint shows the key
-# exactly while it would work.
 
 
 # Docks in the spot and answers No on the "ENTER THE OFFICE?" popup.
@@ -139,14 +139,58 @@ func test_o_does_nothing_while_the_popup_shows() -> void:
 	check(office().popup == Office.PopupKind.ENTER_OFFICE, "the popup should stay")
 
 
-func test_o_does_nothing_when_flying_landed_or_crashed() -> void:
+func test_o_does_nothing_when_flying_or_crashed() -> void:
 	await choose_ship()
 	place(Vector2(World.WORLD_WIDTH / 4.0, World.BORDER_Y - 600.0))
 	await frames(2)
 	await check_o_does_nothing("while Flying")
-	await land_on_pad()
-	await decline_workshop()
-	await check_o_does_nothing("while Landed")
-	check(office().popup == Office.PopupKind.NONE, "O should not ask ENTER THE WORKSHOP? either")
 	await crash_in_deep_space()
 	await check_o_does_nothing("while Crashed")
+
+
+# The pad's Workshop
+
+func check_opens_the_workshop(why: String) -> void:
+	check(office().showing and office().in_workshop(), "O should open the Workshop " + why)
+	check(office().place == clock().location, "the Workshop should be this pad's " + why)
+	check(office().screen == Office.Screen.SHIP_PAGE and hangar_screen().ship == hangar().in_service,
+		"O should open the Landed ship's page " + why)
+	check(lander().held, "the ship should be held in the Workshop " + why)
+	check(hud().office_hint_text() == "", "no hint while the Workshop shows " + why)
+
+
+func check_workshop_hint_shows(why: String) -> void:
+	check(hud().office_hint_text() == Hud.WORKSHOP_HINT_TEXT,
+		"the Workshop hint shows " + why + ", got %s" % hud().office_hint_text())
+
+
+func test_landed_after_no_o_opens_the_workshop_and_after_leaving_it_again() -> void:
+	clock().move_to(Location.MINE)
+	await choose_ship()
+	await land_on_pad()
+	await decline_workshop()
+	check_workshop_hint_shows("after No")
+	check(hud().office_hint_text() == "O  ENTER THE WORKSHOP", "the hint reads, got %s" % hud().office_hint_text())
+	await open_office_by_key()
+	check_opens_the_workshop("after No")
+	await press(&"ui_cancel")
+	await wait_for_terminal()
+	check(not office().showing and not lander().held, "Escape should leave the Workshop, releasing the ship")
+	check_workshop_hint_shows("after leaving the Workshop")
+	await open_office_by_key()
+	check_opens_the_workshop("after leaving it")
+	await press(&"ui_cancel")
+	await wait_for_terminal()
+	hold(&"ui_up")
+	await seconds(0.5)
+	release(&"ui_up")
+	check(lander().state == Lander.State.FLYING, "Up should lift off after leaving the Workshop, state %s" % lander().state)
+	await check_o_does_nothing("once lifted off")
+
+
+func test_o_does_nothing_while_the_workshop_popup_shows() -> void:
+	await choose_ship()
+	await land_on_pad()
+	check(office().popup == Office.PopupKind.ENTER_WORKSHOP, "landing should ask ENTER THE WORKSHOP?")
+	await check_o_does_nothing("while the Workshop popup shows")
+	check(office().popup == Office.PopupKind.ENTER_WORKSHOP, "the popup should stay")

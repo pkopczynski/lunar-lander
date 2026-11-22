@@ -79,7 +79,7 @@ Exactly one of Flying, Landed, Docked, Crashed, Stranded, changed only by `Lande
 
 | Flag | Set by | Effect |
 |---|---|---|
-| `held` | Office (`hold()` / `release()`) | Frozen: no input. Set while "ENTER THE OFFICE?" or "ENTER THE WORKSHOP?" asks, while a pad's Workshop shows, and in the Office entered with O (`Office.can_open_by_key()`: Docked and free). Cleared by `enter()`. |
+| `held` | Office (`hold()` / `release()`) | Frozen: no input. Set while "ENTER THE OFFICE?" or "ENTER THE WORKSHOP?" asks, while a pad's Workshop shows, and in the Office or a Workshop entered with O (`Office.can_open_by_key()`: Docked and free, or Landed and free). Cleared by `enter()`. |
 | `loading` | Economy via `start_loading()` / `finish_loading()` | Docked ship can't turn or undock. Adds no fuel. |
 | `pump_time_left` | Hangar's pump (`refuel()`, ticked even behind the Office) | While above 0 the ship can't undock or lift off; the message shows `Pumping fuel… 6s`. Not cleared by `enter()`. |
 | `lift_off_blocked` | Economy (unloading) | Landed ship can't lift off. Not cleared by `enter()`, so a ship settling back stays grounded. |
