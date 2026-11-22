@@ -64,7 +64,7 @@ Nodes find each other by fixed `NodePath`s (`$"../Lander"`); there is no autoloa
 Office ──► Lander, Hangar, Economy, PlanetClock
 Hangar ──► Lander
 Economy ─► Lander, Hangar, PlanetClock
-Hud ─────► Lander, Economy, PlanetClock          (read only)
+Hud ─────► Lander, Economy, PlanetClock, Office  (read only)
 World ───► PlanetClock, Lander, every decor script
 Lander ──► World (current pad, World constants), Station, Ground
 Camera ──► Lander (its parent), World and Station constants

@@ -2,7 +2,8 @@ class_name Office
 extends CanvasLayer
 # The player's Office: a full-window Terminal with a main screen of tiles opening the Shipyard,
 # the Hangar (and each owned ship's Ship page and its FUEL screen), Transport offers and the Bank account. It pauses
-# the world while showing. R after a crash or while Stranded opens it by Recovery (`recover()`), and it can't be left
+# the world while showing. O while the ship is Docked and free opens it (`can_open_by_key()`, which the HUD's
+# hint reads too), holding the ship as Yes on "ENTER THE OFFICE?" does. R after a crash or while Stranded opens it by Recovery (`recover()`), and it can't be left
 # while the ship in service is a Wreck (`leave_reason()`); the main screen then tags it WRECKED. Buying, selling and the Ship swap go through the Hangar's and the
 # Economy's named operations; it never edits an owned ship itself.
 #
@@ -215,6 +216,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.is_action_pressed("ui_accept") and lander.state == Lander.State.LANDED and not lander.held:
 			ask_to_enter_workshop()
 			handled()
+		elif event.is_action_pressed("office") and can_open_by_key():
+			enter_by_key()
+			handled()
 		return
 	elif screen == Screen.MAIN:
 		handle_main_input(event)
@@ -388,6 +392,19 @@ func ask_to_enter() -> void:
 	visible = true
 	show_popup(PopupKind.ENTER_OFFICE, Choice.NO)
 	terminal.queue_redraw()
+
+
+# Whether O would open the Office now: the ship is Docked and free (not held, not loading, not
+# easing upright) and the Terminal shows nothing. The O key and the HUD's hint both read this.
+func can_open_by_key() -> bool:
+	return not showing and popup == PopupKind.NONE and lander.is_free_in_dock()
+
+
+# O while Docked and free: the Office opens as Yes on "ENTER THE OFFICE?" opens it, holding the ship
+# until it's left from the main screen.
+func enter_by_key() -> void:
+	lander.hold()
+	open()
 
 
 # Landing on a pad (and Return while Landed) asks whether to enter its Workshop, over the flight
