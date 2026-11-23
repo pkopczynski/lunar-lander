@@ -150,10 +150,10 @@ func test_every_mission_rerolls_the_time_even_in_the_current_period() -> void:
 	await check_the_clock_moves_on(first, "through loading")
 	await seconds(4.0)
 	check(economy().phase == Economy.Phase.DELIVERING, "loading should have finished")
-	# Deliver: the debug shortcut lands on the pad, which unloads.
+	# Deliver: Back to pad lands on the pad, which unloads.
 	place(Vector2(pad_x() + 300.0, 0.0))
 	await check_the_clock_moves_on(hud().clock_text(), "on the delivery flight")
-	await press(&"restart")
+	await back_to_pad()
 	await frames(2)
 	check(economy().phase == Economy.Phase.UNLOADING, "landing on the pad should start unloading")
 	await check_the_clock_moves_on(hud().clock_text(), "while unloading")

@@ -17,9 +17,9 @@ func test_the_hud_shows_the_location_and_local_time_in_every_ship_state() -> voi
 	place(Vector2(pad_x() + 300.0, 200.0))
 	await frames(2)
 	check(shows_valley_time(clock_text()), "Flying: the HUD clock should read VALLEY  HH:MM, got '%s'" % clock_text())
-	await press(&"restart")
+	await back_to_pad()
 	await frames(2)
-	check(lander().state == Lander.State.LANDED, "R on the Surface should land the ship")
+	check(lander().state == Lander.State.LANDED, "Back to pad should land the ship")
 	check(shows_valley_time(clock_text()), "Landed: the HUD clock should read VALLEY  HH:MM, got '%s'" % clock_text())
 	await crash_in_deep_space()
 	check(shows_valley_time(clock_text()), "Crashed: the HUD clock should read VALLEY  HH:MM, got '%s'" % clock_text())
@@ -104,9 +104,9 @@ func test_time_runs_docked_loading_flying_and_landed() -> void:
 	await check_runs("Docked at the station")
 	place(Vector2(pad_x() + 300.0, 0.0))
 	await check_runs("flying on the surface")
-	await press(&"restart")
+	await back_to_pad()
 	await frames(2)
-	check(lander().state == Lander.State.LANDED, "R on the Surface should land the ship on the pad")
+	check(lander().state == Lander.State.LANDED, "Back to pad should land the ship on the pad")
 	await check_runs("Landed on the pad")
 
 

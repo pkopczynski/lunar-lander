@@ -19,7 +19,8 @@ extends CanvasLayer
 # The Office: resetting the mission rows from the planet clock on every opening and starting the
 # mission at the chosen destination in the chosen start period at START LOADING (or START, a free
 # flight), the Terminal's colours (the `palette`; green, dim green and black, white and red for
-# values, and faint green list tints, alternating by row, in the Office), the header with the balance top right (red below €0), the
+# values, and faint green list tints, alternating by row, in the Office), the header with the balance top right (red below €0)
+# and Tester mode's tag after its left part while it's on (`header_tag_text()`), the
 # Terminal's screens (the main screen's tiles; `ShipyardScreen`, `HangarScreen`, `FuelScreen`,
 # `TransportOffersScreen` and `BankAccountScreen` handle the others), the YES/NO popups ("ARE YOU
 # SURE?" for a Transport offer, "REMOVE CONTRACT?", "CANCEL MISSION?", "ENTER THE OFFICE?", also
@@ -173,6 +174,7 @@ var bank_account: BankAccountScreen
 @onready var economy: Economy = $"../Economy"
 @onready var clock: PlanetClock = $"../PlanetClock"
 @onready var terminal: Control = $Terminal
+@onready var tester: Tester = $"../Tester"
 
 
 func _ready() -> void:
@@ -182,6 +184,7 @@ func _ready() -> void:
 	transport_offers = TransportOffersScreen.new(self, economy)
 	bank_account = BankAccountScreen.new(self, economy)
 	terminal.draw.connect(draw_terminal)
+	tester.changed.connect(terminal.queue_redraw)
 	lander.docked_at_station.connect(ask_to_enter)
 	lander.landed_on_pad.connect(ask_to_enter_workshop)
 	lander.recovery_requested.connect(recover)
@@ -192,7 +195,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	# The Workshop's question goes once the ship isn't Landed any more.
 	if popup == PopupKind.ENTER_WORKSHOP and lander.state != Lander.State.LANDED:
-		close()
+		drop_question()
 	transport_offers.tick(delta)
 	bank_account.tick(delta)
 	if notice_left > 0.0:
@@ -381,6 +384,13 @@ func close() -> void:
 	get_tree().paused = false
 
 
+# Takes the question over the flight view away. Unlike close() it leaves pausing alone: the
+# question never paused anything (the Tester panel may have).
+func drop_question() -> void:
+	popup = PopupKind.NONE
+	visible = false
+
+
 # Docking asks whether to enter the Office, over the flight view, once the ship is upright. The ship is held
 # until the ship is released: by No here, or by leaving the Office. A delivering ship is asked
 # too, so the mission can be cancelled.
@@ -522,6 +532,11 @@ func header_text() -> String:
 	return screen_title() if in_workshop() else HEADER + screen_title()
 
 
+# Tester mode's tag after the header's left part while it's on (TESTER: FUEL · IMMUNE), else "".
+func header_tag_text() -> String:
+	return tester.tag_text()
+
+
 func balance_text() -> String:
 	return Economy.eur(economy.balance)
 
@@ -607,6 +622,10 @@ func draw_screen(view: Rect2) -> void:
 
 	var header_baseline := Vector2(inner.position.x, inner.position.y + HEADER_SIZE)
 	draw_text(header_text(), header_baseline, HEADER_SIZE)
+	var tag := header_tag_text()
+	if tag != "":
+		draw_tag(tag, header_baseline + Vector2(text_width(header_text() + " ", HEADER_SIZE),
+			-HEADER_SIZE / 2.0 - TEXT_SIZE / 2.0 - TAG_PADDING.y), Tester.INK)
 	draw_text(balance_text(), header_baseline, HEADER_SIZE, inner.size.x, HORIZONTAL_ALIGNMENT_RIGHT,
 		palette.error if balance_red() else palette.value)
 	var rule_y := inner.position.y + HEADER_SIZE + LINE_GAP

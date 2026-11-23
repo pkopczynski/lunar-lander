@@ -1,9 +1,9 @@
 extends "res://tests/scene_test.gd"
-# In debug builds (which tests run in), R on the Surface teleports the ship to
-# the pad, unless it has crashed: then R is Recovery, as everywhere.
+# The Tester panel's Back to pad puts the ship Landed on the pad from anywhere in flight; R is only
+# Recovery, after a crash, and does nothing otherwise.
 
 
-func test_r_on_the_surface_teleports_to_the_pad_landed() -> void:
+func test_back_to_pad_from_the_surface_puts_the_ship_landed_on_the_pad() -> void:
 	await choose_ship()
 	var ship := lander()
 	var scene := main()
@@ -13,10 +13,10 @@ func test_r_on_the_surface_teleports_to_the_pad_landed() -> void:
 	ship.load_mass = 2000.0
 	var fuel := ship.fuel
 	var mass := ship.total_mass()
-	await press(&"restart")
+	await back_to_pad()
 	await frames(2)
-	check(main() == scene, "R on the Surface should not reload the scene")
-	check(not office().showing, "R on the Surface should not open the Office")
+	check(main() == scene, "Back to pad should not reload the scene")
+	check(not office().showing, "Back to pad should not open the Office")
 	check(ship.state == Lander.State.LANDED, "the ship should be Landed after the teleport")
 	check(not ship.in_deep_space, "the ship should still be on the Surface")
 	check_near(ship.position.x, pad_x(), 0.5, "x at the pad centre")
@@ -32,7 +32,7 @@ func test_the_teleported_ship_rests_on_the_pad_and_can_lift_off() -> void:
 	await choose_ship(ShipType.MULE)
 	var ship := lander()
 	place(Vector2(300, 100))
-	await press(&"restart")
+	await back_to_pad()
 	await seconds(1.0)
 	check(ship.state == Lander.State.LANDED, "the Mule should stay Landed on the pad, says %s" % message())
 	check(not message().begins_with("Crashed"), "the Mule should not crash after the teleport")
@@ -45,7 +45,7 @@ func test_the_teleported_ship_rests_on_the_pad_and_can_lift_off() -> void:
 	check(ship.position.y < rest_y, "the ship should climb off the pad, y is %s from %s" % [ship.position.y, rest_y])
 
 
-func test_r_after_a_crash_on_the_surface_recovers_instead_of_teleporting() -> void:
+func test_r_after_a_crash_on_the_surface_recovers() -> void:
 	await choose_ship()
 	var ship := lander()
 	place(Vector2(pad_x() + 400.0, 560), Vector2(0, 200))

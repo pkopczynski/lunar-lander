@@ -18,7 +18,8 @@ extends Node
 # service has it pumped at `PUMP_RATE` up to `pumped_to` (`fuel_after_pumping()`), which runs while the
 # Office pauses the world (process mode Always) and tells the Lander how long it has left
 # (`pump_time_left`), so the ship can't lift off or undock meanwhile. A Ship swap finishes any pumping
-# at once. `fuel_cap(ship)` counts the Lander's Load for the ship in service.
+# at once. `fuel_cap(ship)` counts the Lander's Load for the ship in service. `top_up()` is the Tester
+# panel's Auto-refuel: the ship in service's fuel straight to its fuel cap, free.
 #
 # Names count up per Ship type and are never reused, even after a ship is sold: selling MULE 1
 # leaves MULE 2, and the next Mule is MULE 3.
@@ -103,6 +104,13 @@ func finish_pumping() -> void:
 	in_service.fuel = fuel_after_pumping(in_service)
 	pumping = false
 	show_pump_time()
+
+
+# Tester mode's Auto-refuel: the ship in service's fuel straight to its fuel cap, free, no
+# Transaction. It waits while pumping is under way, so paid fuel (or a sell-back) still finishes.
+func top_up() -> void:
+	if not pumping:
+		in_service.fuel = fuel_cap(in_service)
 
 
 # The most fuel an owned ship may hold: the ship in service's counts the Load aboard or coming aboard.

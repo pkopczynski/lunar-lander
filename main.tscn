@@ -9,6 +9,7 @@
 [ext_resource type="Script" path="res://economy.gd" id="7_economy"]
 [ext_resource type="Script" path="res://planet_clock.gd" id="8_planet_clock"]
 [ext_resource type="Script" path="res://hangar.gd" id="9_hangar"]
+[ext_resource type="Script" path="res://tester.gd" id="10_tester"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ground"]
 size = Vector2(4000, 40)
@@ -101,3 +102,17 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+
+[node name="Tester" type="CanvasLayer" parent="."]
+process_mode = 3
+layer = 20
+script = ExtResource("10_tester")
+
+[node name="Panel" type="Control" parent="Tester"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2

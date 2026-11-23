@@ -186,7 +186,7 @@ func bank() -> BankAccountScreen:
 	return office().bank_account
 
 
-# Loads the Contracts, lands on the pad after `delivered_in` seconds of delivery, waits for
+# Loads the Contracts, lands on the pad (the Tester panel's Back to pad) after `delivered_in` seconds of delivery, waits for
 # unloading, then docks and enters the Office. Loading counts as finished at `loaded_at`
 # (in-game minutes since midnight; 14:00 by default).
 func deliver(contracts: Array, delivered_in: float, loaded_at := 14 * 60 + 0.5) -> void:
@@ -194,14 +194,17 @@ func deliver(contracts: Array, delivered_in: float, loaded_at := 14 * 60 + 0.5) 
 	typed.assign(contracts)
 	if not office().showing:
 		await enter_office()
+	# Typed in the Office, so typing doesn't add to the delivery time.
+	if not tester().on:
+		await type_keys("TESTER")
 	await start_loading(typed)
 	while economy().phase == Economy.Phase.LOADING:
 		await frames(1)
 	economy().loaded_at = loaded_at
 	await seconds(delivered_in)
 	place(Vector2(300, 100))
-	await press(&"restart")
-	check(lander().state == Lander.State.LANDED, "R on the Surface should land the ship on the pad")
+	await back_to_pad()
+	check(lander().state == Lander.State.LANDED, "Back to pad should land the ship on the pad")
 	while economy().phase == Economy.Phase.UNLOADING:
 		await frames(1)
 	await enter_office()

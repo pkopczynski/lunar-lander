@@ -142,13 +142,13 @@ func test_the_mines_other_cranes_have_no_collider() -> void:
 		check(not piece.has_collider, "no Mine decor piece should have a collider (layer %d, part %d)" % [piece.layer, piece.part])
 
 
-func test_the_debug_pad_shortcut_puts_the_ship_on_the_mines_pad() -> void:
+func test_back_to_pad_puts_the_ship_on_the_mines_pad() -> void:
 	await choose_ship(ShipType.MULE)
 	clock().move_to(Location.MINE)
 	place(Vector2(1000, 100))
-	await press(&"restart")
+	await back_to_pad()
 	await seconds(1.0)
-	check(lander().state == Lander.State.LANDED, "R at the Mine should land the ship and keep it landed, says %s" % message())
+	check(lander().state == Lander.State.LANDED, "Back to pad should land the ship and keep it landed, says %s" % message())
 	check_near(lander().position.x, Location.MINE.pad_center_x, 0.5, "x at the Mine's pad centre")
 
 
@@ -196,14 +196,14 @@ func view() -> Rect2:
 func test_the_open_pit_mine_is_cut_into_the_ground_down_to_a_pit_floor_below_the_valleys() -> void:
 	await choose_ship()
 	place(Vector2(1000, 100))
-	await press(&"restart")
+	await back_to_pad()
 	var valley_ground := lander().ground_top()
 	var valley_y := lander().position.y
 	clock().move_to(Location.MINE)
 	place(Vector2(1000, 100))
-	await press(&"restart")
+	await back_to_pad()
 	await seconds(1.0)
-	check(lander().state == Lander.State.LANDED, "R at the Mine should land on the pad on the pit floor, says %s" % message())
+	check(lander().state == Lander.State.LANDED, "Back to pad should land on the pad on the pit floor, says %s" % message())
 	check(lander().position.y > valley_y + 100.0,
 		"the Mine's pad should sit on a pit floor well below the Valley's ground, y %s vs %s" % [lander().position.y, valley_y])
 	var highest := INF
@@ -218,5 +218,5 @@ func test_the_open_pit_mine_is_cut_into_the_ground_down_to_a_pit_floor_below_the
 	check(view().has_point(pad.global_position), "the camera should show the pad on the pit floor, view %s, pad %s" % [view(), pad.global_position])
 	clock().move_to(Location.VALLEY)
 	place(Vector2(1000, 100))
-	await press(&"restart")
+	await back_to_pad()
 	check_near(lander().position.y, valley_y, 0.01, "back at the Valley the pad should be at the Valley's ground again")
