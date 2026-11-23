@@ -101,8 +101,8 @@ func test_the_location_drifts_during_a_delivery_and_landing_on_the_new_pad_deliv
 	await frames(2)
 	check(world().location == Location.MINE, "the location should drift during a delivery too")
 	place(Vector2(Location.MINE.pad_center_x, World.GROUND_BOTTOM_Y - 400.0))
-	await press(&"restart")
-	check(lander().state == Lander.State.LANDED, "R on the surface should land the ship on the Mine's pad")
+	await back_to_pad()
+	check(lander().state == Lander.State.LANDED, "Back to pad should land the ship on the Mine's pad")
 	check_near(lander().position.x, Location.MINE.pad_center_x, 0.01, "the ship should be on the Mine's pad")
 	check(economy().phase == Economy.Phase.UNLOADING, "landing on the new location's pad should deliver")
 

@@ -1,6 +1,6 @@
 extends "res://tests/scene_test.gd"
-# The location table and the current location: the pad, landing judgement and the debug
-# pad shortcut all follow the current location's pad.
+# The location table and the current location: the pad, landing judgement and the Tester
+# panel's Back to pad all follow the current location's pad.
 
 
 func test_a_run_starts_at_the_valley_with_the_pad_in_the_middle_of_the_world() -> void:
@@ -21,15 +21,15 @@ func elsewhere() -> Location:
 	return location
 
 
-func test_the_pad_and_the_debug_pad_shortcut_follow_the_current_location() -> void:
+func test_the_pad_and_back_to_pad_follow_the_current_location() -> void:
 	await choose_ship()
 	var location := elsewhere()
 	clock().move_to(location)
 	check_near(pad_visual_center_x(), 600.0, 0.01, "the drawn pad should move to the location's pad")
 	place(Vector2(1400, 100))
-	await press(&"restart")
+	await back_to_pad()
 	await frames(2)
-	check(lander().state == Lander.State.LANDED, "R on the Surface should land the ship, says %s" % message())
+	check(lander().state == Lander.State.LANDED, "Back to pad should land the ship, says %s" % message())
 	check_near(lander().position.x, 600.0, 0.5, "x at the current location's pad centre")
 
 

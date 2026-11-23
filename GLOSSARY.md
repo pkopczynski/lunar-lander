@@ -12,6 +12,20 @@ _Avoid_: Run, save, game
 Bringing the ship back to the station after a crash or when Stranded, for a recovery fee of 5% of its ship type's price: R after a crash or while Stranded. It happens in place: the ship (a wreck after a crash, keeping its condition when Stranded) is Docked at the station, still in service, and the office opens; the clock, location and transport offers carry on.
 _Avoid_: Respawn, retry, restart, towing
 
+**Tester mode**:
+The hidden switch, turned on and off by typing TESTER, that makes the tester panel available for the page session. Never saved, never marks the career.
+_Avoid_: Cheat mode, debug mode, god mode, dev tools
+
+**Tester panel**:
+The overlay listing the tester options, opened with backquote while tester mode is on. It pauses everything while open.
+_Avoid_: Debug menu, cheat menu
+
+**Tester option**:
+One row of the tester panel, either a switch (stays ON/OFF) or an action (runs once).
+
+**Tester adjustment**:
+A transaction made by the tester panel's money options.
+
 ## World
 
 **Surface**:
@@ -214,7 +228,7 @@ What a contract pays into the bank account once unloaded: its reward less a pena
 _Avoid_: Reward (that's before the penalty), income, score
 
 **Transaction**:
-One line in the bank account for anything that changed the balance: fuel bought or sold back (`FUEL  STATION  2 000 L`, or `FUEL  MINE  2 000 L` from a pad's workshop, opening to show the owned ship, the litres and kg, the price per litre, the ship type's factor when it isn't 1, the place and its place markup when it isn't 1), a ship purchase or sale (naming the owned ship, opening to show its price, or its value, the selling share and the repair cost), a recovery fee (naming the owned ship, opening to show its ship type's price and the fee's share), a repair (naming its place, `REPAIR  STATION` or `REPAIR  MINE`, opening to show the owned ship, the condition restored, the repair rate, the value, the place and its place markup when it isn't 1), or a delivered, cancelled or failed contract: its payout (negative for a cancellation fee), opening to show its reward, penalty (or, when unloaded away from its destination, the wrong destination taking the whole reward), the flight's deadline it was settled against and the landing, both as local times, and the location it was delivered to (and its destination, when they differ). A cancelled contract's shows its reward, the cancellation fee and that it was cancelled instead; a failed contract's its reward, the failure fee and that it failed.
+One line in the bank account for anything that changed the balance: fuel bought or sold back (`FUEL  STATION  2 000 L`, or `FUEL  MINE  2 000 L` from a pad's workshop, opening to show the owned ship, the litres and kg, the price per litre, the ship type's factor when it isn't 1, the place and its place markup when it isn't 1), a ship purchase or sale (naming the owned ship, opening to show its price, or its value, the selling share and the repair cost), a recovery fee (naming the owned ship, opening to show its ship type's price and the fee's share), a repair (naming its place, `REPAIR  STATION` or `REPAIR  MINE`, opening to show the owned ship, the condition restored, the repair rate, the value, the place and its place markup when it isn't 1), or a delivered, cancelled or failed contract: its payout (negative for a cancellation fee), opening to show its reward, penalty (or, when unloaded away from its destination, the wrong destination taking the whole reward), the flight's deadline it was settled against and the landing, both as local times, and the location it was delivered to (and its destination, when they differ). A cancelled contract's shows its reward, the cancellation fee and that it was cancelled instead; a failed contract's its reward, the failure fee and that it failed. A tester adjustment (`TESTER`) opens to say it's one.
 _Avoid_: Receipt, entry, log
 
 **Load**:

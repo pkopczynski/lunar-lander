@@ -24,7 +24,8 @@ extends Node
 # `shortfall(price)` is how much more a purchase needs, since buying never takes the balance below
 # €0. A crash (the Lander's `crashed`) or Stranded (its `stranded`) is settled at once by
 # `settle_crash()`: Failed contracts and the recovery fee. Starting to load sells back the fuel
-# above the cap for the Load (`fuel_sold_for()`). Recovery, repairs and fuel may take the balance below €0. Attached to `Economy`.
+# above the cap for the Load (`fuel_sold_for()`). The Tester panel's money options are Tester adjustments
+# (`make_tester_adjustment()`). Recovery, repairs, fuel and Tester adjustments may take the balance below €0. Attached to `Economy`.
 
 # An offer ran out of time and left the pool without being accepted.
 signal offer_expired(offer: TransportOffer)
@@ -227,6 +228,12 @@ func pay_for_repair(ship: OwnedShip, place: Location = null) -> void:
 # Transaction, which may take the balance below €0.
 func pay_for_fuel(ship: OwnedShip, kg: float, place: Location = null) -> void:
 	record(Transaction.fuel(ship, kg, place))
+
+
+# A Tester adjustment from the Tester panel: this many euros added (or taken, below 0), one
+# Transaction, which may take the balance below €0.
+func make_tester_adjustment(amount: int) -> void:
+	record(Transaction.tester_adjustment(amount))
 
 
 # Pays out a ship sold from the Hangar: its sale price, one Transaction.

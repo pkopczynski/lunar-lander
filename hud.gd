@@ -2,7 +2,8 @@ extends Control
 # Draws the fuel bar and weight readout from the lander's state, the clock line (`VALLEY  14:07`)
 # from the planet clock's, the destination and flight deadline under it (`MINE BY 14:30`) from the
 # Economy's, the green `+€X` payout that rises above the ship and fades, and the ship in service's
-# Condition under the weight (`CONDITION 87%`) with a brief red flash of each loss under it (`−6%`), and the bottom-left `O  ENTER THE OFFICE` (or `O  ENTER THE WORKSHOP` when Landed) hint while the Office's `can_open_by_key()` holds. Attached to `UI/Hud`.
+# Condition under the weight (`CONDITION 87%`) with a brief red flash of each loss under it (`−6%`), and the bottom-left `O  ENTER THE OFFICE` (or `O  ENTER THE WORKSHOP` when Landed) hint while the Office's `can_open_by_key()` holds, and
+# Tester mode's `TESTER: FUEL · IMMUNE` tag top left while it's on (`tester_tag_text()`). Attached to `UI/Hud`.
 # Its static `format_kg()`, `format_litres()` (fuel, `2 000 l (1 600 kg)`) and `group_thousands()` (`1 234 567`) also write the Office's masses and
 # `Economy.eur()`'s euros.
 
@@ -34,6 +35,9 @@ const WORKSHOP_HINT_TEXT := "O  ENTER THE WORKSHOP"
 const OFFICE_HINT_MARGIN := Vector2(24, 24)
 const DELIVERY_TEXT := "%s BY %s"
 const OVERDUE_TEXT := "%s OVERDUE SINCE %s"
+
+# Tester mode's tag in the top-left corner, in the Tester panel's colour.
+const TESTER_TAG_MARGIN := Vector2(24, 40)
 
 # The payout that rises above the ship and fades.
 const PAYOUT_COLOR := Color(0.3, 1.0, 0.4)
@@ -68,6 +72,7 @@ var loss_left := 0.0
 @onready var economy: Economy = $"../../Economy"
 @onready var clock: PlanetClock = $"../../PlanetClock"
 @onready var office: Office = $"../../Office"
+@onready var tester: Tester = $"../../Tester"
 
 
 func _ready() -> void:
@@ -76,6 +81,8 @@ func _ready() -> void:
 	frame_style.set_corner_radius_all(CORNER_RADIUS)
 	economy.paid_out.connect(show_payout)
 	lander.damaged.connect(show_loss)
+	# Paused behind the Tester panel, it still redraws its tag when a switch changes.
+	tester.changed.connect(queue_redraw)
 
 
 func _process(delta: float) -> void:
@@ -116,6 +123,10 @@ func _draw() -> void:
 		draw_string(font, Vector2(0.0, TIMER_MARGIN.y + TIMER_LINE_HEIGHT), timer, HORIZONTAL_ALIGNMENT_RIGHT,
 			size.x - TIMER_MARGIN.x, TIMER_FONT_SIZE, OVERDUE_COLOR if delivery_overdue() else TEXT_COLOR)
 
+	var tag := tester_tag_text()
+	if tag != "":
+		draw_string(font, TESTER_TAG_MARGIN, tag, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, Tester.INK)
+
 	var hint := office_hint_text()
 	if hint != "":
 		draw_string(font, Vector2(OFFICE_HINT_MARGIN.x, size.y - OFFICE_HINT_MARGIN.y), hint,
@@ -151,6 +162,11 @@ func condition_text() -> String:
 # The flash of the last Condition loss while it shows (−6%), else "".
 func loss_text() -> String:
 	return loss
+
+
+# While Tester mode is on, TESTER and the switches that are on (TESTER: FUEL · IMMUNE), else "".
+func tester_tag_text() -> String:
+	return tester.tag_text()
 
 
 # O  ENTER THE OFFICE (Docked) or O  ENTER THE WORKSHOP (Landed) while O would open it

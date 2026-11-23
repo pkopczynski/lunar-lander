@@ -92,7 +92,8 @@ static func row_value(transaction: Transaction) -> String:
 
 
 static func kind_text(transaction: Transaction) -> String:
-	return transaction.kind_label() + "  "
+	var kind := transaction.kind_label()
+	return kind + "  " if kind != "" else ""
 
 
 # The colour the row's amount is drawn in.

@@ -382,6 +382,39 @@ func start_loading(contracts: Array[TransportOffer]) -> void:
 	await wait_for_terminal()
 
 
+func tester() -> Tester:
+	return main().get_node("Tester")
+
+
+# Turns Tester mode on if it's off, opens the Tester panel if it's closed, moves to the option's row
+# and presses Return. The panel stays open.
+func choose_tester_option(name: String) -> void:
+	if not tester().on:
+		await type_keys("TESTER")
+	if not tester().panel_open:
+		await press_key(KEY_QUOTELEFT)
+	var row := tester().options.find(tester().option_named(name))
+	check(row != -1 and tester().panel_open, "the Tester panel should list %s" % name)
+	while tester().selected > row:
+		await press(&"ui_up")
+	while tester().selected < row:
+		await press(&"ui_down")
+	await press(&"ui_accept")
+
+
+# Lands the ship on the current location's pad from anywhere in flight: the Tester panel's BACK TO
+# PAD (turning Tester mode on first if it's off), then Escape closes the panel.
+func back_to_pad() -> void:
+	await choose_tester_option("BACK TO PAD")
+	await close_tester_panel()
+
+
+# Closes the Tester panel with Escape.
+func close_tester_panel() -> void:
+	await press(&"ui_cancel")
+	check(not tester().panel_open, "Escape should close the Tester panel")
+
+
 func hud() -> Control:
 	return main().get_node("UI/Hud")
 
@@ -499,6 +532,29 @@ func send(action: StringName, pressed: bool) -> void:
 	event.action = action
 	event.pressed = pressed
 	Input.parse_input_event(event)
+
+
+# Types a key by its keycode (both its layout and physical key), as a player does: pressed, then released.
+func press_key(keycode: Key) -> void:
+	send_key(keycode, true)
+	await frames(1)
+	send_key(keycode, false)
+	await frames(1)
+
+
+func send_key(keycode: Key, pressed: bool) -> void:
+	var event := InputEventKey.new()
+	event.keycode = keycode
+	event.physical_keycode = keycode
+	event.unicode = keycode if keycode < 128 else 0
+	event.pressed = pressed
+	Input.parse_input_event(event)
+
+
+# Types the letters one after another, as a player does.
+func type_keys(letters: String) -> void:
+	for letter in letters:
+		await press_key(OS.find_keycode_from_string(letter))
 
 
 # Waits out the Terminal's CRT power-on/off effect, if one is running.

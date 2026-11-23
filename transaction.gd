@@ -4,11 +4,12 @@ extends RefCounted
 # A settled Contract (delivered, `cancelled` for its fee or `failed` in a crash for its failure fee;
 # made by `TransportOffer.settlement()`, `cancellation()` and `failure()`), a ship purchase or sale
 # (`ship_purchase()`, `ship_sale()`), a recovery fee (`recovery()`), a repair (`repair()`, `REPAIR  MINE`)
-# or fuel bought or sold back (`fuel()`, `FUEL  STATION  2 000 L`), each of the last five naming the
+# or fuel bought or sold back (`fuel()`, `FUEL  STATION  2 000 L`), or a Tester adjustment
+# (`tester_adjustment()`, `TESTER`, made by the Tester panel; its row has no kind), each of the five before it naming the
 # owned ship in its details (the row of a repair or fuel names the place instead). A repair and fuel name their place: the station, or the pad whose Workshop sold them,
 # with its place markup in the details when it isn't 1. `label()`, `kind_label()` and `detail_pairs()` are how its row and open details read.
 
-enum Kind { CONTRACT, SHIP_PURCHASE, SHIP_SALE, RECOVERY, REPAIR, FUEL }
+enum Kind { CONTRACT, SHIP_PURCHASE, SHIP_SALE, RECOVERY, REPAIR, FUEL, TESTER_ADJUSTMENT }
 
 const KIND_SHIP := "SHIP"
 const CANCELLED_LABEL := "CANCELLED"
@@ -18,6 +19,8 @@ const SALE_LABEL := "SHIP SALE — %s"
 const RECOVERY_LABEL := "RECOVERY — %s"
 const REPAIR_LABEL := "REPAIR  %s"
 const FUEL_LABEL := "FUEL  %s  %s"
+const TESTER_LABEL := "TESTER"
+const TESTER_ADJUSTMENT_LABEL := "TESTER ADJUSTMENT"
 # The place of fuel or a repair bought at the station rather than at a pad.
 const STATION := "STATION"
 
@@ -122,6 +125,14 @@ static func fuel(owned: OwnedShip, kg: float, at: Location = null) -> Transactio
 	return transaction
 
 
+# Money added (or taken, below 0) by the Tester panel. It may take the balance below €0.
+static func tester_adjustment(amount: int) -> Transaction:
+	var transaction := Transaction.new()
+	transaction.kind = Kind.TESTER_ADJUSTMENT
+	transaction.payout = amount
+	return transaction
+
+
 func set_place(at: Location) -> void:
 	place = at.name if at else STATION
 	place_markup = Location.markup_at(at)
@@ -168,13 +179,17 @@ func label() -> String:
 			return REPAIR_LABEL % place
 		Kind.FUEL:
 			return FUEL_LABEL % [place, Office.litres(fuel_mass)]
+		Kind.TESTER_ADJUSTMENT:
+			return TESTER_LABEL
 	return contract.label()
 
 
-# The row's kind, before the payout: CARGO, or SHIP.
+# The row's kind, before the payout: CARGO, or SHIP; "" for a Tester adjustment, which has none.
 func kind_label() -> String:
 	if kind == Kind.CONTRACT:
 		return TransportOffer.KIND_LABELS[contract.kind()]
+	if kind == Kind.TESTER_ADJUSTMENT:
+		return ""
 	return KIND_SHIP
 
 
@@ -185,9 +200,12 @@ func kind_label() -> String:
 # price; a sale its value, the share paid for it and the repair cost taken off; a recovery fee the
 # Ship type's price and the fee's share; a repair the share restored, the repair rate, the value and
 # the place; fuel its litres and kg, the price per litre, the Ship type's factor when it isn't 1, and
-# the place. Both show the place markup after the place when it isn't 1.
+# the place. Both show the place markup after the place when it isn't 1. A Tester adjustment says
+# it's one.
 func detail_pairs() -> Array[Array]:
 	match kind:
+		Kind.TESTER_ADJUSTMENT:
+			return [[TESTER_ADJUSTMENT_LABEL, ""], ["PAYOUT", Economy.eur(payout)]]
 		Kind.SHIP_PURCHASE:
 			return [["SHIP", ship], ["PRICE", Economy.eur(value)], ["PAYOUT", Economy.eur(payout)]]
 		Kind.SHIP_SALE:

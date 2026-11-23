@@ -35,7 +35,7 @@ extends Node2D
 #
 # The pad has no collider; landing is judged against the ground collider. The pad's position comes
 # from the current location (`World.location.pad_center_x`, from the `Location` table), never a
-# constant: the drawn pad, the "on the pad" check and the debug pad shortcut all read it. A location
+# constant: the drawn pad, the "on the pad" check and `Lander.reset_to_pad()` all read it. A location
 # sets its ground's height (`Location.ground_y`; the Mine's pit floor is below the Valley's ground)
 # and width (`Location.ground_width`): the World moves the whole `Ground` body there (centred on the
 # world at full width, on the pad when narrowed) and gives it a fresh `RectangleShape2D` and visual

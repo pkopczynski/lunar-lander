@@ -11,9 +11,10 @@ extends CharacterBody2D
 # at each from `push_off()`, the ship's `spin` about its `centre_of_mass`), touching a solid off
 # the pad (`touch()`: damage by impact speed to the ship in service's Condition, `damaged` for each
 # loss; a crash above the crash speed or at 0%), resting on the ground (`rest_on_ground()`: Landed
-# once settled on the pad, tipped over, Stranded), the R key (`recovery_requested` after a crash or while
-# Stranded, else the debug pad shortcut on the Surface; it never restarts),
-# `landed_on_pad` (from a real landing and from the debug pad shortcut) and `lift_off_blocked`
+# once settled on the pad, tipped over, Stranded), the R key (only `recovery_requested`, after a crash or
+# while Stranded; it does nothing else and never restarts), `immune` (set by the Tester panel's Immune:
+# no hit, Hard landing, tip-over or crash counts), the Tester panel's teleports (`return_to_station()`,
+# `reset_to_pad()`), `landed_on_pad` (from a real landing and from `reset_to_pad()`) and `lift_off_blocked`
 # (keeps the ship resting but grounded, for unloading), `pump_time_left` (set by the
 # Hangar's pump: the ship can't lift off or undock while fuel is pumped, and says `Pumping fuel… 6s`),
 # and `start_loading(load)`/`finish_loading()` (keeps the ship Docked, unable to turn or undock, while
@@ -25,12 +26,12 @@ extends CharacterBody2D
 #
 # The Lander's `state` (Flying, Landed, Docked, Crashed, Stranded) changes only through `enter()`, which
 # starts every state fresh: not held, no lift-off burn, docking armed, leveling stopped, with the
-# state's colour and message. `start_docked()`, `reset_to_pad()` and `fly_from()` also move the ship
+# state's colour and message. `start_docked()`, `return_to_station()`, `reset_to_pad()` and `fly_from()` also move the ship
 # and clear any border bounce, steering or disturbance. `enter()` also clears the `status` line.
 # `rest()` rewrites the message every frame (title, `status`, then Pumping fuel…), so
 # outside text such as the loading and unloading countdowns must go through `show_status()`, which also
-# shows it right away (keeping those lines) for a held ship (held ships don't rest). `lift_off_blocked`
-# and `pump_time_left` are set from outside like `held`, but `enter()` doesn't clear them: a ship that
+# shows it right away (keeping those lines) for a held ship (held ships don't rest). `lift_off_blocked`,
+# `pump_time_left` and `immune` are set from outside like `held`, but `enter()` doesn't clear them: a ship that
 # settles back onto the pad while unloading stays grounded until the Economy clears `lift_off_blocked`,
 # and the Hangar's pump counts `pump_time_left` down to 0. `lift_off()` is
 # the only transition that looks at the state it leaves (the lift-off burn from the pad, no
@@ -45,7 +46,7 @@ extends CharacterBody2D
 #
 # It has no ship until the Hangar's `_ready()` hands it SPARROW 1 and docks it behind the Office;
 # a Ship swap hands it a new ship and docks it again. `start_docked()` never asks to enter the
-# Office; only `dock()` does, by emitting `docked_at_station` from the end of its level tween, so
+# Office; only `dock()` (flying in, or `return_to_station()`) does, by emitting `docked_at_station` from the end of its level tween, so
 # the signal waits for the ship to be upright and lifting off first (`enter()` kills the tween)
 # cancels it. The Office answers
 # with the "ENTER THE OFFICE?" popup and calls `hold()`, which freezes `_physics_process`; the
@@ -158,7 +159,7 @@ const SOFT_WALL_PUSH := 300.0
 # Docked in the parking spot by flying in, once the ship has finished easing upright.
 # Lifting off before then cancels it.
 signal docked_at_station
-# Landed on the pad, by a real landing or the debug pad shortcut.
+# Landed on the pad, by a real landing or reset_to_pad() (the Tester panel's Back to pad).
 signal landed_on_pad
 # Entered Crashed: the Hangar makes the ship a Wreck and the Economy settles the crash.
 signal crashed
@@ -211,6 +212,9 @@ var incoming_load := 0.0
 # Set from outside (the Hangar's pump): seconds of pumping fuel left. While above 0 the ship can't
 # lift off or undock, and the resting message says Pumping fuel… Unlike held, enter() leaves it.
 var pump_time_left := 0.0
+# Set from outside (the Tester panel's Immune): no hit, Hard landing, tip-over or crash counts. Unlike
+# held, enter() leaves it.
+var immune := false
 var since_liftoff := INF
 var level_tween: Tween
 var in_deep_space := false
@@ -264,12 +268,10 @@ func _ready() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not event.is_action_pressed("restart"):
 		return
-	# R never restarts anything. After a crash, or Stranded, it asks for Recovery, anywhere.
+	# R never restarts anything. After a crash, or Stranded, it asks for Recovery, anywhere; otherwise
+	# it does nothing.
 	if state == State.CRASHED or state == State.STRANDED:
 		recovery_requested.emit()
-	# A testing shortcut: in debug builds R on the Surface puts the ship back on the pad.
-	elif OS.is_debug_build() and not in_deep_space:
-		reset_to_pad()
 
 
 # Takes the ship in service: its Ship type's hull, collision shape and flame, and from now on its
@@ -309,7 +311,8 @@ func start_docked(type: ShipType = null) -> void:
 	move_to(station.parking_spot.get_center())
 
 
-# Puts the ship Landed on the pad, upright and at rest, keeping its ship type, dry mass and fuel.
+# Puts the ship Landed on the current pad, upright and at rest, from anywhere, keeping its ship type,
+# dry mass, fuel and Load, as a real landing does: `landed_on_pad` follows. The Tester panel's Back to pad.
 func reset_to_pad() -> void:
 	var hull_bottom := 0.0
 	for point in hull.polygon:
@@ -317,6 +320,13 @@ func reset_to_pad() -> void:
 	enter(State.LANDED)
 	move_to(Vector2(pad_center_x(), ground_top() - hull_bottom))
 	landed_on_pad.emit()
+
+
+# Puts the ship Docked in the parking spot, upright and at rest, keeping its fuel and Load, as if it
+# had flown in: `docked_at_station` follows once the leveling ends. The Tester panel's Back to station.
+func return_to_station() -> void:
+	move_to(station.parking_spot.get_center())
+	dock()
 
 
 # Puts the ship Flying at a position, upright, keeping its ship type, dry mass and fuel.
@@ -575,6 +585,8 @@ func band_share(value: float, safe: float, crash_edge: float) -> float:
 # Takes a loss from the ship in service's Condition: to 0% crashes it, else it emits `damaged`.
 # Returns whether the ship survived.
 func wear(loss: float) -> bool:
+	if immune:
+		return true
 	ship.condition = maxf(ship.condition - loss, 0.0)
 	if ship.condition <= 0.0:
 		crash()
@@ -710,6 +722,8 @@ func apply_impulse_at(impulse: Vector2, arm: Vector2) -> void:
 # costs the ship in service Condition (to 0% crashes it). The worst touchdown counts: a later,
 # gentler one costs nothing more. Returns whether the ship survived. It lands once it settles.
 func touch_down(impact_velocity: Vector2) -> bool:
+	if immune:
+		return true
 	var share := landing_band_share(impact_velocity)
 	if share > 1.0:
 		crash()
@@ -729,7 +743,7 @@ func touch(contacts: Array[Contact], centre: Vector2) -> bool:
 	var impact := 0.0
 	for contact in contacts:
 		impact = maxf(impact, -point_velocity(centre, contact.point).dot(contact.normal))
-	if impact > CRASH_SPEED:
+	if impact > CRASH_SPEED and not immune:
 		crash()
 		return false
 	if impact < NO_DAMAGE_SPEED:
@@ -781,7 +795,7 @@ func rest_on_ground(on_pad: bool, thrusting: bool, delta: float) -> bool:
 		return true
 	# Rounded to the degree: a Mule that falls onto its side rests at about 89.7° (the contact
 	# margin), and it must count as 90°.
-	if roundf(rad_to_deg(tilt())) >= TIPPED_ANGLE_DEG:
+	if roundf(rad_to_deg(tilt())) >= TIPPED_ANGLE_DEG and not immune:
 		settle_time = 0.0
 		tipped_time += delta
 		if tipped_time < TIPPED_TIME:

@@ -33,7 +33,7 @@ func test_a_mixed_contract_delivered_late_loses_2_percent_of_passengers_and_1_pe
 	# 3 s + 1 passenger + 1 tonne of loading, then 12.7 s overdue.
 	await seconds(5.0 + 10.0 + 12.7)
 	check(hud().delivery_overdue(), "the ship should be overdue, got %s" % hud().delivery_text())
-	await deliver_by_shortcut()
+	await deliver_by_back_to_pad()
 	check(hud().delivery_text() == "", "the delivery timer should go once the ship has landed, got %s" % hud().delivery_text())
 	# 2 s + 0.5 s + 0.5 s.
 	await seconds(3.5)
@@ -48,7 +48,7 @@ func test_each_part_of_a_late_payout_stops_at_0_euros() -> void:
 	var offer := late_offer(1, 1000.0, 0.0)
 	await start_loading([offer])
 	await seconds(5.0 + 60.5)
-	await deliver_by_shortcut()
+	await deliver_by_back_to_pad()
 	await seconds(3.5)
 	# 60 s: the passengers' €30 000 would lose €36 000 but lose only €30 000; the cargo's €12 000 loses €7 200.
 	check(economy().balance == Economy.START_BALANCE + 4800, "only the cargo part should still pay, balance is %s" % economy().balance)
@@ -59,7 +59,7 @@ func test_a_contract_that_pays_nothing_still_gets_a_transaction() -> void:
 	offer.cargo_reward = 0
 	await start_loading([offer])
 	await seconds(4.0 + 50.5)
-	await deliver_by_shortcut()
+	await deliver_by_back_to_pad()
 	await seconds(3.0)
 	check(economy().balance == Economy.START_BALANCE, "50 s late, €30 000 for passengers should pay €0, balance is %s" % economy().balance)
 	check(office().bank_account.rows() == PackedStringArray(["#%03d TEST RUN  PASSENGERS  €0" % offer.number]),
@@ -101,14 +101,14 @@ func test_landing_again_neither_restarts_unloading_nor_pays_twice() -> void:
 	var offer := known_offer(2, 0.0)
 	await start_loading([offer])
 	await seconds(5.5)
-	await deliver_by_shortcut()
+	await deliver_by_back_to_pad()
 	# 2 s + 0.5 s × 2 passengers = 3 s.
 	await seconds(1.5)
-	await deliver_by_shortcut()
+	await deliver_by_back_to_pad()
 	check(message() == "Landed!\nUnloading… 2s", "a second landing should not restart unloading, got %s" % message())
 	await seconds(2.0)
 	check(economy().phase == Economy.Phase.NONE, "unloading should finish on time")
-	await deliver_by_shortcut()
+	await deliver_by_back_to_pad()
 	await seconds(4.0)
 	check(economy().balance == Economy.START_BALANCE + 42000, "the Contract should be paid once, balance is %s" % economy().balance)
 	check(office().bank_account.rows().size() == 1, "one transaction only, shows %s" % office().bank_account.rows())
@@ -134,8 +134,8 @@ func late_offer(passengers: int, cargo_mass: float, deadline: float) -> Transpor
 	return offer
 
 
-# The debug pad shortcut: R on the Surface puts the ship Landed on the pad.
-func deliver_by_shortcut() -> void:
+# The Tester panel's Back to pad puts the ship Landed on the pad.
+func deliver_by_back_to_pad() -> void:
 	place(Vector2(300, 100))
-	await press(&"restart")
-	check(lander().state == Lander.State.LANDED, "R on the Surface should land the ship on the pad")
+	await back_to_pad()
+	check(lander().state == Lander.State.LANDED, "Back to pad should land the ship on the pad")

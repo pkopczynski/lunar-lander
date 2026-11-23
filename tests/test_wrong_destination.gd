@@ -66,6 +66,9 @@ func deliver_to_the_mine(contracts: Array, delivered_in := 5.0) -> void:
 func deliver_after_drift(contracts: Array, delivered_in: float, drifts: int) -> void:
 	var typed: Array[TransportOffer] = []
 	typed.assign(contracts)
+	# Typed in the Office, so typing doesn't add to the delivery time.
+	if not tester().on:
+		await type_keys("TESTER")
 	await start_loading(typed)
 	while economy().phase == Economy.Phase.LOADING:
 		await frames(1)
@@ -77,8 +80,8 @@ func deliver_after_drift(contracts: Array, delivered_in: float, drifts: int) -> 
 		check(world().location != before, "the location should drift during the delivery")
 	await seconds(delivered_in - 2.0 * drifts / PHYSICS_FPS)
 	place(Vector2(world().location.pad_center_x, World.GROUND_BOTTOM_Y - 400.0))
-	await press(&"restart")
-	check(lander().state == Lander.State.LANDED, "R on the surface should land the ship on the Mine's pad")
+	await back_to_pad()
+	check(lander().state == Lander.State.LANDED, "Back to pad should land the ship on the Mine's pad")
 
 
 func unloaded() -> void:
