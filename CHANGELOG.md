@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/pkopczynski/lunar-lander/compare/v0.12.0...v0.13.0) (2026-11-23)
+
+
+### Features
+
+* hidden Tester mode for playtesting: type TESTER, then press ` for fuel, repair, immunity, money and jumps to the station or pad ([#161](https://github.com/pkopczynski/lunar-lander/issues/161)) ([e263d4c](https://github.com/pkopczynski/lunar-lander/commit/e263d4cc9c26972cf9dd648ef02f635bc937f48e))
+
 ## [0.12.0](https://github.com/pkopczynski/lunar-lander/compare/v0.11.0...v0.12.0) (2026-11-22)
 
 
